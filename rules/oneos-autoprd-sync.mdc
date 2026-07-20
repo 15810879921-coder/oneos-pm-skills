@@ -1,0 +1,17 @@
+---
+description: 改 OneOS 原型时用 oneos-autoprd 同步 .spec PRD 与 Axhub 标注目录
+alwaysApply: true
+---
+
+# OneOS AutoPRD 全局同步
+
+修改 `src/prototypes/**` 且涉及**行为、文案、流程、判定或验收**时，同一轮必须跟进 **oneos-autoprd**：
+
+1. 读并遵循 `oneos-autoprd` skill（用户故事用业务条线说明：起点 → 怎么运作 → 闭环）。
+2. 更新 `src/prototypes/<id>/.spec/requirements-prd.md`。
+3. 更新该原型 `annotation-source.json` 的 `directory.nodes`：保证有「产品需求说明（PRD）」`markdown` 节点（`markdownPath: ".spec/requirements-prd.md"`，`markdown` 与文件一致）。
+4. 同步 `src/resources/prd/<id>-autoprd.md`（若项目有 resources/prd）。
+
+细则：skill 内 `references/annotation-sync.md`。
+
+纯样式且无产品语义变化：可跳过全量重写。复杂判定另写 `.spec/<topic>.md` 时仍遵守 `business-logic-documentation`。
