@@ -79,25 +79,9 @@ oneos-pm-skills/
 
 ---
 
-## 首次发布到 GitHub（维护者）
+## 仓库地址
 
-> `npx skills` 从 **公开 GitHub 仓库** 拉取 Skill；Gitea 等私有源需改用 zip 分发。
-
-1. 在 GitHub 新建空仓库 `oneos-pm-skills`（Public）
-2. 在本目录执行：
-
-```bash
-cd /Users/sylvawong/oneos-pm-skills
-git init
-git add .
-git commit -m "feat: add version-update-log-format skill"
-git branch -M main
-git remote add origin https://github.com/15810879921-coder/oneos-pm-skills.git
-git push -u origin main
-```
-
-3. 把 README 中所有 `15810879921-coder` 替换为真实 GitHub 账号并再提交一次
-4. 自测：`npx skills add 15810879921-coder/oneos-pm-skills --skill version-update-log-format --list`
+https://github.com/15810879921-coder/oneos-pm-skills
 
 ---
 
