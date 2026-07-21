@@ -27,8 +27,8 @@ alwaysApply: true
 
 使用 `yunxiao-requirement-lifecycle` **创建或完善**需求描述时，**先**跑 `oneos-autoprd`：
 
-- 需求说明 ← AutoPRD 正文  
-- 更新内容 ← 第 10 章自上次定稿以来的条目（无则首版/无增量）  
+- **需求说明** ← 将 `.spec/requirements-prd.md` **Markdown 全文原样复制**进云效描述（禁止只用摘要）；见 `references/yunxiao-description.md`
+- **更新内容** ← 第 10 章自上次定稿以来的条目（无则首版/无增量）  
 - 旧更新内容 →「更新内容·历史」
 
 ## 云效状态 → 同名任务（AutoPRD 规则，不改云效 Skill）

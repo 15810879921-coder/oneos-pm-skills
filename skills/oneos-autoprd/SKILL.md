@@ -7,15 +7,17 @@ description: >-
   requirement advances to 分析中/设计中/待开发, creates a same-titled linked task
   (tag+create-time follow the requirement; 分析中/设计中 assignee=creator, 待开发
   assignee=何斐). Use eagerly for prototypes, AutoPRD, or Yunxiao requirement
-  description/更新内容/stage advance—do not skip annotation sync, 定稿 changelog,
-  or stage-task creation.
+  description/更新内容/stage advance. When writing Yunxiao description, paste the
+  full requirements-prd.md Markdown file verbatim into 需求说明—do not summarize.
+  Do not skip annotation sync, 定稿 changelog, MD-full description paste, or
+  stage-task creation.
 ---
 
 # OneOS AutoPRD
 
 为 OneOS 业务模块生成**产品经理可读、可评审、可排期**的需求说明，并**自动挂到 Axhub Make 标注工具 → 原型目录**。
 
-另支持：**需求定稿**时汇总功能/逻辑变更记录；与云效组合时提供「需求说明 + 更新内容」；需求进入**分析中 / 设计中 / 待开发**时**自动创建与需求同名的关联任务**（规则见下，写在本 Skill，不改云效 Skill）。
+另支持：**需求定稿**时汇总功能/逻辑变更记录；发云效时将 `requirements-prd.md` **全文原样写入**需求描述；需求进入**分析中 / 设计中 / 待开发**时**自动创建与需求同名的关联任务**（写在本 Skill，不改云效 Skill）。
 
 颗粒度对齐「保险采购」全模块 PRD：讲清做什么、谁用、故事点、正逆向、流程图与关键业务逻辑；**不写**表结构、接口、字段代码名、文件路径、实现清单。
 
@@ -37,9 +39,9 @@ description: >-
 
 **云效建需求 / 完善需求时（强制组合）**
 
-- 与 `$yunxiao-requirement-lifecycle` 一起使用时：先跑本 Skill，再写云效描述
-- **需求说明** ← PRD 正文（或浓缩交付口径 + 关键章节）
-- **更新内容** ← 第 10 章中**自上次定稿以来**的条目（无增量则「首版定稿 / 本轮无功能增量」）
+- 与 `$yunxiao-requirement-lifecycle` 一起使用时：先跑本 Skill 落盘 MD，再写云效描述
+- **需求描述写入方式（强制）**：把 `.spec/requirements-prd.md` **Markdown 全文原样复制**进云效「描述」，不得只用摘要；细则见 [references/yunxiao-description.md](references/yunxiao-description.md)
+- 描述拼装：`原型链接` + `需求说明`（= MD 全文）+ `更新内容`（定稿增量）+ `更新内容·历史`
 
 **云效需求推进至分析中 / 设计中 / 待开发时（强制）**
 
@@ -77,22 +79,30 @@ description: >-
 2. 汇总自上次定稿以来的**功能/逻辑**变更（排除样式/UI/表结构）
 3. 追加到 `## 10. 功能变更记录`（最新在上）
 4. 更新基线 JSON + 标注目录
-5. 若同时发云效：本次定稿块 →「更新内容」；旧段 →「更新内容·历史」
+5. 若同时发云效：按 [references/yunxiao-description.md](references/yunxiao-description.md) 将 **MD 全文**写入描述「需求说明」；本次定稿块 →「更新内容」；旧段 →「更新内容·历史」
 
-### 云效交接格式（给 yunxiao skill 直接粘贴）
+### 云效需求描述（MD 全文直写 · 强制）
+
+见 [references/yunxiao-description.md](references/yunxiao-description.md)。
+
+**不要**摘要粘贴。标准动作：
+
+1. 读 `src/prototypes/<id>/.spec/requirements-prd.md`
+2. 将文件 **完整 Markdown 正文**写入云效描述的「需求说明」区
+3. 上方可加「原型链接」；下方加「更新内容 / 更新内容·历史」
 
 ```markdown
 ## 原型链接
-<对象存储或预览 URL>
+<URL>
 
 ## 需求说明
-<AutoPRD 正文或交付口径 + 必要章节>
+<requirements-prd.md 全文原样粘贴>
 
 ## 更新内容
-<第 10 章本次定稿块；无则「首版定稿」或「本轮无功能/逻辑增量」>
+<最新定稿块或「首版定稿 / 本轮无功能增量」>
 
 ## 更新内容·历史
-<以往更新内容倒序，勿删除>
+<旧更新内容倒序，勿删除>
 ```
 
 ### 云效阶段任务（状态推进时强制）
@@ -168,12 +178,14 @@ description: >-
 - [ ] `.spec/requirements-prd.md` 已更新
 - [ ] 标注目录「产品需求说明（PRD）」已同步且正文一致
 - [ ] 定稿时：第 10 章 + `autoprd-baseline.json` 已更新
+- [ ] 发云效时：描述「需求说明」为 `requirements-prd.md` **全文原样**，非摘要
 - [ ] 推进至分析中/设计中/待开发时：同名任务已创建或复用，正式关联，负责人正确
 - [ ] 无表结构 / 接口 / 代码路径；变更记录无样式/UI 废话
 
 ## 参考
 
 - 定稿变更日志：[references/release-changelog.md](references/release-changelog.md)
+- 云效描述 MD 直写：[references/yunxiao-description.md](references/yunxiao-description.md)
 - 云效阶段任务：[references/yunxiao-stage-tasks.md](references/yunxiao-stage-tasks.md)
 - 标注同步细则：[references/annotation-sync.md](references/annotation-sync.md)
 - 章节模板：[references/template.md](references/template.md)
