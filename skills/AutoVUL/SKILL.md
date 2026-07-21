@@ -1,12 +1,13 @@
 ---
-name: version-update-log-format
+name: AutoVUL
 description: >-
   Drafts OneOS PC version update logs (新功能 / Bug修复) with fixed layout, same-module
   merge, user-value wording, and applicable department/business line. Use when writing
-  版本更新日志, release notes, changelog for OneOS PC, or when the user mentions V更新日志 / 发版公告.
+  版本更新日志, AutoVUL, release notes, changelog for OneOS PC, or when the user mentions
+  V更新日志 / 发版公告.
 ---
 
-# Version update log format（OneOS PC 版本更新日志）
+# AutoVUL（OneOS PC 版本更新日志）
 
 把同事提供的粗糙变更清单，整理成可直接对外发布的更新日志正文。
 
@@ -139,4 +140,4 @@ N「模块名」能力A，{部门}可{价值A}；能力B，{部门}可{价值B}
 
 把变更清单（或 [input-template.md](input-template.md)）发给 AI，并说明：
 
-> 按 `$version-update-log-format` 生成 OneOS PC 版本更新日志成稿。
+> 按 `$AutoVUL` 生成 OneOS PC 版本更新日志成稿。

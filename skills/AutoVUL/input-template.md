@@ -1,6 +1,6 @@
 # 版本更新日志 · 输入模板
 
-发布同事每次发版前填写本表，交给 AI（并说明使用 `version-update-log-format` Skill）即可生成成稿。
+发布同事每次发版前填写本表，交给 AI（并说明使用 `AutoVUL` Skill）即可生成成稿。
 
 **说明**：预计维护时长由人工单独通知，不写入版本更新日志。
 
@@ -45,7 +45,7 @@
 ## 粘贴给 AI 的提示词（可直接复制）
 
 ```text
-请按 version-update-log-format Skill 生成 OneOS PC 版本更新日志成稿。
+请按 AutoVUL Skill 生成 OneOS PC 版本更新日志成稿。
 要求：同模块合并；每条含「做什么 + 用户价值」；责任部门自然融入句中（不写「供…条线…使用」）；对照 module-role-mapping.md；只输出正文。
 
 【版本元信息】
