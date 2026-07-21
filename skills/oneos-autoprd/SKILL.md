@@ -3,18 +3,19 @@ name: oneos-autoprd
 description: >-
   Generates and keeps in sync OneOS AutoPRD (PM-facing requirements) plus Axhub
   Make annotation directory Markdown/PRD; on 需求定稿/定稿/确认定稿/本次定稿 appends
-  functional release changelog below the PRD since last baseline. Use eagerly
-  when editing src/prototypes/, writing AutoPRD/整模块 PRD, or when Yunxiao
-  create/update requirement needs 需求说明 and 更新内容—then call this skill
-  before writing Yunxiao description. Do not skip annotation sync or changelog
-  on 定稿.
+  functional release changelog below the PRD since last baseline. When a Yunxiao
+  requirement advances to 分析中/设计中/待开发, creates a same-titled linked task
+  (tag+create-time follow the requirement; 分析中/设计中 assignee=creator, 待开发
+  assignee=何斐). Use eagerly for prototypes, AutoPRD, or Yunxiao requirement
+  description/更新内容/stage advance—do not skip annotation sync, 定稿 changelog,
+  or stage-task creation.
 ---
 
 # OneOS AutoPRD
 
 为 OneOS 业务模块生成**产品经理可读、可评审、可排期**的需求说明，并**自动挂到 Axhub Make 标注工具 → 原型目录**。
 
-另支持：**需求定稿**时汇总「自上次定稿以来」的**功能/逻辑变更记录**，写在 PRD 下方；与云效建需求组合时，自动提供「需求说明 + 更新内容」。
+另支持：**需求定稿**时汇总功能/逻辑变更记录；与云效组合时提供「需求说明 + 更新内容」；需求进入**分析中 / 设计中 / 待开发**时**自动创建与需求同名的关联任务**（规则见下，写在本 Skill，不改云效 Skill）。
 
 颗粒度对齐「保险采购」全模块 PRD：讲清做什么、谁用、故事点、正逆向、流程图与关键业务逻辑；**不写**表结构、接口、字段代码名、文件路径、实现清单。
 
@@ -39,6 +40,11 @@ description: >-
 - 与 `$yunxiao-requirement-lifecycle` 一起使用时：先跑本 Skill，再写云效描述
 - **需求说明** ← PRD 正文（或浓缩交付口径 + 关键章节）
 - **更新内容** ← 第 10 章中**自上次定稿以来**的条目（无增量则「首版定稿 / 本轮无功能增量」）
+
+**云效需求推进至分析中 / 设计中 / 待开发时（强制）**
+
+- 无论口令来自本 Skill 还是云效 Skill，只要本轮把需求推到上述状态，就执行 [references/yunxiao-stage-tasks.md](references/yunxiao-stage-tasks.md)
+- 自动建**与需求同名**的任务并正式关联；标签与创建时间口径沿用需求；分析中/设计中负责人=创建人，待开发负责人=**何斐**
 
 不要用本 Skill 替代：需求探索访谈、设计比稿、纯样式微调（无产品语义变化时可跳过全量重写）。
 
@@ -88,6 +94,18 @@ description: >-
 ## 更新内容·历史
 <以往更新内容倒序，勿删除>
 ```
+
+### 云效阶段任务（状态推进时强制）
+
+见 [references/yunxiao-stage-tasks.md](references/yunxiao-stage-tasks.md)。摘要：
+
+| 需求状态 | 任务标签 | 负责人 | 标题 |
+|----------|----------|--------|------|
+| 分析中 | 分析 | 需求创建人 | 与需求同名 |
+| 设计中 | 设计 | 需求创建人 | 与需求同名 |
+| 待开发 | 交付（或开发） | 何斐 | 与需求同名 |
+
+正式关联需求；创建时间口径沿用需求；同阶段未取消任务不重复建。
 
 ## 写作硬约束
 
@@ -150,11 +168,13 @@ description: >-
 - [ ] `.spec/requirements-prd.md` 已更新
 - [ ] 标注目录「产品需求说明（PRD）」已同步且正文一致
 - [ ] 定稿时：第 10 章 + `autoprd-baseline.json` 已更新
+- [ ] 推进至分析中/设计中/待开发时：同名任务已创建或复用，正式关联，负责人正确
 - [ ] 无表结构 / 接口 / 代码路径；变更记录无样式/UI 废话
 
 ## 参考
 
 - 定稿变更日志：[references/release-changelog.md](references/release-changelog.md)
+- 云效阶段任务：[references/yunxiao-stage-tasks.md](references/yunxiao-stage-tasks.md)
 - 标注同步细则：[references/annotation-sync.md](references/annotation-sync.md)
 - 章节模板：[references/template.md](references/template.md)
 - 故事示例：[references/granularity-example.md](references/granularity-example.md)
