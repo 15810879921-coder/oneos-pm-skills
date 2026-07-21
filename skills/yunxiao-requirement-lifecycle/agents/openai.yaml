@@ -1,0 +1,4 @@
+interface:
+  display_name: "云效需求生命周期自动化"
+  short_description: "使用口语化短口令驱动云效需求开发测试发布闭环并自动核查"
+  default_prompt: "使用 $yunxiao-requirement-lifecycle，把当前项目设为统一运营管理平台PC端，然后通过“记录需求、开始开发、提交测试、验收通过”等短口令协作。"

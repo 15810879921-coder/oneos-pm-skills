@@ -1,0 +1,17 @@
+---
+description: 云效「记录需求」须先点选优先级/推进至；统一运营管理平台走快路径，禁止默认参数与盲目探测
+globs:
+alwaysApply: true
+---
+
+# 云效记录需求 · 参数门禁与快路径
+
+当用户使用 `$yunxiao-requirement-lifecycle` / 「记录需求」，且涉及优先级、推进至时：
+
+1. **必须先拿到明确选择**：优先级（紧急/高/中/低）、推进至（分析中/设计中/设计完成/开发中）、**标签（从云效标签 catalog 点选，可多选）**。优先 `AskQuestion`；不可用则用 Plan 确认并由用户写明 A+B+C。
+2. **禁止**在未选择时默认「中 + 分析中」并自动建单。「批准/Implement 计划」≠ 已完成点选。
+3. 项目为**统一运营管理平台**（含 PC 端别名）时：先读  
+   `.cursor/skills/yunxiao-requirement-lifecycle/references/oneos-pc-fast-path.md` 与  
+   `.cursor/skills/yunxiao-requirement-lifecycle/assets/oneos-pc-runtime-ids.json`（标签清单见同目录 `oneos-pc-tag-catalog.md`），按已验证 API/ID 执行；禁止重复探测 create URL。
+4. **标签禁止**按 `lines.ts` / 业务条线说明自动推断；只能用用户点选的 catalog 名。API 打标失败时 UI 兜底；仍失败则停下请用户回复标签名，不得声称已成功。
+5. 优先 API（创建时写入描述；标签用 `PATCH … propertyKey=tag`）；浏览器仅作标签失败或状态连跳兜底；少截图、同失败不循环重试。

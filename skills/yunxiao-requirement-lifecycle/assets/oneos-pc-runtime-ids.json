@@ -1,0 +1,209 @@
+{
+  "schema_version": 2,
+  "verified_at": "2026-07-21",
+  "verified_by_example": {
+    "requirement_serial": "ONEOS-88",
+    "requirement_identifier": "a34e700286d456ee74ddc16e58",
+    "note": "标签 API：PATCH /workitem/workitem/{id} propertyKey=tag operateType=COVER；全量标签来自 space/tag/search（spaceType=Space）"
+  },
+  "project": {
+    "name_aliases": ["统一运营管理平台", "统一运营管理平台PC端", "统一运营管理平台 PC 端"],
+    "spaceIdentifier": "1280be963a5a2cc126a4118dca",
+    "customCode": "ONEOS",
+    "spaceType": "Project"
+  },
+  "people": {
+    "wangmian": {
+      "displayName": "王冕",
+      "identifier": "6811df000601d2fea60144a9"
+    },
+    "hefei": {
+      "displayName": "何斐",
+      "identifier": "695f0400562f09713f9c3a93"
+    }
+  },
+  "workitem_types": {
+    "product_req": {
+      "name": "产品类需求",
+      "category": "Req",
+      "identifier": "9uy29901re573f561d69jn40"
+    },
+    "task": {
+      "name": "任务",
+      "category": "Task",
+      "identifier": "ba102e46bc6a8483d9b7f25c"
+    }
+  },
+  "priority": {
+    "紧急": "646004e97f54bb77fec7b455df",
+    "高": "95b89e0a524d9693e1f335ffe5",
+    "中": "fa155d1214f9f8db222d39db3b",
+    "低": "92924feff9c1085891e7511872"
+  },
+  "fields": {
+    "plan_start": {
+      "fieldIdentifier": "79",
+      "name": "计划开始时间",
+      "value_shape": "epoch_ms_string_china_noon",
+      "example": "Date.parse('YYYY-MM-DDT12:00:00+08:00') 转 String，避免 00:00 显示成前一天"
+    },
+    "plan_end": {
+      "fieldIdentifier": "80",
+      "name": "计划完成时间"
+    },
+    "tag": {
+      "fieldIdentifier": "tag",
+      "name": "标签",
+      "propertyKey": "tag"
+    }
+  },
+  "status_ui_paths": {
+    "from_待处理": {
+      "分析中": ["分析中"],
+      "设计中": ["设计中"],
+      "设计完成": ["设计完成"],
+      "开发中": ["设计完成", "待开发", "开发中"],
+      "note": "待处理下拉无「开发中」；须按路径连跳。状态 identifier 未在 UI 路径中固化，优先 UI 三跳；有可靠 API 后再补 statusIdentifier。"
+    }
+  },
+  "assignee_rules": {
+    "分析中": "creator",
+    "设计中": "creator",
+    "设计完成": "creator",
+    "开发中": "hefei",
+    "待开发": "hefei"
+  },
+  "api": {
+    "create_workitem": {
+      "url": "https://devops.aliyun.com/projex/api/workitem/workitem?_input_charset=utf-8",
+      "methods": ["POST", "PUT"],
+      "do_not_use": ["/projex/api/workitem/workitem/create"],
+      "required_create_fields": [
+        "subject",
+        "spaceType",
+        "spaceIdentifier",
+        "category",
+        "categoryIdentifier",
+        "workitemTypeIdentifier",
+        "workitemType",
+        "assignedTo"
+      ],
+      "document_on_create": {
+        "supported": true,
+        "shape": { "content": "<html>", "formatType": "RICHTEXT" },
+        "note": "创建时一并写入描述，避免再开 Cangjie 编辑器"
+      }
+    },
+    "get_workitem": {
+      "url_template": "https://devops.aliyun.com/projex/api/workitem/workitem/{identifier}?_input_charset=utf-8"
+    },
+    "list_workitem": {
+      "url": "https://devops.aliyun.com/projex/api/workitem/workitem/list?_input_charset=utf-8",
+      "method": "POST"
+    },
+    "update_field_value": {
+      "url": "https://devops.aliyun.com/projex/api/workitem/workitem/updateWorkitemFieldValue?_input_charset=utf-8",
+      "method": "PATCH",
+      "note": "部分会话返回 InvalidWorkitem.NotFound；失败则改用详情页 UI onChange / 下拉点选，勿盲目重试超过 1 次"
+    },
+    "update_document": {
+      "preferred": "create 时写入 document；若需补写，用详情页 onWorkItemEditorSubmit(html, 'RICHTEXT')",
+      "avoid": "对 Cangjie 编辑器直接改 DOM / 错误 onChange 形状（曾导致页面崩溃）"
+    },
+    "list_tags": {
+      "url": "https://devops.aliyun.com/projex/api/workspace/space/tag/search?spaceType=Space&spaceIdentifier=1280be963a5a2cc126a4118dca&q=&_input_charset=utf-8",
+      "method": "GET",
+      "note": "注意 spaceType=Space（不是 Project）。刷新全量标签时用此接口覆盖 tags.catalog"
+    },
+    "apply_tags": {
+      "url_template": "https://devops.aliyun.com/projex/api/workitem/workitem/{identifier}?_input_charset=utf-8",
+      "method": "PATCH",
+      "body_shape": {
+        "workitemIdentifier": "{identifier}",
+        "propertyKey": "tag",
+        "propertyValue": "{comma_separated_tag_identifiers}",
+        "operateType": "COVER"
+      },
+      "note": "propertyValue 为标签 identifier 逗号拼接；COVER=覆盖整组。已验证于 ONEOS-88。"
+    }
+  },
+  "tags": {
+    "selection_mode": "plan_or_askquestion_selector",
+    "do_not_match_from": ["lease-business-line-overview/lines.ts", "业务条线说明自动推断"],
+    "apply_strategy": "用户从 catalog 点选标签名 → 用 identifier 调 apply_tags API；失败 1 次再 UI 兜底；仍失败则停并请用户回标签名，禁止假装已打上",
+    "refresh_hint": "标签库变更时重新 GET list_tags 并更新本 catalog / fetched_at",
+    "fetched_at": "2026-07-21",
+    "source": "GET /projex/api/workspace/space/tag/search?spaceType=Space&spaceIdentifier=1280be963a5a2cc126a4118dca&q=",
+    "count": 30,
+    "by_name": {
+      "运维管理条线": "a611b2f2b7c3fd3623ba2d5f52",
+      "报表中心": "8428d15f45a5b34173202db758",
+      "能源管理": "3396ebb527358fe6f89fe42849",
+      "维修站管理": "e7b4da7984801e75630645f437",
+      "充电站管理": "6ea830485f28a0d8a6e14851a8",
+      "还车应结款": "4204960ce658c94b17abb7c5f6",
+      "交车应收款": "6e7a9127d0f70281ca65d335d9",
+      "加氢站管理": "6cdacae673f9e1fba96296f2ad",
+      "保险管理": "578ed5ba12bfcf274721e956f2",
+      "合同管理": "23873be81931cb0dc1bf87a456",
+      "租赁账单": "3e9433f571b20e80b02626d2de",
+      "供应商管理": "7b86b7c1f3b3da21b814c5a39d",
+      "客户管理": "dbf959a70bc979106dc78afa90",
+      "还车任务": "763de323cefee45e5270e4661e",
+      "安全培训": "76988b5f73ef515de5930d59b9",
+      "备件管理": "5d09c864767d898a4f8c0ca804",
+      "停车场管理": "7c522e2fb29213d7d390e78b97",
+      "备车管理": "22c6a3ed0e4bf95fd99bf95695",
+      "异动管理": "84b4333ec7c76d0fa2adcc47bf",
+      "调拨管理": "fa88c16c152c6fb5978e3b4339",
+      "上牌管理": "990af2fb716dd85568bc7019bf",
+      "替换车管理": "8d1decf30259b941016cadc9d2",
+      "还车管理": "1e0fce2d6929ff4ac13b310e97",
+      "交车管理": "b6947b5aca82a8c759612ba039",
+      "车辆管理": "cb71b6db9373d6d8c7aae452a5",
+      "审批中心": "338add796f2221bbc36dd77d35",
+      "故障管理": "ceb526a7343995577645317e9a",
+      "车辆年审": "5193165dad1e91a161502b54c2",
+      "维修管理": "f5202633870ff409e0ebc16d5f",
+      "工作台": "b62d21beac55c0b43389915eab"
+    },
+    "catalog": [
+      { "name": "运维管理条线", "identifier": "a611b2f2b7c3fd3623ba2d5f52", "color": "#49AEAC" },
+      { "name": "报表中心", "identifier": "8428d15f45a5b34173202db758", "color": "#49AEAC" },
+      { "name": "能源管理", "identifier": "3396ebb527358fe6f89fe42849", "color": "#49AEAC" },
+      { "name": "维修站管理", "identifier": "e7b4da7984801e75630645f437", "color": "#49AEAC" },
+      { "name": "充电站管理", "identifier": "6ea830485f28a0d8a6e14851a8", "color": "#49AEAC" },
+      { "name": "还车应结款", "identifier": "4204960ce658c94b17abb7c5f6", "color": "#49AEAC" },
+      { "name": "交车应收款", "identifier": "6e7a9127d0f70281ca65d335d9", "color": "#49AEAC" },
+      { "name": "加氢站管理", "identifier": "6cdacae673f9e1fba96296f2ad", "color": "#49AEAC" },
+      { "name": "保险管理", "identifier": "578ed5ba12bfcf274721e956f2", "color": "#49AEAC" },
+      { "name": "合同管理", "identifier": "23873be81931cb0dc1bf87a456", "color": "#49AEAC" },
+      { "name": "租赁账单", "identifier": "3e9433f571b20e80b02626d2de", "color": "#49AEAC" },
+      { "name": "供应商管理", "identifier": "7b86b7c1f3b3da21b814c5a39d", "color": "#49AEAC" },
+      { "name": "客户管理", "identifier": "dbf959a70bc979106dc78afa90", "color": "#49AEAC" },
+      { "name": "还车任务", "identifier": "763de323cefee45e5270e4661e", "color": "#49AEAC" },
+      { "name": "安全培训", "identifier": "76988b5f73ef515de5930d59b9", "color": "#49AEAC" },
+      { "name": "备件管理", "identifier": "5d09c864767d898a4f8c0ca804", "color": "#49AEAC" },
+      { "name": "停车场管理", "identifier": "7c522e2fb29213d7d390e78b97", "color": "#49AEAC" },
+      { "name": "备车管理", "identifier": "22c6a3ed0e4bf95fd99bf95695", "color": "#49AEAC" },
+      { "name": "异动管理", "identifier": "84b4333ec7c76d0fa2adcc47bf", "color": "#49AEAC" },
+      { "name": "调拨管理", "identifier": "fa88c16c152c6fb5978e3b4339", "color": "#49AEAC" },
+      { "name": "上牌管理", "identifier": "990af2fb716dd85568bc7019bf", "color": "#49AEAC" },
+      { "name": "替换车管理", "identifier": "8d1decf30259b941016cadc9d2", "color": "#49AEAC" },
+      { "name": "还车管理", "identifier": "1e0fce2d6929ff4ac13b310e97", "color": "#49AEAC" },
+      { "name": "交车管理", "identifier": "b6947b5aca82a8c759612ba039", "color": "#49AEAC" },
+      { "name": "车辆管理", "identifier": "cb71b6db9373d6d8c7aae452a5", "color": "#49AEAC" },
+      { "name": "审批中心", "identifier": "338add796f2221bbc36dd77d35", "color": "#49AEAC" },
+      { "name": "故障管理", "identifier": "ceb526a7343995577645317e9a", "color": "#49AEAC" },
+      { "name": "车辆年审", "identifier": "5193165dad1e91a161502b54c2", "color": "#49AEAC" },
+      { "name": "维修管理", "identifier": "f5202633870ff409e0ebc16d5f", "color": "#49AEAC" },
+      { "name": "工作台", "identifier": "b62d21beac55c0b43389915eab", "color": "#49AEAC" }
+    ]
+  },
+  "performance_rules": {
+    "prefer_api_over_browser": true,
+    "max_endpoint_probes_per_step": 1,
+    "screenshot_only_at": ["after_create", "after_final_status"],
+    "browser_fallback_for": ["tag_apply_when_api_fails", "status_multi_hop_when_api_unknown"]
+  }
+}

@@ -1,0 +1,148 @@
+{
+  "schema_version": 3,
+  "organization": "请填写组织名称",
+  "work_item_type": "产品类需求",
+  "lifecycle": [
+    "待处理",
+    "已确认",
+    "分析中",
+    "分析完成",
+    "设计中",
+    "设计完成",
+    "待开发",
+    "开发中",
+    "开发完成",
+    "测试中",
+    "测试完成",
+    "完成发布",
+    "已完成"
+  ],
+  "requirement_labels": ["分析", "设计", "开发", "测试"],
+  "automation_policy": {
+    "require_current_state_condition": true,
+    "inspect_rule_order_and_cascades": true,
+    "allow_automatic_final_close_without_acceptance": false,
+    "zero_related_items_are_complete": false,
+    "development_start_event_candidates": ["添加关联分支", "正式关联代码资产"],
+    "require_code_assets_linked_to_requirement_and_development_task": true,
+    "stage_task_creation_idempotency_key_components": ["项目ID", "需求ID", "阶段类型"]
+  },
+  "test_closure_policy": {
+    "accepted_case_states": ["已通过"],
+    "rejected_case_states": ["未执行", "待测试", "阻塞", "未通过"],
+    "defect_fixed_is_terminal": false,
+    "require_tester_retest": true
+  },
+  "projects": [
+    {
+      "name": "请填写项目名称",
+      "work_item_type": "产品类需求",
+      "release_status": "完成发布",
+      "final_status": "已完成",
+      "labels_observed": ["分析", "设计", "开发", "测试"],
+      "repositories": [
+        {
+          "name": "请填写仓库名称",
+          "role": "frontend",
+          "integration_branch": "dev",
+          "codeup_integrated": true,
+          "required_for_mr_gate": true,
+          "evidence": "请填写仓库与需求正式关联的观察证据"
+        }
+      ],
+      "test_pipeline": {
+        "name": "请填写test流水线名称",
+        "environment": "test",
+        "is_clone_for_callback_poc": true,
+        "original_pipeline_unchanged": true,
+        "docker_success_callback_enabled": false,
+        "callback_security": {
+          "signed": false,
+          "timestamp_checked": false,
+          "replay_protected": false,
+          "idempotent_by_execution_id": false,
+          "failure_retry_tested": false
+        },
+        "evidence": "请填写流水线观察证据"
+      },
+      "release_evidence": {
+        "mode": "native_release_change",
+        "target_environment": "请填写目标发布环境",
+        "test_success_is_production_release": false,
+        "evidence": "请填写发布证据"
+      },
+      "test_plan": {
+        "name": "请填写测试计划名称",
+        "requirement_formally_related": true,
+        "case_states_observed": ["未执行", "已通过", "未通过", "阻塞"],
+        "evidence": "请填写测试计划与用例状态证据"
+      },
+      "defect_workflow": {
+        "fixed_status": "已修复",
+        "fixed_is_terminal": false,
+        "tester_retest_required": true,
+        "closed_status": "请填写缺陷真实关闭状态",
+        "reopen_status": "请填写缺陷复测失败后的状态",
+        "evidence": "请填写缺陷工作流证据"
+      },
+      "rule_instances": [
+        {"id": "R01", "mode": "manual", "actual_rule_name": "人工门禁：需求确认", "trigger": "负责人确认", "source_status": "待处理", "target_status": "已确认", "conditions": ["范围、负责人和验收口径明确"], "action": "人工变更状态为已确认", "order": 1, "enabled": true, "has_current_state_condition": true, "evidence": "请填写观察证据"},
+        {"id": "R02", "mode": "native_rule", "actual_rule_name": "请填写云效规则显示名", "trigger": "添加关联任务工作项", "source_status": "已确认", "target_status": "分析中", "conditions": ["当前状态=已确认", "需求自身标签包含分析"], "action": "变更状态为分析中", "order": 2, "enabled": true, "has_current_state_condition": true, "evidence": "请填写观察证据"},
+        {"id": "R03", "mode": "native_rule", "actual_rule_name": "请填写云效规则显示名", "trigger": "关联任务工作项状态变化", "source_status": "分析中", "target_status": "分析完成", "conditions": ["当前状态=分析中", "本阶段分析任务全部完成；若平台不能过滤阶段则记录替代策略"], "action": "变更状态为分析完成", "order": 3, "enabled": true, "has_current_state_condition": true, "evidence": "请填写观察证据"},
+        {"id": "R04", "mode": "native_rule", "actual_rule_name": "请填写云效规则显示名", "trigger": "添加关联任务工作项", "source_status": "分析完成", "target_status": "设计中", "conditions": ["当前状态=分析完成", "需求自身标签包含设计"], "action": "变更状态为设计中", "order": 4, "enabled": true, "has_current_state_condition": true, "evidence": "请填写观察证据"},
+        {"id": "R05", "mode": "native_rule", "actual_rule_name": "请填写云效规则显示名", "trigger": "关联任务工作项状态变化", "source_status": "设计中", "target_status": "设计完成", "conditions": ["当前状态=设计中", "本阶段设计任务全部完成；若平台不能过滤阶段则记录替代策略"], "action": "变更状态为设计完成", "order": 5, "enabled": true, "has_current_state_condition": true, "evidence": "请填写观察证据"},
+        {"id": "R06", "mode": "native_rule", "actual_rule_name": "请填写云效规则显示名", "trigger": "添加关联任务工作项", "source_status": "设计完成", "target_status": "待开发", "conditions": ["当前状态=设计完成", "需求自身标签包含开发"], "action": "变更状态为待开发", "order": 6, "enabled": true, "has_current_state_condition": true, "evidence": "请填写观察证据"},
+        {"id": "R07", "mode": "native_rule", "actual_rule_name": "请填写云效规则显示名", "trigger": "添加关联分支或正式关联代码资产", "source_status": "待开发", "target_status": "开发中", "conditions": ["当前状态=待开发", "仓库已集成", "代码资产正式关联需求"], "action": "变更状态为开发中", "order": 7, "enabled": true, "has_current_state_condition": true, "evidence": "请填写观察证据"},
+        {"id": "R08", "mode": "native_rule", "actual_rule_name": "请填写云效规则显示名", "trigger": "关联合并请求状态变化", "source_status": "开发中", "target_status": "开发完成", "conditions": ["当前状态=开发中", "全部相关前后端合并请求已合并"], "action": "变更状态为开发完成", "order": 8, "enabled": true, "has_current_state_condition": true, "evidence": "请填写观察证据"},
+        {"id": "R09", "mode": "native_rule", "actual_rule_name": "请填写云效规则显示名", "trigger": "添加关联任务工作项", "source_status": "开发完成", "target_status": "测试中", "conditions": ["当前状态=开发完成", "需求自身标签包含测试"], "action": "变更状态为测试中", "order": 9, "enabled": true, "has_current_state_condition": true, "evidence": "请填写观察证据"},
+        {"id": "R10", "mode": "manual", "actual_rule_name": "人工门禁：测试验收", "trigger": "测试验收任务完成或获批回调", "source_status": "测试中", "target_status": "测试完成", "conditions": ["当前状态=测试中", "范围内用例全部通过", "失败用例已复测通过", "范围内缺陷已由测试复测并关闭"], "action": "变更状态为测试完成", "order": 10, "enabled": true, "has_current_state_condition": true, "evidence": "请填写观察证据"},
+        {"id": "R11", "mode": "native_rule", "actual_rule_name": "请填写云效规则显示名", "trigger": "关联发布变更完成或获批回调", "source_status": "测试完成", "target_status": "完成发布", "conditions": ["当前状态=测试完成", "目标环境发布证据满足组织口径"], "action": "变更状态为完成发布", "order": 11, "enabled": false, "has_current_state_condition": true, "evidence": "请填写观察证据"},
+        {"id": "R12", "mode": "manual", "actual_rule_name": "人工门禁：业务验收", "trigger": "业务验收", "source_status": "完成发布", "target_status": "已完成", "conditions": ["当前状态=完成发布", "正式验收证据有效"], "action": "人工变更状态为已完成", "order": 12, "enabled": true, "has_current_state_condition": true, "evidence": "请填写观察证据"}
+      ],
+      "task_rule_instances": [
+        {"id": "TK01", "mode": "manual", "actual_rule_name": "人工门禁：设计任务真实开工", "trigger": "负责人开始处理设计任务", "scope": "设计任务", "source_state": "待处理", "conditions": ["任务标签=设计", "任务正式关联需求"], "actions": ["设计任务变为处理中"], "order": 101, "enabled": true, "evidence": "请填写观察证据"},
+        {"id": "TK02", "mode": "native_rule", "actual_rule_name": "请填写云效规则显示名", "trigger": "设计任务状态变为已完成", "scope": "产品需求", "source_state": "设计中", "conditions": ["本阶段设计任务非零且全部完成"], "actions": ["需求变为设计完成"], "order": 102, "enabled": true, "evidence": "请填写观察证据"},
+        {"id": "TK03", "mode": "integration_bridge", "actual_rule_name": "桥接：设计完成后创建开发任务", "trigger": "需求状态变为设计完成", "scope": "产品需求", "source_state": "设计完成", "conditions": ["不存在同需求同阶段未取消开发任务", "幂等键=项目ID+需求ID+开发"], "actions": ["创建并关联开发任务", "开发任务标签=开发", "开发任务状态=待处理"], "order": 103, "enabled": false, "evidence": "请填写观察证据"},
+        {"id": "TK04", "mode": "native_rule", "actual_rule_name": "请填写云效规则显示名", "trigger": "开发任务创建并正式关联需求", "scope": "产品需求", "source_state": "设计完成", "conditions": ["需求标签包含开发", "开发任务关系可见"], "actions": ["需求变为待开发"], "order": 104, "enabled": true, "evidence": "请填写观察证据"},
+        {"id": "TK05", "mode": "native_rule", "actual_rule_name": "请填写云效规则显示名", "trigger": "添加正式关联分支或代码资产", "scope": "产品需求和开发任务", "source_state": "需求=待开发；开发任务=待处理", "conditions": ["代码资产同时关联需求和开发任务", "仓库已接入项目"], "actions": ["需求变为开发中", "开发任务变为处理中"], "order": 105, "enabled": true, "evidence": "请填写观察证据"},
+        {"id": "TK06", "mode": "native_rule", "actual_rule_name": "请填写云效规则显示名", "trigger": "关联合并请求状态变化", "scope": "产品需求和开发任务", "source_state": "需求=开发中；开发任务=处理中", "conditions": ["全部相关前后端MR已合并到真实dev/develop", "MR同时关联需求和开发任务"], "actions": ["需求变为开发完成", "开发任务变为已完成"], "order": 106, "enabled": true, "evidence": "请填写观察证据"},
+        {"id": "TK07", "mode": "integration_bridge", "actual_rule_name": "桥接：test部署成功后创建测试任务", "trigger": "test流水线部署成功", "scope": "产品需求", "source_state": "开发完成", "conditions": ["流水线执行ID未处理", "不存在同需求同阶段未取消测试任务", "回调签名和防重放验证通过"], "actions": ["创建并关联测试任务", "测试任务变为处理中", "关联测试计划和用例", "需求变为测试中"], "order": 107, "enabled": false, "evidence": "请填写观察证据"},
+        {"id": "TK08", "mode": "manual", "actual_rule_name": "人工门禁：测试任务验收闭环", "trigger": "测试验收完成", "scope": "产品需求和测试任务", "source_state": "需求=测试中；测试任务=处理中", "conditions": ["用例全部通过", "失败用例已复测", "范围内缺陷已由测试关闭"], "actions": ["测试任务变为已完成", "需求变为测试完成"], "order": 108, "enabled": true, "evidence": "请填写观察证据"}
+      ],
+      "control_coverage": [
+        {"id": "R01", "mode": "manual", "enabled": true, "evidence": "请填写观察证据", "owner": "请填写负责人", "fallback": "人工确认需求范围与验收口径"},
+        {"id": "R02", "mode": "native_rule", "enabled": true, "evidence": "请填写观察证据", "owner": "请填写负责人", "fallback": "人工进入分析中"},
+        {"id": "R03", "mode": "native_rule", "enabled": true, "evidence": "请填写观察证据", "owner": "请填写负责人", "fallback": "人工核对本阶段分析任务"},
+        {"id": "R04", "mode": "native_rule", "enabled": true, "evidence": "请填写观察证据", "owner": "请填写负责人", "fallback": "人工进入设计中"},
+        {"id": "R05", "mode": "native_rule", "enabled": true, "evidence": "请填写观察证据", "owner": "请填写负责人", "fallback": "人工核对本阶段设计任务"},
+        {"id": "R06", "mode": "native_rule", "enabled": true, "evidence": "请填写观察证据", "owner": "请填写负责人", "fallback": "人工进入待开发"},
+        {"id": "R07", "mode": "native_rule", "enabled": true, "evidence": "请填写观察证据", "owner": "请填写负责人", "fallback": "开发人员真实开工时人工开始开发"},
+        {"id": "R08", "mode": "native_rule", "enabled": true, "evidence": "请填写观察证据", "owner": "请填写负责人", "fallback": "人工核对全部相关MR"},
+        {"id": "R09", "mode": "native_rule", "enabled": true, "evidence": "请填写观察证据", "owner": "请填写负责人", "fallback": "人工进入测试中"},
+        {"id": "R10", "mode": "manual", "enabled": true, "evidence": "请填写观察证据", "owner": "请填写测试负责人", "fallback": "测试负责人验收任务"},
+        {"id": "R11", "mode": "native_rule", "enabled": false, "evidence": "请填写观察证据", "owner": "请填写发布负责人", "fallback": "人工核对发布变更"},
+        {"id": "R12", "mode": "manual", "enabled": true, "evidence": "请填写观察证据", "owner": "请填写产品负责人", "fallback": "产品或业务负责人验收"},
+        {"id": "TK01", "mode": "manual", "enabled": true, "evidence": "请填写设计任务开工证据", "owner": "请填写设计负责人", "fallback": "负责人真实开工时人工改为处理中"},
+        {"id": "TK02", "mode": "native_rule", "enabled": true, "evidence": "请填写设计任务完成汇总证据", "owner": "请填写产品负责人", "fallback": "人工核对非零设计任务全部完成"},
+        {"id": "TK03", "mode": "integration_bridge", "enabled": false, "evidence": "请填写自动创建开发任务能力证据", "owner": "请填写项目管理员", "fallback": "从需求中人工新建并关联唯一开发任务"},
+        {"id": "TK04", "mode": "native_rule", "enabled": true, "evidence": "请填写开发任务关联证据", "owner": "请填写项目管理员", "fallback": "人工核对关系后将需求改为待开发"},
+        {"id": "TK05", "mode": "native_rule", "enabled": true, "evidence": "请填写需求和开发任务双对象开工证据", "owner": "请填写研发负责人", "fallback": "开发人员真实开工时人工更新任务和需求"},
+        {"id": "TK06", "mode": "native_rule", "enabled": true, "evidence": "请填写需求和开发任务双对象完成证据", "owner": "请填写研发负责人", "fallback": "人工核对全部相关MR后完成任务和需求"},
+        {"id": "TK07", "mode": "integration_bridge", "enabled": false, "evidence": "请填写test部署回调和自动创建测试任务证据", "owner": "请填写流水线负责人", "fallback": "test部署成功后人工创建并关联测试任务"},
+        {"id": "TK08", "mode": "manual", "enabled": true, "evidence": "请填写测试任务与需求双闭环证据", "owner": "请填写测试负责人", "fallback": "测试负责人验收后同步完成测试任务和需求"},
+        {"id": "TC01", "mode": "manual", "enabled": true, "evidence": "请填写用例执行状态证据", "owner": "请填写测试负责人", "fallback": "逐条执行并记录用例结果"},
+        {"id": "TC02", "mode": "manual", "enabled": true, "evidence": "请填写失败用例关联缺陷证据", "owner": "请填写测试负责人", "fallback": "人工核对失败用例与缺陷正式关系"},
+        {"id": "TC03", "mode": "manual", "enabled": true, "evidence": "请填写用例复测更新证据", "owner": "请填写测试负责人", "fallback": "复测后更新原用例状态"},
+        {"id": "DF01", "mode": "manual", "enabled": true, "evidence": "请填写已修复交接证据", "owner": "请填写测试负责人", "fallback": "已修复继续等待测试复测"},
+        {"id": "DF02", "mode": "manual", "enabled": true, "evidence": "请填写复测通过关闭证据", "owner": "请填写测试负责人", "fallback": "测试复测通过后关闭缺陷"},
+        {"id": "DF03", "mode": "manual", "enabled": true, "evidence": "请填写复测失败重开证据", "owner": "请填写测试负责人", "fallback": "测试复测失败后重开缺陷"},
+        {"id": "CI01", "mode": "native_rule", "enabled": true, "evidence": "请填写多仓库关联证据", "owner": "请填写研发负责人", "fallback": "人工核对全部前后端MR"},
+        {"id": "CI02", "mode": "not_supported", "enabled": false, "evidence": "请填写流水线能力证据", "owner": "请填写流水线负责人", "fallback": "复制test流水线后评审回调POC"},
+        {"id": "CI03", "mode": "manual", "enabled": true, "evidence": "请填写环境与发布证据", "owner": "请填写发布负责人", "fallback": "人工区分test部署、生产发布与业务验收"},
+        {"id": "L01", "mode": "disabled_legacy", "enabled": false, "evidence": "请填写旧规则盘点证据", "owner": "请填写项目管理员", "fallback": "使用独立业务验收任务"},
+        {"id": "L02", "mode": "disabled_legacy", "enabled": false, "evidence": "请填写旧规则盘点证据", "owner": "请填写项目管理员", "fallback": "保持发布完成状态等待业务验收"}
+      ],
+      "adjunct_automations": []
+    }
+  ]
+}

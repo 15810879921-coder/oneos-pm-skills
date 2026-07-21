@@ -1,0 +1,119 @@
+{
+  "schema_version": 1,
+  "flow_model": "oneos_delivery",
+  "organization": "请填写组织名称",
+  "work_item_type": "产品类需求",
+  "target_lifecycle": [
+    "待处理", "已确认", "分析中", "分析完成", "设计中", "设计完成",
+    "待开发", "开发中", "开发完成", "待测试", "测试中", "测试完成",
+    "发布中", "发布完成", "发布失败", "已关闭"
+  ],
+  "task_labels": ["交付", "开发", "测试", "发版"],
+  "policies": {
+    "require_formal_relations": true,
+    "require_current_state_condition": true,
+    "allow_automatic_final_close_without_acceptance": false,
+    "require_nonzero_development_tasks": true,
+    "test_success_is_production_release": false,
+    "bridge_idempotency_key_components": ["项目ID", "需求ID", "动作类型"],
+    "require_signed_timestamped_replay_protected_callbacks": true
+  },
+  "projects": [
+    {
+      "name": "请填写项目名称",
+      "migration_phase": "P0",
+      "requirement_statuses_observed": ["请填写当前全部需求状态"],
+      "task_workflow_mode": "B",
+      "task_identity_mode": "task_label",
+      "native_rule_can_filter_related_task_identity": false,
+      "main_task_prefix": "【交付】",
+      "development_task_prefix": "【开发】",
+      "test_task_prefix": "【测试】",
+      "release_task_prefix": "【发版】",
+      "repositories": [
+        {
+          "name": "请填写仓库名称",
+          "role": "frontend",
+          "integration_branch": "develop",
+          "codeup_integrated": true,
+          "required_for_mr_gate": true,
+          "evidence": "请填写观察证据"
+        }
+      ],
+      "test_plan": {
+        "name": "请填写测试计划名称",
+        "iteration_formally_related": true,
+        "cases_partitioned_by_requirement": true,
+        "fixed_defect_is_terminal": false,
+        "tester_retest_required": true,
+        "evidence": "请填写观察证据"
+      },
+      "release": {
+        "release_task_formally_related_to_iteration": true,
+        "production_evidence_separate_from_test": true,
+        "acceptance_required_after_release": true,
+        "production_pipeline_unchanged": true,
+        "evidence": "请填写观察证据"
+      },
+      "legacy_rules": [
+        {
+          "name": "请填写旧规则显示名",
+          "disposition": "keep_until_ready",
+          "enabled": true,
+          "reason": "请填写保留、停用或替换原因",
+          "evidence": "请填写观察证据"
+        }
+      ],
+      "controls": [
+        {"id":"Y01","mode":"not_supported","enabled":false,"owner":"请填写负责人","fallback":"桥接创建并关联唯一主任务","evidence":"请填写观察证据"},
+        {"id":"Y02","mode":"not_supported","enabled":false,"owner":"请填写负责人","fallback":"桥接或人工同步分析完成","evidence":"请填写观察证据"},
+        {"id":"Y03","mode":"not_supported","enabled":false,"owner":"请填写负责人","fallback":"桥接或人工同步设计中","evidence":"请填写观察证据"},
+        {"id":"Y04","mode":"not_supported","enabled":false,"owner":"请填写负责人","fallback":"桥接或人工同步设计完成","evidence":"请填写观察证据"},
+        {"id":"Y05","mode":"not_supported","enabled":false,"owner":"请填写负责人","fallback":"桥接或人工同步待开发","evidence":"请填写观察证据"},
+        {"id":"Y06","mode":"not_supported","enabled":false,"owner":"请填写负责人","fallback":"桥接或人工同步开发中","evidence":"请填写观察证据"},
+        {"id":"Y07","mode":"not_supported","enabled":false,"owner":"请填写负责人","fallback":"桥接或人工同步开发完成","evidence":"请填写观察证据"},
+        {"id":"Y08","mode":"not_supported","enabled":false,"owner":"请填写负责人","fallback":"桥接或人工同步待测试","evidence":"请填写观察证据"},
+        {"id":"Y09","mode":"not_supported","enabled":false,"owner":"请填写负责人","fallback":"桥接或人工同步测试中","evidence":"请填写观察证据"},
+        {"id":"Y10","mode":"not_supported","enabled":false,"owner":"请填写测试负责人","fallback":"测试负责人按用例和缺陷闭环同步测试完成","evidence":"请填写观察证据"},
+        {"id":"Y11","mode":"not_supported","enabled":false,"owner":"请填写发布负责人","fallback":"发版任务提交后人工同步发布中","evidence":"请填写观察证据"},
+        {"id":"Y12","mode":"not_supported","enabled":false,"owner":"请填写发布负责人","fallback":"核对生产发布证据后人工同步发布完成","evidence":"请填写观察证据"},
+        {"id":"Y13","mode":"not_supported","enabled":false,"owner":"请填写发布负责人","fallback":"人工记录发布失败及原因","evidence":"请填写观察证据"},
+        {"id":"Y14","mode":"manual","enabled":true,"owner":"请填写产品负责人","fallback":"产品验收后人工关闭","evidence":"请填写观察证据"},
+        {"id":"Y15","mode":"not_supported","enabled":false,"owner":"请填写项目管理员","fallback":"只保留一个权威镜像方向","evidence":"请填写观察证据"},
+        {"id":"Y16","mode":"not_supported","enabled":false,"owner":"请填写产品负责人","fallback":"快轨时桥接同步主任务","evidence":"请填写观察证据"},
+        {"id":"Y20","mode":"native_rule","enabled":true,"owner":"请填写研发负责人","fallback":"开发负责人人工开始任务和需求","evidence":"请填写观察证据"},
+        {"id":"Y21","mode":"integration_bridge","enabled":false,"owner":"请填写研发负责人","fallback":"人工核对全部开发任务和MR","evidence":"请填写观察证据"},
+        {"id":"Y22","mode":"integration_bridge","enabled":false,"owner":"请填写项目管理员","fallback":"人工创建并关联唯一测试任务","evidence":"请填写观察证据"},
+        {"id":"Y30","mode":"integration_bridge","enabled":false,"owner":"请填写测试负责人","fallback":"人工同步待测试","evidence":"请填写观察证据"},
+        {"id":"Y31","mode":"manual","enabled":true,"owner":"请填写测试负责人","fallback":"测试负责人开始测试","evidence":"请填写观察证据"},
+        {"id":"Y32","mode":"integration_bridge","enabled":false,"owner":"请填写测试负责人","fallback":"按需求用例包人工验收","evidence":"请填写观察证据"},
+        {"id":"Y33","mode":"integration_bridge","enabled":false,"owner":"请填写发布负责人","fallback":"人工提交发版任务并同步范围","evidence":"请填写观察证据"},
+        {"id":"Y34","mode":"integration_bridge","enabled":false,"owner":"请填写流水线负责人","fallback":"人工核对生产发布成功","evidence":"请填写观察证据"},
+        {"id":"Y35","mode":"integration_bridge","enabled":false,"owner":"请填写流水线负责人","fallback":"人工记录生产发布失败","evidence":"请填写观察证据"},
+        {"id":"Y40","mode":"manual","enabled":true,"owner":"请填写产品负责人","fallback":"人工关联迭代","evidence":"请填写观察证据"},
+        {"id":"A01","mode":"not_supported","enabled":false,"owner":"请填写产品负责人","fallback":"人工上传并回写链接","evidence":"请填写观察证据"},
+        {"id":"A02","mode":"not_supported","enabled":false,"owner":"请填写产品负责人","fallback":"人工维护更新内容历史","evidence":"请填写观察证据"},
+        {"id":"A02B","mode":"not_supported","enabled":false,"owner":"请填写产品负责人","fallback":"人工维护需求说明","evidence":"请填写观察证据"},
+        {"id":"A03","mode":"integration_bridge","enabled":false,"owner":"请填写项目管理员","fallback":"人工建需求和唯一主任务","evidence":"请填写观察证据"},
+        {"id":"A04","mode":"integration_bridge","enabled":false,"owner":"请填写研发负责人","fallback":"人工拆分开发任务","evidence":"请填写观察证据"},
+        {"id":"A05","mode":"integration_bridge","enabled":false,"owner":"请填写研发负责人","fallback":"人工核对MR并完成开发任务","evidence":"请填写观察证据"},
+        {"id":"A06","mode":"integration_bridge","enabled":false,"owner":"请填写项目管理员","fallback":"人工建唯一测试任务","evidence":"请填写观察证据"},
+        {"id":"A07","mode":"integration_bridge","enabled":false,"owner":"请填写测试负责人","fallback":"人工核对用例与缺陷闭环","evidence":"请填写观察证据"},
+        {"id":"A08","mode":"integration_bridge","enabled":false,"owner":"请填写发布负责人","fallback":"人工建发版任务和更新说明","evidence":"请填写观察证据"},
+        {"id":"A09","mode":"integration_bridge","enabled":false,"owner":"请填写流水线负责人","fallback":"人工回写发布成败","evidence":"请填写观察证据"},
+        {"id":"A10","mode":"manual","enabled":true,"owner":"请填写产品负责人","fallback":"产品验收后人工关闭","evidence":"请填写观察证据"},
+        {"id":"TC01","mode":"manual","enabled":true,"owner":"请填写测试负责人","fallback":"逐条执行并记录用例结果","evidence":"请填写观察证据"},
+        {"id":"TC02","mode":"manual","enabled":true,"owner":"请填写测试负责人","fallback":"人工正式关联失败用例和缺陷","evidence":"请填写观察证据"},
+        {"id":"TC03","mode":"manual","enabled":true,"owner":"请填写测试负责人","fallback":"复测后更新原用例状态","evidence":"请填写观察证据"},
+        {"id":"DF01","mode":"manual","enabled":true,"owner":"请填写测试负责人","fallback":"已修复继续等待复测","evidence":"请填写观察证据"},
+        {"id":"DF02","mode":"manual","enabled":true,"owner":"请填写测试负责人","fallback":"复测通过后关闭缺陷并通过用例","evidence":"请填写观察证据"},
+        {"id":"DF03","mode":"manual","enabled":true,"owner":"请填写测试负责人","fallback":"复测失败后重开缺陷并保持用例失败","evidence":"请填写观察证据"},
+        {"id":"CI01","mode":"manual","enabled":true,"owner":"请填写研发负责人","fallback":"人工核对全部前后端MR","evidence":"请填写观察证据"},
+        {"id":"CI02","mode":"not_supported","enabled":false,"owner":"请填写流水线负责人","fallback":"使用test副本评审回调POC","evidence":"请填写观察证据"},
+        {"id":"CI03","mode":"manual","enabled":true,"owner":"请填写发布负责人","fallback":"人工区分test、生产发布和验收","evidence":"请填写观察证据"},
+        {"id":"L01","mode":"disabled_legacy","enabled":false,"owner":"请填写项目管理员","fallback":"保持发布完成等待验收","evidence":"请填写观察证据"},
+        {"id":"L02","mode":"disabled_legacy","enabled":false,"owner":"请填写项目管理员","fallback":"保持发布完成等待验收","evidence":"请填写观察证据"}
+      ]
+    }
+  ]
+}
