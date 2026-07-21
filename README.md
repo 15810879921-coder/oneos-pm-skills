@@ -100,24 +100,37 @@ npx skills update oneos-autoprd
 
 测试人员输入云效**迭代名称**，自动拉取该迭代关联需求并生成 OneOS PC 对外版本更新日志；也支持手动粘贴清单。
 
-**适用场景**：发版公告、工作台更新弹框文案、测试出更新说明
+原理说明（可转发同事）：
+- Markdown：[`docs/OneOS-AutoVUL-Skill运作原理说明.md`](docs/OneOS-AutoVUL-Skill运作原理说明.md)
+- HTML（可打印/转 PDF）：[`docs/OneOS-AutoVUL-Skill运作原理说明.html`](docs/OneOS-AutoVUL-Skill运作原理说明.html)
+
+### 何时使用
+
+- 测试发版前：按云效迭代生成 PC 整包更新日志
+- 工作台「版本更新」弹框 / 对内发版通知需要统一口径
+- 迭代名读失败后，重新输入名称再生成
+
+### 怎么用
+
+1. 在 Cursor 或 Codex 终端粘贴安装命令并执行（或把「发给 AI」文案粘贴给 Agent 代装）。
+2. 对 AI 说：按 `$AutoVUL` 生成版本更新日志；并给出**迭代名称**（及可选更新时间）。
+3. 看反馈：`✅` 成功则核对需求清单并出成稿；`❌` 失败则重新输入迭代名称。
+4. 确认成稿后对外发布；预计维护时长由人工单独通知。
+5. 云效不可用时：用 `skills/AutoVUL/input-template.md` 手动清单兜底。
+
+口令示例：
+
+```text
+按 $AutoVUL 生成版本更新日志。
+项目：统一运营管理平台PC端
+迭代名称：V1.1.5发版迭代
+更新时间：07月16日16:00
+```
 
 ### 一键安装
 
 ```bash
-npx skills add 15810879921-coder/oneos-pm-skills --skill AutoVUL
-```
-
-仅安装到 Cursor：
-
-```bash
 npx skills add 15810879921-coder/oneos-pm-skills --skill AutoVUL -a cursor -y
-```
-
-安装到用户目录（全局，所有项目可用）：
-
-```bash
-npx skills add 15810879921-coder/oneos-pm-skills --skill AutoVUL -g -y
 ```
 
 ### 发给 AI 的安装指令（复制给同事）
@@ -127,25 +140,7 @@ npx skills add 15810879921-coder/oneos-pm-skills --skill AutoVUL -g -y
 npx skills add 15810879921-coder/oneos-pm-skills --skill AutoVUL -a cursor -y
 ```
 
-### 测试人员用法（推荐）
-
-```text
-按 $AutoVUL 生成版本更新日志。
-项目：统一运营管理平台PC端
-迭代名称：V1.1.5发版迭代
-更新时间：07月16日16:00
-```
-
-- 迭代读成功：先 `✅` 反馈并列出关联需求，再出成稿  
-- 迭代读失败：`❌` 提示后重新输入迭代名称即可  
-
-手动清单模板：`skills/AutoVUL/input-template.md`
-
-### 更新已安装的 Skill
-
-```bash
-npx skills update AutoVUL
-```
+路径：`skills/AutoVUL` · 更新已安装：`npx skills update AutoVUL`
 
 ---
 
@@ -169,7 +164,9 @@ npx skills add 15810879921-coder/oneos-pm-skills --list
 oneos-pm-skills/
 ├── README.md
 ├── docs/
-│   └── OneOS-AutoPRD-Skill运作原理说明.pdf
+│   ├── OneOS-AutoPRD-Skill运作原理说明.pdf
+│   ├── OneOS-AutoVUL-Skill运作原理说明.md
+│   └── OneOS-AutoVUL-Skill运作原理说明.html
 ├── rules/
 │   └── oneos-autoprd-sync.mdc          # 可选：改原型自动跟进 PRD
 └── skills/

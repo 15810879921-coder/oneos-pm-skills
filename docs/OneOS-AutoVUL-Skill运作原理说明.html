@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>OneOS AutoVUL Skill · 运作原理说明</title>
+  <style>
+    @page { size: A4; margin: 18mm 16mm 18mm 16mm; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+      color: #1a1a1a;
+      line-height: 1.65;
+      font-size: 11pt;
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 8px 0 24px;
+    }
+    h1 {
+      font-size: 20pt;
+      font-weight: 700;
+      margin: 0 0 6px;
+      letter-spacing: 0.02em;
+      color: #0f172a;
+    }
+    .subtitle {
+      color: #64748b;
+      font-size: 10.5pt;
+      margin-bottom: 18px;
+      padding-bottom: 14px;
+      border-bottom: 2px solid #0f766e;
+    }
+    h2 {
+      font-size: 13.5pt;
+      color: #0f766e;
+      margin: 22px 0 10px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid #e2e8f0;
+      page-break-after: avoid;
+    }
+    h3 {
+      font-size: 11.5pt;
+      color: #334155;
+      margin: 14px 0 8px;
+      page-break-after: avoid;
+    }
+    p { margin: 0 0 10px; }
+    ul, ol { margin: 0 0 12px; padding-left: 1.35em; }
+    li { margin-bottom: 4px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0 14px;
+      font-size: 10pt;
+      page-break-inside: avoid;
+    }
+    th, td {
+      border: 1px solid #cbd5e1;
+      padding: 7px 9px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: #f0fdfa; color: #115e59; font-weight: 600; }
+    tr:nth-child(even) td { background: #f8fafc; }
+    .callout {
+      background: #f0fdfa;
+      border-left: 4px solid #0f766e;
+      padding: 10px 14px;
+      margin: 12px 0 16px;
+      border-radius: 0 6px 6px 0;
+      page-break-inside: avoid;
+    }
+    .callout strong { color: #0f766e; }
+    .flow {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-family: ui-monospace, "SF Mono", Menlo, monospace;
+      font-size: 9.5pt;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      margin: 10px 0 14px;
+      page-break-inside: avoid;
+    }
+    .tree {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-family: ui-monospace, "SF Mono", Menlo, monospace;
+      font-size: 9.5pt;
+      white-space: pre;
+      margin: 10px 0 14px;
+      page-break-inside: avoid;
+    }
+    .muted { color: #64748b; font-size: 9.5pt; }
+    .footer {
+      margin-top: 28px;
+      padding-top: 12px;
+      border-top: 1px solid #e2e8f0;
+      color: #94a3b8;
+      font-size: 9pt;
+    }
+    .tag {
+      display: inline-block;
+      background: #ccfbf1;
+      color: #115e59;
+      font-size: 9pt;
+      padding: 2px 8px;
+      border-radius: 4px;
+      margin-right: 6px;
+      font-weight: 600;
+    }
+    code { font-size: 9.5pt; background: #f1f5f9; padding: 1px 5px; border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+  <h1>OneOS AutoVUL Skill · 运作原理说明</h1>
+  <p class="subtitle">
+    <span class="tag">分享给测试 / 发版同事</span>
+    便于按自己项目定制 · 非技术实现手册
+  </p>
+
+  <div class="callout">
+    <strong>一句话原理：</strong>
+    这不是后台自动跑的程序，而是给 AI Agent 的<strong>作业说明书</strong>。
+    测试同事输入云效<strong>迭代名称</strong>，Agent 就按说明书去读该迭代关联需求，整理成 OneOS PC 对外「版本更新日志」成稿。
+  </div>
+
+  <h2>1. 和 AutoPRD 的分工</h2>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:22%">Skill</th>
+        <th style="width:28%">谁常用</th>
+        <th>干什么</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>AutoPRD</strong><br /><span class="muted">oneos-autoprd</span></td>
+        <td>产品</td>
+        <td>写整模块需求说明；定稿时产出「更新内容」写进云效需求</td>
+      </tr>
+      <tr>
+        <td><strong>AutoVUL</strong><br /><span class="muted">AutoVUL</span></td>
+        <td>测试 / 发版</td>
+        <td>按<strong>迭代</strong>汇总多条需求，生成整包发版对外更新日志</td>
+      </tr>
+    </tbody>
+  </table>
+  <ul>
+    <li><strong>AutoPRD</strong> = 单条需求怎么写清楚（建单、定稿）</li>
+    <li><strong>AutoVUL</strong> = 一整批迭代怎么对外讲清楚（发版公告）</li>
+  </ul>
+  <p>二者都<strong>不是文件监听器</strong>：没有人在 Cursor 里调用时不会自己跑。</p>
+
+  <h2>2. Agent 实际怎么走（按迭代）</h2>
+  <div class="flow">确认云效项目（默认：统一运营管理平台PC端）
+  → 读取用户给出的「迭代名称」
+  → 在云效查找迭代（成功 ✅ / 失败 ❌ 立刻反馈）
+  → 列出该迭代关联的全部「需求」
+  → 优先抽取每条需求描述里的「更新内容」
+  → 按 AutoVUL 格式分类、同模块合并、润色
+  → 输出纯文本成稿（无需求号、无预计维护时长）</div>
+
+  <h3>迭代读取反馈（必须先说清）</h3>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:28%">结果</th>
+        <th>Agent 怎么说</th>
+        <th style="width:28%">你怎么做</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>找到 1 个迭代</td>
+        <td><code>✅ 已找到迭代「…」，关联需求 N 条</code></td>
+        <td>可核对清单；继续出成稿</td>
+      </tr>
+      <tr>
+        <td>找不到</td>
+        <td><code>❌ 未找到迭代「…」。请重新输入迭代名称</code></td>
+        <td>复制云效迭代标题再发一次</td>
+      </tr>
+      <tr>
+        <td>多个相似</td>
+        <td><code>⚠️ 找到多个相似…请选序号</code></td>
+        <td>回复序号或完整精确名</td>
+      </tr>
+      <tr>
+        <td>未登录 / 无权限</td>
+        <td><code>❌ 无法访问云效…</code></td>
+        <td>浏览器登录后重试，或改手动清单</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>3. 成稿为什么长这样</h2>
+  <p>对齐业务可读发版口径：</p>
+  <ul>
+    <li>仅两类：【新功能】【Bug修复】；同模块合并</li>
+    <li>每条 = 做了什么 + 对谁有什么用（责任部门自然写入，如「运维部人员可…」）</li>
+    <li>部门名对照「业务条线说明」；禁止「供某某条线使用」套话</li>
+    <li>对外正文不写需求号、缺陷号、预计维护分钟（时长人工另发）</li>
+  </ul>
+
+  <h2>4. 和「手工粘清单」的差别</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>传统发版文案</th>
+        <th>这套 AutoVUL</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>测试从各需求复制粘贴，容易漏、口径不一</td>
+        <td>以迭代为范围，一次拉齐关联需求</td>
+      </tr>
+      <tr>
+        <td>写错迭代名只能口头返工</td>
+        <td>Skill 强制 ✅/❌ 反馈，失败可直接重输迭代名</td>
+      </tr>
+      <tr>
+        <td>常带需求号、技术黑话</td>
+        <td>模板强制产品语言 + 部门价值句</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>5. 何时使用 / 怎么用（给人看的短版）</h2>
+  <h3>何时使用</h3>
+  <ul>
+    <li>测试发版前：按云效迭代生成 PC 整包更新日志</li>
+    <li>工作台「版本更新」弹框 / 对内发版通知需要统一口径</li>
+    <li>迭代名读失败后，重新输入名称再生成</li>
+  </ul>
+  <h3>怎么用</h3>
+  <ol>
+    <li>在 Cursor 终端执行安装命令（或把「发给 AI」文案粘贴给 Agent 代装）。</li>
+    <li>对 AI 说：按 <code>$AutoVUL</code> 生成版本更新日志；并给出<strong>迭代名称</strong>（及可选更新时间）。</li>
+    <li>看 Agent 反馈：成功则核对需求清单；失败则重新输入迭代名称。</li>
+    <li>确认成稿后对外发布；预计维护时长由人工单独通知。</li>
+    <li>云效不可用时：用手动清单模板（<code>input-template.md</code>）兜底。</li>
+  </ol>
+  <div class="flow">按 $AutoVUL 生成版本更新日志。
+项目：统一运营管理平台PC端
+迭代名称：V1.1.5发版迭代
+更新时间：07月16日16:00</div>
+
+  <h2>6. 其他同事怎么安装 / 定制</h2>
+  <p><strong>安装（Cursor）：</strong></p>
+  <div class="flow">npx skills add 15810879921-coder/oneos-pm-skills --skill AutoVUL -a cursor -y</div>
+  <p><strong>更新：</strong></p>
+  <div class="flow">npx skills update AutoVUL</div>
+  <p>复制 Skill 文件夹后，主要可改：</p>
+  <ol>
+    <li><strong>SKILL.md 顶部 description</strong> — 触发关键词（迭代、发版、AutoVUL）。</li>
+    <li><strong>默认项目名</strong> — 换成你们云效项目正式名。</li>
+    <li><strong>module-role-mapping.md</strong> — 换成你们模块 ↔ 责任部门对照。</li>
+    <li><strong>成稿版式</strong> — 若对外公告格式不同，改「固定输出格式」一节。</li>
+    <li><strong>取数方式</strong>（<code>references/yunxiao-sprint.md</code>）— 浏览器会话或本机 OpenAPI 环境变量；禁止把 Token 写进仓库。</li>
+  </ol>
+
+  <h3>建议分享包最小内容</h3>
+  <div class="tree">AutoVUL/
+  SKILL.md
+  examples.md
+  input-template.md
+  module-role-mapping.md
+  references/
+    yunxiao-sprint.md</div>
+
+  <h2>7. 边界说明（跟同事对齐用）</h2>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:22%">类型</th>
+        <th>说明</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>会触发</strong></td>
+        <td>说「AutoVUL / 版本更新日志 / 按迭代生成」；或给出迭代名称</td>
+      </tr>
+      <tr>
+        <td><strong>只读云效</strong></td>
+        <td>读迭代与关联需求；不创建【发版】任务、不改状态（发版挂链仍用云效生命周期 Skill）</td>
+      </tr>
+      <tr>
+        <td><strong>可跳过 / 兜底</strong></td>
+        <td>无云效权限时用手动清单；纯技术债条目不进对外日志</td>
+      </tr>
+      <tr>
+        <td><strong>不会</strong></td>
+        <td>电脑无人操作时后台自动发公告；也不替代人工确认发版窗口</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="footer">
+    文档用途：团队分享与定制参考 · 对应 Skill：AutoVUL · 生成日期：2026-07-21
+    · 仓库：https://github.com/15810879921-coder/oneos-pm-skills
+  </div>
+
+</body>
+</html>
