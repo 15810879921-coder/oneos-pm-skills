@@ -104,6 +104,16 @@ flowchart TB
 ## 9. 交付口径
 
 > <一段可贴需求单开头的浓缩描述>
+
+## 10. 功能变更记录
+
+> 产品经理原型发版记录。仅记功能与业务逻辑变更；不含样式/UI/表结构。  
+> 由「需求定稿」关键字触发追加；日常改原型不强制每改必写。详见 [release-changelog.md](release-changelog.md)。
+
+### 定稿 · YYYY-MM-DD
+
+- 「<能力名>」：<做了什么 / 逻辑如何变>
+- …
 ```
 
 成文后**必须**同步 Axhub 标注目录（见 [annotation-sync.md](annotation-sync.md)）：
@@ -111,6 +121,7 @@ flowchart TB
 1. `src/prototypes/<id>/.spec/requirements-prd.md`
 2. `annotation-source.json` → 目录节点「产品需求说明（PRD）」（`markdownPath` + `markdown`）
 3. `src/resources/prd/<id>-autoprd.md`
+4. 定稿时另写：`src/prototypes/<id>/.spec/autoprd-baseline.json`
 
 ## 用户故事写法（对照业务条线说明）
 

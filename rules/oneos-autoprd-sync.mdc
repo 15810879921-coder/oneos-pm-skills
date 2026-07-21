@@ -1,17 +1,32 @@
 ---
-description: 改 OneOS 原型时用 oneos-autoprd 同步 .spec PRD 与 Axhub 标注目录
+description: 改原型跟进 AutoPRD；定稿写功能变更；云效建需求先跑 AutoPRD
 alwaysApply: true
 ---
 
 # OneOS AutoPRD 全局同步
 
+## 改原型
+
 修改 `src/prototypes/**` 且涉及**行为、文案、流程、判定或验收**时，同一轮必须跟进 **oneos-autoprd**：
 
-1. 读并遵循 `oneos-autoprd` skill（用户故事用业务条线说明：起点 → 怎么运作 → 闭环）。
-2. 更新 `src/prototypes/<id>/.spec/requirements-prd.md`。
-3. 更新该原型 `annotation-source.json` 的 `directory.nodes`：保证有「产品需求说明（PRD）」`markdown` 节点（`markdownPath: ".spec/requirements-prd.md"`，`markdown` 与文件一致）。
-4. 同步 `src/resources/prd/<id>-autoprd.md`（若项目有 resources/prd）。
+1. 更新 `.spec/requirements-prd.md`（用户故事：起点 → 怎么运作 → 闭环）。
+2. 更新 `annotation-source.json` **顶层** `directory.nodes` 中「产品需求说明（PRD）」。
+3. 同步 `src/resources/prd/<id>-autoprd.md`（若有）。
 
-细则：skill 内 `references/annotation-sync.md`。
+纯样式且无产品语义变化：可跳过全量重写。
 
-纯样式且无产品语义变化：可跳过全量重写。复杂判定另写 `.spec/<topic>.md` 时仍遵守 `business-logic-documentation`。
+## 需求定稿
+
+用户回复含 `需求定稿` / `定稿` / `确认定稿` / `本次定稿` 时：
+
+1. 按 skill `references/release-changelog.md` 汇总**自上次定稿**的功能/逻辑变更。
+2. 追加到 PRD `## 10. 功能变更记录`（最新在上）；更新 `.spec/autoprd-baseline.json`。
+3. **不要**写布局/UI/表结构类条目。
+
+## 云效建需求
+
+使用 `yunxiao-requirement-lifecycle` **创建或完善**需求描述时，**先**跑 `oneos-autoprd`：
+
+- 需求说明 ← AutoPRD 正文  
+- 更新内容 ← 第 10 章自上次定稿以来的条目（无则首版/无增量）  
+- 旧更新内容 →「更新内容·历史」
