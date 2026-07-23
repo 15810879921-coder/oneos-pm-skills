@@ -1,0 +1,4 @@
+interface:
+  display_name: "AutoRDO"
+  short_description: "聊天/录音清洗为书面原始诉求"
+  default_prompt: "按 AutoRDO 清洗下列材料，保留原意，去除口头禅与结尾句号，不要改云效。"
