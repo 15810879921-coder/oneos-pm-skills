@@ -1,4 +1,4 @@
 interface:
   display_name: "AutoRDO"
-  short_description: "聊天/录音清洗为书面原始诉求；多行自动拆多条"
-  default_prompt: "按 AutoRDO 清洗下列材料：先读 references/oneos-domain.md 对齐 OneOS 模块与部门用词；若为多行/多条独立诉求则拆成多份标题+描述；再按 rules 保留原意、去除口头禅与结尾句号；不要改云效、不要把词典全文写入输出。"
+  short_description: "清洗原始诉求；多行拆多条；Plan 确认待确认"
+  default_prompt: "按 AutoRDO 清洗：先读 oneos-domain.md；多行则拆多条；出标题+描述+待确认。若确认待确认：切 Plan，逐条用选择题（词典辅助）或用户补充描述消解，再回填定稿；不改云效、不贴词典全文。"

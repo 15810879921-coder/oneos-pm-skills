@@ -5,9 +5,11 @@ description: >-
   voice transcripts, and oral notes into written title and description while keeping original
   meaning—extracts a clear, concise title based on understanding, maps to OneOS modules/departments
   via oneos-domain.md, translates raw text into written description; when pasted multi-line or
-  multi-item data, splits into multiple requirement results,
+  multi-item data, splits into multiple requirement results; after draft, confirms 待确认
+  items one-by-one in Cursor Plan mode with choice questions aided by oneos-domain and optional
+  free-text requirement supplements,
   removes filler/self-corrections/trailing periods; light formatting only.
-  Use when user says AutoRDO, 清洗聊天, 录音整理, 原始诉求, or before YunxiaoPMapp
+  Use when user says AutoRDO, 清洗聊天, 录音整理, 原始诉求, 确认待确认, AutoRDO确认, or before YunxiaoPMapp
   记录需求. Does not change Yunxiao status or create tasks. Pair with YunxiaoPMapp
   for cloud write; never load yunxiao-requirement-lifecycle.
 ---
@@ -16,7 +18,8 @@ description: >-
 
 **Requirement Description Optimization**（需求描述优化）。  
 将碎片化、通俗化文字（多为聊天记录）与录音转写，在**保留原意**前提下自动拆解并提炼为清晰的**标题**与**描述**（书面表达），供入库写入云效需求。  
-若一次粘贴**多行 / 多条**彼此独立的诉求，**自动拆成多份**转译结果（一份需求一份稿），不合并成一条。
+若一次粘贴**多行 / 多条**彼此独立的诉求，**自动拆成多份**转译结果（一份需求一份稿），不合并成一条。  
+清洗稿中的「待确认」可进入 **Plan 模式逐条人工确认**：优先选择题（选项参照 OneOS 词典），也支持用补充需求描述消解。
 
 ## 边界（强制）
 
@@ -26,21 +29,24 @@ description: >-
 | 清洗措辞、将原文转译为规范书面描述 | 写成完整 AutoPRD 六大块 / 十章 PRD |
 | 多行/多条独立诉求 → 拆成多份转译结果 | 臆造未出现的业务结论 |
 | 不确定处标「待确认」 | 把多条无关需求硬揉成一条 |
+| 待确认 → Plan 逐条确认（优先选择 + 可文字补充） | 跳过确认把猜测写入定稿 |
 | 去除描述句子的**结尾句号** | 加载或对齐 `yunxiao-requirement-lifecycle` |
 
-云效建单与推进由 **`$YunxiaoPMapp`** 负责；本 Skill 只出标题与描述清洗稿。
+云效建单与推进由 **`$YunxiaoPMapp`** 负责；本 Skill 只出标题与描述清洗稿 / 已确认定稿。
 
 ## 何时使用
 
 - 口令含 `AutoRDO` / `清洗聊天` / `录音整理` / `原始诉求`
 - YunxiaoPMapp「记录需求」前，材料为聊天/录音/口述碎片时**必须先**跑本 Skill
 - 一次粘贴多条待入库诉求（清单、表格行、编号列表等）时，自动批量拆解
+- 口令含 `确认待确认` / `AutoRDO 确认` / `逐条确认` / `消解待确认` → 进入待确认 Plan 确认
 
 ## 输入
 
 - 粘贴的聊天记录、会议速记、口述碎片
 - **多行数据**：每行一条、编号列表、表格列、空行分隔的多条诉求等
 - 录音**转写文本**（优先）
+- **确认阶段补充**：选择题选项、或一段需求描述/功能规则用于消解待确认
 - 仅有音频文件、无转写时：说明需先转写后再清洗（**不**内嵌 ASR、不索要密钥）
 
 ## 处理规则
@@ -54,10 +60,22 @@ description: >-
 5. **去除口语**：去掉嗯/啊/那个/然后呢等口头禅，合并自我修正  
 6. **格式规范**：轻度分段或条目，**去除结尾句号**（问号/叹号按语义保留）  
 7. **标注待确认**：缺信息写「待确认：…」，不假装已确认  
+8. **待确认逐条确认（可选第二阶段）**：详见 [references/confirm-pending.md](references/confirm-pending.md)。有待确认且用户要确认时：`SwitchMode` → **plan** → 按需求条号逐点确认；**优先出选择题**（选项用词典辅助）；也支持用户粘贴补充描述一次消解多点 → 回填定稿  
+
+## 两阶段流程
+
+```text
+阶段 A（清洗，默认可不进 Plan）
+  输入碎片/多行 → 拆条 → 标题+描述+待确认
+
+阶段 B（确认，强制 Plan）
+  确认待确认 → 逐条选择题 / 文字补充 → 回填已确认定稿
+  →（用户另嘱时）再交 YunxiaoPMapp 记录需求
+```
 
 ## 输出
 
-### 单条
+### 单条（阶段 A）
 
 ```markdown
 ## 原始诉求（AutoRDO）
@@ -71,39 +89,27 @@ description: >-
 - …
 ```
 
-### 多条（自动拆解）
+### 多条（阶段 A · 自动拆解）
 
-先给一行总览（条数），再按序输出多份；每份结构与单条相同：
+先给一行总览（条数），再按序输出多份；每份结构与单条相同。
+
+### 已确认（阶段 B）
 
 ```markdown
-共 N 条原始诉求（已按行/条拆解）
-
-### 1
+### n（已确认）
 
 ## 原始诉求（AutoRDO）
 
 **标题**：…
 
 **描述**：
-…
+<初稿 + 已确认信息；无结尾句号>
 
 待确认：
-- …
-
-### 2
-
-## 原始诉求（AutoRDO）
-
-**标题**：…
-
-**描述**：
-…
-
-待确认：
-- …
+无
 ```
 
-用户确认后，再交 YunxiaoPMapp：可按条分别 `记录需求：标题=…；描述=…`（本 Skill 仍不建云效单）。
+用户确认定稿后，再交 YunxiaoPMapp：可按条分别 `记录需求：标题=…；描述=…`（本 Skill 仍不建云效单）。
 
 ## 口令
 
@@ -111,6 +117,11 @@ description: >-
 AutoRDO：<粘贴聊天或转写>
 AutoRDO：录音转写如下 …
 AutoRDO：<多行粘贴，每行一条诉求>
+确认待确认
+AutoRDO 确认：从第 1 条开始
+按下列补充消解待确认：
+<粘贴补充说明>
 ```
 
-无写云效 → **不必**进 Plan 模式；直接出稿。
+- **仅清洗出稿** → 不必进 Plan  
+- **消解待确认 / 回填定稿** → **必须**进 Plan  
