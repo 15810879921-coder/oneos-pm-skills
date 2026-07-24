@@ -3,7 +3,7 @@ name: AutoRDO
 description: >-
   AutoRDO (Requirement Description Optimization): cleans fragmented chat logs,
   voice transcripts, and oral notes into written title and description while keeping original
-  meaning—precisely extracts title (xxxx模块xxxx功能), translates raw text into written description,
+  meaning—extracts a clear, concise title based on understanding, translates raw text into written description,
   removes filler/self-corrections/trailing periods; light formatting only.
   Use when user says AutoRDO, 清洗聊天, 录音整理, 原始诉求, or before YunxiaoPMapp
   记录需求. Does not change Yunxiao status or create tasks. Pair with YunxiaoPMapp
@@ -13,13 +13,13 @@ description: >-
 # AutoRDO
 
 **Requirement Description Optimization**（需求描述优化）。  
-将碎片化、通俗化文字（多为聊天记录）与录音转写，在**保留原意**前提下自动拆解并提炼为精准的**标题**与**描述**（书面表达），供入库写入云效需求。
+将碎片化、通俗化文字（多为聊天记录）与录音转写，在**保留原意**前提下自动拆解并提炼为清晰的**标题**与**描述**（书面表达），供入库写入云效需求。
 
 ## 边界（强制）
 
 | 做 | 不做 |
 |---|---|
-| 精确提炼标题（格式：`xxxx模块xxxx功能`） | 改云效状态 / 建任务 / 打标签 |
+| 根据内容理解自动提炼清晰、简洁的标题 | 改云效状态 / 建任务 / 打标签 |
 | 清洗措辞、将原文转译为规范书面描述 | 写成完整 AutoPRD 六大块 / 十章 PRD |
 | 不确定处标「待确认」 | 臆造未出现的业务结论 |
 | 去除描述句子的**结尾句号** | 加载或对齐 `yunxiao-requirement-lifecycle` |
@@ -41,9 +41,7 @@ description: >-
 
 详见 [references/rules.md](references/rules.md)。摘要：
 
-1. **精准标题拆解**：固定格式 `[模块名]模块[核心功能]功能`
-   - **模块名（2-6字）**：精确识别归属的业务模块（如 `验车管理`），剔除长句与修饰词
-   - **功能名（10-20字）**：精准提炼“核心对象/触发条件 + 核心动作 + 业务约束”，彻底剔除口语填充词
+1. **标题提炼**：根据材料理解，提炼简炼、清晰的需求标题（准确覆盖业务模块与核心诉求/动作，表达自然干炼；剔除口语废话与长句直抄，不强求死板的特定后缀拼接）
 2. **描述转译**：原文的转译结果，保留原意与业务事实，转换为规范书面表达；不升格、不脑补方案细节  
 3. **去除口语**：去掉嗯/啊/那个/然后呢等口头禅，合并自我修正  
 4. **格式规范**：轻度分段或条目，**去除结尾句号**（问号/叹号按语义保留）  
@@ -56,7 +54,7 @@ description: >-
 ```markdown
 ## 原始诉求（AutoRDO）
 
-**标题**：<xxxx模块xxxx功能>
+**标题**：<清晰简洁的需求标题>
 
 **描述**：
 <原文的转译/清洗结果；无结尾句号>
