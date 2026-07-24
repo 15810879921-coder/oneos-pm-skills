@@ -1,0 +1,4 @@
+interface:
+  display_name: "YunxiaoPMapp"
+  short_description: "产品部云效：需求入库→分析/设计→交棒待开发→创建迭代"
+  default_prompt: "按 YunxiaoPMapp 规则处理：先 Plan 对齐编号与清单，确认后再 apply。"

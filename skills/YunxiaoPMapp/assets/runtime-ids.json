@@ -1,0 +1,115 @@
+{
+  "schema_version": 1,
+  "skill": "YunxiaoPMapp",
+  "verified_at": "2026-07-23",
+  "note": "Thin runtime constants for YunxiaoPMapp only. Do not load yunxiao-requirement-lifecycle.",
+  "project": {
+    "name_aliases": [
+      "统一运营管理平台",
+      "统一运营管理平台PC端",
+      "统一运营管理平台 PC 端"
+    ],
+    "spaceIdentifier": "1280be963a5a2cc126a4118dca",
+    "customCode": "ONEOS",
+    "spaceType": "Project",
+    "default_sprint_name_prefix": "统一运营管理平台PC端"
+  },
+  "people": {
+    "wangmian": {
+      "displayName": "王冕",
+      "identifier": "6811df000601d2fea60144a9",
+      "role": "产品创建人/默认负责人"
+    },
+    "hefei": {
+      "displayName": "何斐",
+      "identifier": "695f0400562f09713f9c3a93",
+      "role": "待开发交棒【交付】负责人"
+    }
+  },
+  "tags": {
+    "故障管理": "ceb526a7343995577645317e9a",
+    "还车应结款": "4204960ce658c94b17abb7c5f6"
+  },
+  "status": {
+    "req": {
+      "待处理": "100005",
+      "已确认": "32",
+      "分析中": "154395",
+      "设计中": "156603",
+      "设计完成": "307012",
+      "待开发": "1582fc929d429111b925309493"
+    },
+    "task": {
+      "待处理": "100005",
+      "已完成": "100014"
+    },
+    "transit_api": "POST /projex/api/workitem/workitem/{id}/status/transit",
+    "fast_handoff_hops": [
+      "设计完成",
+      "待开发"
+    ],
+    "note": "见 references/live-api.md；禁止再用 updateStatus"
+  },
+  "workitem_types": {
+    "product_req": {
+      "name": "产品类需求",
+      "category": "Req",
+      "identifier": "9uy29901re573f561d69jn40"
+    },
+    "task": {
+      "name": "任务",
+      "category": "Task",
+      "identifier": "ba102e46bc6a8483d9b7f25c"
+    }
+  },
+  "priority": {
+    "紧急": "646004e97f54bb77fec7b455df",
+    "高": "95b89e0a524d9693e1f335ffe5",
+    "中": "fa155d1214f9f8db222d39db3b",
+    "低": "92924feff9c1085891e7511872"
+  },
+  "fields": {
+    "plan_start": {
+      "fieldIdentifier": "79",
+      "name": "计划开始时间",
+      "value_shape": "epoch_ms_string_china_noon",
+      "example": "Date.parse('YYYY-MM-DDT12:00:00+08:00') 转 String"
+    },
+    "plan_end": {
+      "fieldIdentifier": "80",
+      "name": "计划完成时间",
+      "value_shape": "epoch_ms_string_china_noon"
+    },
+    "tag": {
+      "fieldIdentifier": "tag",
+      "name": "标签",
+      "propertyKey": "tag"
+    }
+  },
+  "assignee_rules": {
+    "待开发_交付任务": "hefei",
+    "分析中_交付与分析": "creator",
+    "设计中_设计": "creator"
+  },
+  "relation": {
+    "delivery_to_req": "ASSOCIATED",
+    "stage_to_delivery": "TASK_SUB",
+    "create_field": "createWorkitemRelationInfo",
+    "forbid": [
+      "PARENT_as_关联项",
+      "ASSOCIATED_only_for_stage_tasks_without_TASK_SUB"
+    ],
+    "note": "交付必须 ASSOCIATED→需求。分析/设计默认 TASK_SUB→交付（子项 tab）。二者同 create 互斥。见 references/live-api.md"
+  },
+  "delivery_placeholder": "等待设计任务完成后自动填入",
+  "task_title_prefixes": {
+    "delivery": "【交付】",
+    "analysis": "【分析】",
+    "design": "【设计】"
+  },
+  "publish_url": {
+    "shape": "{baseUrl}/{prototype-id}/index.html",
+    "forbid_prototypes_prefix": true,
+    "require_index_html": true
+  }
+}
