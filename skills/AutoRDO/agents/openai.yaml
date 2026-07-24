@@ -1,4 +1,4 @@
 interface:
   display_name: "AutoRDO"
-  short_description: "清洗原始诉求；多行拆多条；Plan 确认待确认"
-  default_prompt: "按 AutoRDO 清洗：先读 oneos-domain.md；多行则拆多条；出标题+描述+待确认。若确认待确认：切 Plan，逐条用选择题（词典辅助）或用户补充描述消解，再回填定稿；不改云效、不贴词典全文。"
+  short_description: "清洗原始诉求；多行拆多条；有待确认强制 Plan"
+  default_prompt: "按 AutoRDO 清洗：先读 oneos-domain.md；多行则拆多条；出标题+描述。若存在待确认，同轮强制切 Plan 逐条用选择题（词典辅助）或用户补充描述消解并回填定稿，无需等确认待确认口令；不改云效、不贴词典全文。"
