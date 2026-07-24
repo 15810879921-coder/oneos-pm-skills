@@ -3,7 +3,8 @@ name: AutoRDO
 description: >-
   AutoRDO (Requirement Description Optimization): cleans fragmented chat logs,
   voice transcripts, and oral notes into written title and description while keeping original
-  meaning—extracts a clear, concise title based on understanding, translates raw text into written description,
+  meaning—extracts a clear, concise title based on understanding, maps to OneOS modules/departments
+  via oneos-domain.md, translates raw text into written description,
   removes filler/self-corrections/trailing periods; light formatting only.
   Use when user says AutoRDO, 清洗聊天, 录音整理, 原始诉求, or before YunxiaoPMapp
   记录需求. Does not change Yunxiao status or create tasks. Pair with YunxiaoPMapp
@@ -39,13 +40,14 @@ description: >-
 
 ## 处理规则
 
-详见 [references/rules.md](references/rules.md)。摘要：
+**强制前置**：清洗 ONE-OS / 羚牛相关材料前，**必须先 Read** [references/oneos-domain.md](references/oneos-domain.md)（部门标准名、五条线模块、闭环与故事点摘要），再按 [references/rules.md](references/rules.md) 执行。摘要：
 
-1. **标题提炼**：根据材料理解，提炼简炼、清晰的需求标题（准确覆盖业务模块与核心诉求/动作，表达自然干炼；剔除口语废话与长句直抄，不强求死板的特定后缀拼接）
-2. **描述转译**：原文的转译结果，保留原意与业务事实，转换为规范书面表达；不升格、不脑补方案细节  
-3. **去除口语**：去掉嗯/啊/那个/然后呢等口头禅，合并自我修正  
-4. **格式规范**：轻度分段或条目，**去除结尾句号**（问号/叹号按语义保留）  
-5. **标注待确认**：缺信息写「待确认：…」，不假装已确认  
+1. **OneOS 对齐**：模块名、部门名、条线归属与业财关键词以 `oneos-domain.md` 为准；口语映射到标准名；不脑补材料未出现的故事点细节；**勿**把词典全文写入输出稿  
+2. **标题提炼**：根据材料理解，提炼简炼、清晰的需求标题（准确覆盖业务模块与核心诉求/动作，表达自然干炼；剔除口语废话与长句直抄，不强求死板的特定后缀拼接）  
+3. **描述转译**：原文的转译结果，保留原意与业务事实，转换为规范书面表达；不升格、不脑补方案细节  
+4. **去除口语**：去掉嗯/啊/那个/然后呢等口头禅，合并自我修正  
+5. **格式规范**：轻度分段或条目，**去除结尾句号**（问号/叹号按语义保留）  
+6. **标注待确认**：缺信息写「待确认：…」，不假装已确认  
 
 ## 输出
 
