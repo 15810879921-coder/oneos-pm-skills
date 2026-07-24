@@ -2,8 +2,9 @@
 name: AutoRDO
 description: >-
   AutoRDO (Requirement Description Optimization): cleans fragmented chat logs,
-  voice transcripts, and oral notes into written 原始诉求 while keeping original
-  meaning—remove filler, self-corrections, trailing periods; light formatting only.
+  voice transcripts, and oral notes into written title and description while keeping original
+  meaning—extracts title (xxxx模块xxxx功能), translates raw text into written description,
+  removes filler/self-corrections/trailing periods; light formatting only.
   Use when user says AutoRDO, 清洗聊天, 录音整理, 原始诉求, or before YunxiaoPMapp
   记录需求. Does not change Yunxiao status or create tasks. Pair with YunxiaoPMapp
   for cloud write; never load yunxiao-requirement-lifecycle.
@@ -12,18 +13,18 @@ description: >-
 # AutoRDO
 
 **Requirement Description Optimization**（需求描述优化）。  
-将碎片化、通俗化文字（多为聊天记录）与录音转写，在**保留原意**前提下整理成书面表达，供入库写入云效需求 `## 原始诉求（AutoRDO）`。
+将碎片化、通俗化文字（多为聊天记录）与录音转写，在**保留原意**前提下自动拆解并提炼为**标题**与**描述**（书面表达），供入库写入云效需求。
 
 ## 边界（强制）
 
 | 做 | 不做 |
 |---|---|
-| 清洗措辞、去口头禅、轻度格式化 | 改云效状态 / 建任务 / 打标签 |
-| 输出整理稿 Markdown | 写成完整 AutoPRD 六大块 / 十章 PRD |
+| 自动提炼标题（格式：`xxxx模块xxxx功能`） | 改云效状态 / 建任务 / 打标签 |
+| 清洗措辞、将原文转译为规范书面描述 | 写成完整 AutoPRD 六大块 / 十章 PRD |
 | 不确定处标「待确认」 | 臆造未出现的业务结论 |
-| 去除句子**结尾句号** | 加载或对齐 `yunxiao-requirement-lifecycle` |
+| 去除描述句子的**结尾句号** | 加载或对齐 `yunxiao-requirement-lifecycle` |
 
-云效建单与推进由 **`$YunxiaoPMapp`** 负责；本 Skill 只出清洗稿。
+云效建单与推进由 **`$YunxiaoPMapp`** 负责；本 Skill 只出标题与描述清洗稿。
 
 ## 何时使用
 
@@ -40,27 +41,29 @@ description: >-
 
 详见 [references/rules.md](references/rules.md)。摘要：
 
-1. 保留原意与业务事实；不升格、不脑补方案细节  
-2. 书面化；去掉嗯/啊/那个/然后呢等口头禅  
-3. 合并自我修正（以最终口径为准，可括注曾改口）  
-4. 去掉重复确认句；轻度分段或条目，**不过度**结构化  
-5. **去除结尾句号**（问号/叹号按语义保留）  
-6. 缺信息写「待确认：…」，不假装已确认  
+1. **标题拆解**：从原文内容中自动提炼模块与功能，固定格式为 `xxxx模块xxxx功能`
+2. **描述转译**：原文的转译结果，保留原意与业务事实，转换为规范书面表达；不升格、不脑补方案细节  
+3. **去除口语**：去掉嗯/啊/那个/然后呢等口头禅，合并自我修正  
+4. **格式规范**：轻度分段或条目，**去除结尾句号**（问号/叹号按语义保留）  
+5. **标注待确认**：缺信息写「待确认：…」，不假装已确认  
 
 ## 输出
 
-回报一份整理稿，建议形态：
+回报一份拆解与清洗后的整理稿，结构如下：
 
 ```markdown
 ## 原始诉求（AutoRDO）
 
-<书面段落或条目；无结尾句号>
+**标题**：<xxxx模块xxxx功能>
+
+**描述**：
+<原文的转译/清洗结果；无结尾句号>
 
 待确认：
 - …
 ```
 
-用户确认后，再交 YunxiaoPMapp：`记录需求：…；描述=整理稿；…`
+用户确认后，再交 YunxiaoPMapp：`记录需求：标题=…；描述=…`
 
 ## 口令
 
