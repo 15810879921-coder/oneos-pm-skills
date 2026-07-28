@@ -1,19 +1,74 @@
 {
   "schema_version": 1,
-  "skill": "YunxiaoPMapp",
-  "verified_at": "2026-07-23",
-  "note": "Thin runtime constants for YunxiaoPMapp only. Do not load yunxiao-requirement-lifecycle.",
+  "skill": "YunxiaoPM",
+  "verified_at": "2026-07-25",
+  "note": "YunxiaoPM constants. Project space MUST be user-selected (PJ gate); project.spaceIdentifier is last-known cache only — never auto-apply. See references/project-selection.md.",
   "project": {
+    "selection_mode": "user_pick_required",
+    "name": null,
     "name_aliases": [
+      "01_ONEOS",
+      "ONEOS",
       "统一运营管理平台",
       "统一运营管理平台PC端",
       "统一运营管理平台 PC 端"
     ],
-    "spaceIdentifier": "1280be963a5a2cc126a4118dca",
-    "customCode": "ONEOS",
+    "spaceIdentifier": null,
+    "customCode": null,
     "spaceType": "Project",
-    "default_sprint_name_prefix": "统一运营管理平台PC端"
+    "organizationIdentifier": "697c54a19df7fdfa65466405",
+    "default_sprint_name_prefix": "统一运营管理平台PC端",
+    "list_api": "GET /projex/api/workspace/project/search/list",
+    "last_selected": {
+      "name": "01_ONEOS",
+      "spaceIdentifier": "1280be963a5a2cc126a4118dca",
+      "customCode": "ONEOS",
+      "note": "历史常用项；仅作预填建议，禁止未点选即使用"
+    },
+    "refreshed_at": "2026-07-25"
   },
+  "projects_catalog": [
+    {
+      "name": "05_羚牛碳资产平台",
+      "identifier": "ff104a3bce09463da136a97999",
+      "customCode": "CARBON"
+    },
+    {
+      "name": "06_对外客户项目",
+      "identifier": "baca8b4d676c5af67e475caec0",
+      "customCode": "CUST"
+    },
+    {
+      "name": "07_LNBOX",
+      "identifier": "35e1e915a052379bbdfb993aac",
+      "customCode": "LNBOX"
+    },
+    {
+      "name": "04_AI应用",
+      "identifier": "d9002ea72c6c3a1a97b02be750",
+      "customCode": "AIAPP"
+    },
+    {
+      "name": "03_数据中台",
+      "identifier": "a801cef5c9a68fa051c07432c7",
+      "customCode": "DATA"
+    },
+    {
+      "name": "02_小羚羚APP",
+      "identifier": "db771a2cca07bed43b369af077",
+      "customCode": "XLLAPP"
+    },
+    {
+      "name": "01_ONEOS",
+      "identifier": "1280be963a5a2cc126a4118dca",
+      "customCode": "ONEOS"
+    },
+    {
+      "name": "敏捷研发示例项目",
+      "identifier": "65eca0c2e16a23939081e19e14",
+      "customCode": "DEMO"
+    }
+  ],
   "people": {
     "wangmian": {
       "displayName": "王冕",
@@ -28,7 +83,13 @@
   },
   "tags": {
     "故障管理": "ceb526a7343995577645317e9a",
-    "还车应结款": "4204960ce658c94b17abb7c5f6"
+    "还车应结款": "4204960ce658c94b17abb7c5f6",
+    "工作台": "b62d21beac55c0b43389915eab",
+    "交车管理": "b6947b5aca82a8c759612ba039",
+    "合同管理": "23873be81931cb0dc1bf87a456",
+    "安全培训": "76988b5f73ef515de5930d59b9",
+    "证照管理": "11f4c2ec65901a8f3199c81706",
+    "还车管理": "1e0fce2d6929ff4ac13b310e97"
   },
   "status": {
     "req": {
@@ -72,13 +133,58 @@
     "plan_start": {
       "fieldIdentifier": "79",
       "name": "计划开始时间",
-      "value_shape": "epoch_ms_string_china_noon",
-      "example": "Date.parse('YYYY-MM-DDT12:00:00+08:00') 转 String"
+      "value_shape": "YYYY-MM-DD HH:mm:ss China wall time preferred; epoch ms string also accepted",
+      "example": "2026-07-27 12:00:00",
+      "update_api": "POST /projex/api/workitem/workitem/field/value/{workitemId} form fieldValueList=JSON"
     },
     "plan_end": {
       "fieldIdentifier": "80",
       "name": "计划完成时间",
-      "value_shape": "epoch_ms_string_china_noon"
+      "value_shape": "YYYY-MM-DD HH:mm:ss or epoch ms string",
+      "update_api": "POST /projex/api/workitem/workitem/field/value/{workitemId} form fieldValueList=JSON"
+    },
+    "estimated_hours": {
+      "fieldIdentifier": "101586",
+      "name": "预计工时",
+      "note": "不可直接改字段；须工时预估登记",
+      "create_api": "POST /projex/api/workitem/workitem/time/estimate body spentTime,type,recordUserIdentifier,workitemIdentifier",
+      "delete_api": "DELETE /projex/api/workitem/workitem/time/estimate/{workitemId}/{estimateId}",
+      "list_api": "GET /projex/api/workitem/workitem/time/estimate/list?workitemIdentifier="
+    },
+    "actual_hours": {
+      "name": "实际工时",
+      "note": "快轨待开发默认 2",
+      "create_api": "POST /projex/api/workitem/workitem/time body actualTime,type,recordUserIdentifier,workitemIdentifier,gmtStart,gmtEnd (epoch ms string)",
+      "list_api": "GET /projex/api/workitem/workitem/time/list?workitemIdentifier=",
+      "fast_track_default": 2,
+      "verified_at": "2026-07-27",
+      "verified_on": "ONEOS-293"
+    },
+    "fast_track": {
+      "req_estimated_hours": 2,
+      "req_actual_hours": 2,
+      "design_plan_start_end_same_day": true,
+      "design_description": "copy_req_document",
+      "delivery_description": "manual_sync_or_autoprd",
+      "delivery_design_same_tags_as_req": true,
+      "design_associated_to_req_after_task_sub": true,
+      "document_update_api": "PATCH /projex/api/workitem/workitem/{id}/document {content,formatType:RICHTEXT}"
+    },
+    "submit_department": {
+      "fieldIdentifier": "3132597a9718d1c282b7ba5a0c",
+      "name": "提交部门",
+      "format": "string input",
+      "update_api": "POST /projex/api/workitem/workitem/field/value/{workitemId} form fieldValueList=JSON",
+      "verified_at": "2026-07-27",
+      "verified_on": "ONEOS-293"
+    },
+    "submitter": {
+      "fieldIdentifier": "9e01269e96f91fbb97d36bf5b3",
+      "name": "提交人",
+      "format": "string input",
+      "update_api": "POST /projex/api/workitem/workitem/field/value/{workitemId} form fieldValueList=JSON",
+      "verified_at": "2026-07-27",
+      "verified_on": "ONEOS-293"
     },
     "tag": {
       "fieldIdentifier": "tag",

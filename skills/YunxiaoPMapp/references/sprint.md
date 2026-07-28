@@ -39,8 +39,25 @@
 |---|---|
 | 1 | 算出新版本 → 拼迭代全名 |
 | 2 | 创建迭代（起止日期口令未给则询问或用项目默认，禁止瞎填） |
-| 3 | **强制双挂**：N 个交付任务挂迭代；各交付 ASSOCIATED 的**需求**也必须挂同一迭代；任一侧失败不得报完成 |
-| 4 | 幂等：同名迭代已存在 → 不新建，补挂尚未关联的交付与需求，回报「复用迭代」 |
-| 5 | 回报：迭代名、版本号、identifier、已关联交付编号、已关联需求编号、失败编号 |
+| 3 | **只挂【交付】**：N 个交付任务挂迭代；交付失败不得报完成 |
+| 4 | 幂等：同名迭代已存在 → 不新建，补挂尚未关联的交付，回报「复用迭代」 |
+| 5 | 回报：迭代名、版本号、identifier、已关联交付编号、失败编号 |
 
+**禁止**把需求挂进迭代（需求侧「迭代」字段保持空）。不挂【分析】/【设计】除非口令显式点名。  
 **不**在本步创建【开发】/【测试】。仍须 Plan 门禁。
+
+### 挂接 API（已通 · 校验走 `/extra`）
+
+```http
+PATCH /projex/api/workitem/workitem/{交付id}?_input_charset=utf-8
+{"workitemIdentifier":"{交付id}","propertyKey":"sprint","propertyValue":"{sprintId}","operateType":"COVER"}
+```
+
+校验（详情主接口**不**含 sprint，勿用其判空）：
+
+```http
+GET /projex/api/workitem/workitem/{id}/extra?_input_charset=utf-8
+→ result.sprint[].identifier
+```
+
+清空误挂的需求迭代：同上 PATCH，`propertyValue:""` + `operateType:"COVER"`（或 `CLEAR`）。

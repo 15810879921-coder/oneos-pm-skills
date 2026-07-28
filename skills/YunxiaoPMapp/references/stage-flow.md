@@ -1,6 +1,6 @@
 # 标准路径：待处理 → 待开发交棒
 
-项目常量见 [../assets/runtime-ids.json](../assets/runtime-ids.json)。查重只用任务编号。
+人员/状态等常量见 [../assets/runtime-ids.json](../assets/runtime-ids.json)。**项目空间**须按 [project-selection.md](project-selection.md) 点选，禁止默认直指。查重只用任务编号。
 
 ## 步骤 0｜创建需求
 

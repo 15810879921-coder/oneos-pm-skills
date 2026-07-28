@@ -6,7 +6,7 @@ OneOS 产品团队自用的 AI Agent Skills 合集，支持 `npx skills` 一键�
 
 | Skill | 说明 | 安装 / 更新 |
 |-------|------|----------|
-| **`YunxiaoPMapp`**（推荐 · 产品经理云效） | 记录需求 → 分析/设计 → 交棒待开发；【交付】/【分析】/【设计】树；快轨与编号直推；**不建【开发】/【测试】** | 见下方 |
+| **`YunxiaoPMapp`**（推荐 · 口令 YunxiaoPM / 需求任务） | 记录需求 → 分析/设计 → 交棒待开发；压缩点选；迭代只挂交付；**不建【开发】/【测试】** | 见下方「发给产品同事」 |
 | `oneos-autoprd`（展示名 OneOS-AutoPRD） | 整模块 AutoPRD + 标注目录；**需求定稿**写功能变更；云效描述「需求说明/更新内容」 | 见下方 |
 | `AutoRDO` | 清洗为标题+描述；自动识别类型/优先级/标签/提交部门/提交人；多行拆多条；有待确认则强制 Plan | 见下方 |
 | `AutoVUL` | 按云效迭代名生成 PC 版本更新日志 | 见下方 |
@@ -16,23 +16,54 @@ OneOS 产品团队自用的 AI Agent Skills 合集，支持 `npx skills` 一键�
 
 ## YunxiaoPMapp · 产品经理云效自动化（推荐）
 
-产品侧从「记需求」到「交棒开发」的正式 Skill：需求状态为看板真相；每需求最多 1 条 **【交付】**；其下挂 **【分析】/【设计】**；查重只认任务编号；终点为待开发且【交付】负责人=何斐。
+产品侧从「记需求」到「交棒开发」的正式 Skill（口令也可说 **YunxiaoPM / 需求任务 / `/YunxiaoPM`**）：
 
-**适用场景**：记录需求、受理确认、开始分析/设计、设计完成（AutoPRD）、交棒开发、快轨待开发、创建迭代。
+- 需求状态 = 看板真相；每需求最多 1 条 **【交付】**；下挂 **【分析】/【设计】**
+- 压缩点选 `1a2b3a4d`（类型/项目/优先级/标签）；查重只认 `ONEOS-xx`
+- 快轨待开发 / 编号直推；创建迭代 **只挂【交付】**（不挂需求）
+- 终点：待开发且【交付】负责人=何斐；**不建【开发】/【测试】**
 
 **不要**在同一会话同时挂载 `yunxiao-requirement-lifecycle`，避免双建任务。
 
-**开发部门对接原理（制作开发 Skill）：** [`docs/YunxiaoPMapp-实现原理-开发Skill对接.md`](docs/YunxiaoPMapp-实现原理-开发Skill对接.md)
+**开发部门对接原理：** [`docs/YunxiaoPMapp-实现原理-开发Skill对接.md`](docs/YunxiaoPMapp-实现原理-开发Skill对接.md)
 
-### 一键安装（同事复制即可）
+### 发给产品同事 · 丢进 AI 一键安装（推荐复制整段）
 
-全局安装到 Cursor（所有项目可用，推荐）：
+把下面整段发给同事，让他们粘贴到 Cursor / Claude 对话即可（AI 会代跑命令）：
+
+```text
+请帮我全局安装 OneOS 产品云效 Skill（Cursor）：
+
+npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoPMapp -a cursor -g -y
+
+装完后：
+1. 确认可用口令「记录需求」或「/YunxiaoPM」触发
+2. 使用前请先在浏览器登录 https://devops.aliyun.com（Cookie 会话）
+3. 凡写云效会先 Plan，我确认后再执行
+```
+
+**产品套装（云效 + 清洗诉求 + 写 PRD，推荐一次装齐）：**
+
+```text
+请帮我全局安装 OneOS 产品 Skill 套装（Cursor）：
+
+npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoPMapp -a cursor -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill AutoRDO -a cursor -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-autoprd -a cursor -g -y
+
+装完后确认口令可用：记录需求 / AutoRDO / oneos-autoprd。
+使用云效前请先登录 https://devops.aliyun.com 。
+```
+
+### 终端自己装（同事有命令行时）
+
+全局 Cursor（推荐）：
 
 ```bash
 npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoPMapp -a cursor -g -y
 ```
 
-同时装到 Cursor + Claude Code：
+同时装 Cursor + Claude Code：
 
 ```bash
 npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoPMapp -a cursor -a claude-code -g -y
@@ -44,38 +75,30 @@ npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoPMapp -a cursor 
 npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoPMapp -a cursor -y
 ```
 
-### 发给 AI 的安装指令（复制给同事）
-
-```text
-请帮我安装 YunxiaoPMapp skill（全局 · Cursor）：
-npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoPMapp -a cursor -g -y
-装完后确认可以用口令「记录需求」触发。
-```
-
-建议一并安装配套 Skill（清洗诉求 + 写 PRD）：
-
-```text
-请帮我安装：
-npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoPMapp -a cursor -g -y
-npx skills add 15810879921-coder/oneos-pm-skills --skill AutoRDO -a cursor -g -y
-npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-autoprd -a cursor -g -y
-```
-
-### 更新
+### 更新到最新版
 
 ```bash
 npx skills update YunxiaoPMapp
 ```
 
+或对 AI 说：
+
+```text
+请帮我更新 YunxiaoPMapp：npx skills update YunxiaoPMapp
+```
+
 ### 怎么用（装完后对 AI 说）
 
 ```text
-记录需求：车辆巡检优化；推进至=分析中
+/YunxiaoPM 提需求
+记录需求：…；推进至=暂不推进|已确认|分析中|设计中|设计完成|待开发|待开发(快轨)
 受理确认：ONEOS-xx
 开始分析：ONEOS-xx
 开始设计：ONEOS-xx；交付任务=ONEOS-a；分析任务=ONEOS-b
 设计完成：ONEOS-xx；设计任务=ONEOS-c；原型=…
 交棒开发：ONEOS-xx；交付任务=ONEOS-a
+快轨待开发：ONEOS-xx
+创建迭代：版本类型=副；交付任务=ONEOS-a,ONEOS-b；名称前缀=ONEOS_PC端
 ```
 
 凡写云效会先进入 Plan，确认后再执行。

@@ -1,4 +1,4 @@
 interface:
-  display_name: "YunxiaoPMapp"
-  short_description: "产品部云效：需求入库→分析/设计→交棒待开发→创建迭代"
-  default_prompt: "按 YunxiaoPMapp 规则处理：先 Plan 对齐编号与清单，确认后再 apply。"
+  display_name: "需求任务"
+  short_description: "云效：压缩点选记录需求→分析/设计→交棒待开发→挂迭代"
+  default_prompt: "按需求任务（/YunxiaoPM）处理：先 Plan 出压缩点选字母表并确认项目，用户回 1a2b3a4d 与「执行」后再 apply。"

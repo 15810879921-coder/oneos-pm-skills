@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""YunxiaoPMapp 极速真实建单 v2：少 GET、建单带计划开始、连接复用、双路径并行。"""
+"""YunxiaoPM 极速真实建单 v5：快轨描述/计划/标签/工时 2+2/设计 ASSOCIATED 补挂。"""
 from __future__ import annotations
 
 import json
@@ -21,8 +21,16 @@ ROOT = Path(__file__).resolve().parents[1]
 RUNTIME = json.loads((ROOT / "assets" / "runtime-ids.json").read_text())
 STATUS = RUNTIME["status"]["req"]
 TASK_STATUS = RUNTIME["status"]["task"]
+FAST = RUNTIME.get("fields", {}).get("fast_track") or {}
 
-SPACE = RUNTIME["project"]["spaceIdentifier"]
+SPACE = (
+    RUNTIME.get("project", {}).get("spaceIdentifier")
+    or (RUNTIME.get("project", {}).get("last_selected") or {}).get("spaceIdentifier")
+)
+if not SPACE:
+    raise RuntimeError(
+        "未选定项目 spaceIdentifier：须先走门禁 PJ 点选，或设置 runtime project.last_selected"
+    )
 REQ_TYPE = RUNTIME["workitem_types"]["product_req"]["identifier"]
 TASK_TYPE = RUNTIME["workitem_types"]["task"]["identifier"]
 HEFEI = RUNTIME["people"]["hefei"]["identifier"]
@@ -32,9 +40,20 @@ TAG_FAULT = RUNTIME.get("tags", {}).get("故障管理", "ceb526a7343995577645317
 PLACEHOLDER = RUNTIME["delivery_placeholder"]
 PROTO = "https://prototype.lnoneos.com/vehicle-fault-handling/index.html"
 TZ = timezone(timedelta(hours=8))
+TODAY = datetime.now(TZ).strftime("%Y-%m-%d")
+NOON = f"{TODAY} 12:00:00"
+EOD = f"{TODAY} 23:59:59"
 NOON_MS = str(
     int(datetime.now(TZ).replace(hour=12, minute=0, second=0, microsecond=0).timestamp() * 1000)
 )
+START_MS = str(
+    int(datetime.now(TZ).replace(hour=9, minute=0, second=0, microsecond=0).timestamp() * 1000)
+)
+END_MS = str(
+    int(datetime.now(TZ).replace(hour=11, minute=0, second=0, microsecond=0).timestamp() * 1000)
+)
+FAST_EST = int(FAST.get("req_estimated_hours", 2))
+FAST_ACT = int(FAST.get("req_actual_hours", 2))
 
 PENDING = STATUS["待处理"]
 DESIGN_DONE = STATUS["设计完成"]
@@ -82,7 +101,7 @@ def session() -> requests.Session:
             "Origin": "https://devops.aliyun.com",
             "Referer": f"https://devops.aliyun.com/projex/project/{SPACE}/req",
             "accept": "application/json",
-            "User-Agent": "YunxiaoPMapp-live_create_fast/2.0",
+            "User-Agent": "YunxiaoPM-live_create_fast/5.0",
             "Connection": "keep-alive",
         }
     )
@@ -119,7 +138,7 @@ def get(s: requests.Session, wid: str) -> dict:
     )["result"]
 
 
-def apply_tag(s: requests.Session, wid: str) -> None:
+def apply_tag(s: requests.Session, wid: str, tag_id: str = TAG_FAULT) -> None:
     j = api(
         s,
         "PATCH",
@@ -127,12 +146,117 @@ def apply_tag(s: requests.Session, wid: str) -> None:
         {
             "workitemIdentifier": wid,
             "propertyKey": "tag",
-            "propertyValue": TAG_FAULT,
+            "propertyValue": tag_id,
             "operateType": "COVER",
         },
     )
     if j.get("code") != 200:
         raise RuntimeError(f"tag failed {wid}: {j}")
+
+
+def set_document(s: requests.Session, wid: str, html: str) -> None:
+    j = api(
+        s,
+        "PATCH",
+        f"https://devops.aliyun.com/projex/api/workitem/workitem/{wid}/document?_input_charset=utf-8",
+        {"content": html, "formatType": "RICHTEXT"},
+    )
+    if j.get("code") != 200 or j.get("errorMsg"):
+        raise RuntimeError(f"document failed {wid}: {j}")
+
+
+def set_fields(s: requests.Session, wid: str, pairs: list[tuple[str, str]]) -> None:
+    data = urllib.parse.urlencode(
+        {
+            "fieldValueList": json.dumps(
+                [{"fieldIdentifier": k, "value": v} for k, v in pairs], ensure_ascii=False
+            )
+        }
+    )
+    r = s.post(
+        f"https://devops.aliyun.com/projex/api/workitem/workitem/field/value/{wid}?_input_charset=utf-8",
+        data=data,
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+        timeout=60,
+    )
+    j = r.json()
+    if j.get("code") != 200:
+        raise RuntimeError(f"field/value failed {wid}: {j}")
+
+
+def set_estimate_hours(s: requests.Session, wid: str, hours: int, user: str = WANG) -> None:
+    est = api(
+        s,
+        "GET",
+        f"https://devops.aliyun.com/projex/api/workitem/workitem/time/estimate/list?workitemIdentifier={wid}",
+    ).get("result") or []
+    for row in est:
+        eid = row.get("identifier")
+        if eid:
+            api(
+                s,
+                "DELETE",
+                f"https://devops.aliyun.com/projex/api/workitem/workitem/time/estimate/{wid}/{eid}",
+            )
+    j = api(
+        s,
+        "POST",
+        "https://devops.aliyun.com/projex/api/workitem/workitem/time/estimate?_input_charset=utf-8",
+        {
+            "workitemIdentifier": wid,
+            "spentTime": hours,
+            "type": "develop",
+            "description": "快轨默认预计工时",
+            "recordUserIdentifier": user,
+            "forCreate": False,
+            "containsRestDay": False,
+        },
+    )
+    if j.get("code") != 200:
+        raise RuntimeError(f"estimate failed {wid}: {j}")
+
+
+def set_actual_hours(s: requests.Session, wid: str, hours: int, user: str = WANG) -> None:
+    j = api(
+        s,
+        "POST",
+        "https://devops.aliyun.com/projex/api/workitem/workitem/time?_input_charset=utf-8",
+        {
+            "workitemIdentifier": wid,
+            "actualTime": hours,
+            "type": "develop",
+            "description": "快轨默认实际工时",
+            "recordUserIdentifier": user,
+            "gmtStart": START_MS,
+            "gmtEnd": END_MS,
+        },
+    )
+    if j.get("code") != 200 or not j.get("result"):
+        raise RuntimeError(f"actual time failed {wid}: {j}")
+
+
+def try_associate_to_req(s: requests.Session, stage_id: str, req_id: str) -> bool:
+    """建后补 ASSOCIATED→需求。Cookie 下常失败，成功返回 True。"""
+    bodies = [
+        {"relationIdentifier": "ASSOCIATED", "toWorkitemIdentifier": req_id},
+        {
+            "relationIdentifier": "ASSOCIATED",
+            "fromWorkitemIdentifier": stage_id,
+            "toWorkitemIdentifier": req_id,
+        },
+    ]
+    for body in bodies:
+        for url in (
+            f"https://devops.aliyun.com/projex/api/workitem/workitem/{stage_id}/relation/record?_input_charset=utf-8",
+            f"https://devops.aliyun.com/projex/api/workitem/v2/workitem/{stage_id}/relation/record?_input_charset=utf-8",
+        ):
+            j = api(s, "POST", url, body)
+            if j.get("code") == 200 and j.get("result") not in (None, False):
+                if not (isinstance(j.get("result"), dict) and j["result"].get("status") in (404, 405)):
+                    rows = list_associated(s, stage_id)
+                    if req_id in {r.get("identifier") for r in rows}:
+                        return True
+    return False
 
 
 def transit(s: requests.Session, wid: str, from_status: str, to_status: str) -> None:
@@ -160,6 +284,11 @@ def md_to_html(md: str) -> str:
         elif line.strip():
             parts.append(f"<p>{line}</p>")
     return "".join(parts)
+
+
+def req_document_html(s: requests.Session, rid: str) -> str:
+    w = get(s, rid)
+    return ((w.get("document") or {}).get("content") or w.get("description") or "").strip()
 
 
 def req_payload(subject: str, html: str) -> dict:
@@ -195,18 +324,10 @@ def task_payload(
     associated_req: str | None = None,
     parent_delivery: str | None = None,
 ) -> dict:
-    """建任务。
-
-    关联项（ASSOCIATED）与子项（TASK_SUB）在 create 时互斥：
-    - 【交付】必须 ASSOCIATED→需求（关联项可见）
-    - 【分析】/【设计】默认 TASK_SUB→交付（交付「子项」可见）；关联项可能为空
-    - 勿用 PARENT 把交付挂需求
-    """
     fvl = [
         {"fieldIdentifier": "priority", "value": PRI},
         {"fieldIdentifier": "assignedTo", "value": assignee},
     ]
-    # 建单可带计划开始；计划完成与开始同日在 create 会 400，故不在此写 80
     if plan_start:
         fvl.append({"fieldIdentifier": "79", "value": NOON_MS})
     payload: dict[str, Any] = {
@@ -226,7 +347,6 @@ def task_payload(
         "cloneFrom": None,
     }
     if parent_delivery:
-        # 阶段任务：优先子项 tab
         payload["parent"] = parent_delivery
         payload["parentIdentifier"] = parent_delivery
         payload["createWorkitemRelationInfo"] = {
@@ -293,7 +413,6 @@ def build_normal() -> dict:
     req = create(s, req_payload(title, md_to_html(AUTO_RDO + f"\n原型：{PROTO}\n")))
     rid = req["identifier"]
 
-    # 打需求标签 ∥ 建交付（交付直接何斐）
     with ThreadPoolExecutor(max_workers=2) as pool:
         f_tag_r = pool.submit(apply_tag, session(), rid)
         f_deliv = pool.submit(
@@ -310,7 +429,6 @@ def build_normal() -> dict:
         f_tag_r.result()
     did = deliv["identifier"]
 
-    # 打交付标签 ∥ 建分析 ∥ 建设计
     with ThreadPoolExecutor(max_workers=3) as pool:
         f_tag_d = pool.submit(apply_tag, session(), did)
         f_ana = pool.submit(
@@ -339,7 +457,6 @@ def build_normal() -> dict:
         des = f_des.result()
         f_tag_d.result()
 
-    # 无 GET：本地追踪 fromStatus；需求与阶段任务状态并行
     with ThreadPoolExecutor(max_workers=3) as pool:
         list(
             as_completed(
@@ -362,24 +479,48 @@ def build_normal() -> dict:
     }
 
 
-def build_fast() -> dict:
+def build_fast(
+    *,
+    tag_id: str = TAG_FAULT,
+    has_prototype: bool = True,
+    delivery_html: str | None = None,
+) -> dict:
+    """无单快轨。
+
+    - 设计描述 = 需求 document
+    - 交付描述 = 手工同步需求正文（无原型）或传入 AutoPRD HTML；禁止无故占位
+    - 设计 79/80=当日；交付 79=当日
+    - 需求/交付/设计同标签
+    - 需求预计/实际工时各 2
+    - 设计 TASK_SUB→交付后尝试 ASSOCIATED→需求
+    """
     t0 = time.perf_counter()
     s = session()
-    title = "【新增】故障处置（YunxiaoPMapp快轨·极速v2）"
-    req = create(
-        s,
-        req_payload(title, md_to_html(AUTO_RDO + f"\n原型：{PROTO}\n快轨占位交棒。\n")),
-    )
+    title = "【新增】故障处置（YunxiaoPM快轨·极速v5）"
+    req_html = md_to_html(AUTO_RDO + (f"\n原型：{PROTO}\n" if has_prototype else "\n"))
+    req = create(s, req_payload(title, req_html))
     rid = req["identifier"]
+    # 以落库 document 为准（与手动建需后读需求一致）
+    req_html = req_document_html(s, rid) or req_html
+
+    if delivery_html:
+        deliv_html = delivery_html
+        desc_source = "autoprd"
+    elif req_html.strip():
+        deliv_html = req_html
+        desc_source = "manual_sync"
+    else:
+        deliv_html = f"<p>{PLACEHOLDER}</p>"
+        desc_source = "placeholder"
 
     with ThreadPoolExecutor(max_workers=2) as pool:
-        f_tag_r = pool.submit(apply_tag, session(), rid)
+        f_tag_r = pool.submit(apply_tag, session(), rid, tag_id)
         f_deliv = pool.submit(
             create,
             session(),
             task_payload(
                 f"【交付】{title}",
-                f"<p>{PLACEHOLDER}</p>",
+                deliv_html,
                 HEFEI,
                 associated_req=rid,
             ),
@@ -389,31 +530,48 @@ def build_fast() -> dict:
     did = deliv["identifier"]
 
     with ThreadPoolExecutor(max_workers=2) as pool:
-        f_tag_d = pool.submit(apply_tag, session(), did)
+        f_tag_d = pool.submit(apply_tag, session(), did, tag_id)
         f_des = pool.submit(
             create,
             session(),
             task_payload(
                 f"【设计】{title}",
-                "<p>快轨：设计当日收口，交付描述保持占位。</p>",
+                req_html,
                 WANG,
-                associated_req=rid,
                 parent_delivery=did,
             ),
         )
         des = f_des.result()
         f_tag_d.result()
+    des_id = des["identifier"]
+    apply_tag(s, des_id, tag_id)
+
+    # 计划时间：设计起止当日；交付开始当日（create 已带 79，再 field/value 加固）
+    set_fields(s, des_id, [("79", NOON), ("80", EOD)])
+    set_fields(s, did, [("79", NOON)])
+
+    # 设计关联项补挂需求（可能失败，回报 risk）
+    design_assoc_ok = try_associate_to_req(s, des_id, rid)
 
     with ThreadPoolExecutor(max_workers=2) as pool:
         list(
             as_completed(
                 [
                     pool.submit(transit, session(), rid, PENDING, DESIGN_DONE),
-                    pool.submit(transit, session(), des["identifier"], PENDING, TASK_DONE),
+                    pool.submit(transit, session(), des_id, PENDING, TASK_DONE),
                 ]
             )
         )
     transit(s, rid, DESIGN_DONE, PENDING_DEV)
+
+    set_estimate_hours(s, rid, FAST_EST)
+    set_actual_hours(s, rid, FAST_ACT)
+
+    risk = None
+    if desc_source == "placeholder":
+        risk = "交付描述仍为占位"
+    if not design_assoc_ok:
+        risk = (risk + "；" if risk else "") + "设计 ASSOCIATED→需求补挂失败（Cookie），须 UI/OpenAPI 兜底"
 
     return {
         "path": "fast",
@@ -422,7 +580,9 @@ def build_fast() -> dict:
         "delivery": summarize_from_create(deliv, status="待处理", assignee_name="何斐"),
         "design": summarize_from_create(des, status="已完成", assignee_name="王冕"),
         "analysis": None,
-        "risk": "交付描述仍为占位",
+        "delivery_desc_source": desc_source,
+        "design_associated_ok": design_assoc_ok,
+        "risk": risk,
     }
 
 
@@ -440,7 +600,6 @@ def main() -> None:
     build_s = round(time.perf_counter() - wall0, 3)
 
     s = session()
-    # 强制验收：交付 ASSOCIATED→需求；分析/设计必须出现在交付 PARENT_SUB
     assert_associated_to_req(s, normal["delivery"]["id"], normal["req"]["id"], "normal.delivery")
     assert_associated_to_req(s, fast["delivery"]["id"], fast["req"]["id"], "fast.delivery")
 
@@ -452,7 +611,9 @@ def main() -> None:
         ).get("result") or []
         ids = {r.get("identifier") for r in rows}
         if child_id not in ids:
-            raise RuntimeError(f"{label} 未出现在交付子项：期望 {child_id}，实际 {[r.get('serialNumber') for r in rows]}")
+            raise RuntimeError(
+                f"{label} 未出现在交付子项：期望 {child_id}，实际 {[r.get('serialNumber') for r in rows]}"
+            )
 
     assert_sub(normal["delivery"]["id"], normal["analysis"]["id"], "normal.analysis")
     assert_sub(normal["delivery"]["id"], normal["design"]["id"], "normal.design")
@@ -468,6 +629,7 @@ def main() -> None:
         ),
         "delivery_associated_ok": True,
         "stage_tasks_as_sub_ok": True,
+        "fast_design_associated_ok": fast.get("design_associated_ok"),
     }
     out = {
         "normal": normal,
@@ -476,14 +638,15 @@ def main() -> None:
         "auth_elapsed_s": auth_s,
         "wall_elapsed_s": build_s,
         "created_at": datetime.now(TZ).isoformat(),
-        "mode": "live_create_fast_v3_associated",
+        "mode": "live_create_fast_v5_fast_track_rules",
         "opts": {
             "create_includes_plan_start": True,
             "skip_plan_end_on_create": True,
             "tracked_transit_no_get": True,
             "delivery_assignee_hefei_at_create": True,
             "overlap_tag_with_create": True,
-            "relation": "delivery ASSOCIATED→req; analysis/design TASK_SUB→delivery",
+            "fast_req_hours": f"{FAST_EST}+{FAST_ACT}",
+            "relation": "delivery ASSOCIATED→req; analysis/design TASK_SUB→delivery; design post ASSOCIATED→req",
             "http": "requests.Session keep-alive",
         },
     }
