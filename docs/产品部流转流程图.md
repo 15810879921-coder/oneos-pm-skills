@@ -1,4 +1,4 @@
-# 产品部流转：YunxiaoPMapp（到交棒为止）
+# 产品部流转：YunxiaoPM（到交棒为止）
 
 > 用途：先把**产品部**在云效上的工作流转说清楚；开发 / 测试 / 发版不在本 Skill 内，仅在文末标出交接点。  
 > 依据：`references/stage-flow.md` · `model.md` · `fast-track.md` · `handoff-contract.md`  
@@ -9,13 +9,13 @@
 ## 1. 产品部管到哪里
 
 ```text
-产品部（YunxiaoPMapp）终点 = 需求状态「待开发」+【交付】负责人「何斐」
+产品部（YunxiaoPM）终点 = 需求状态「待开发」+【交付】负责人「何斐」
 之后 = 请技术经理使用开发 Skill（不建【开发】/【测试】）
 ```
 
 | 谁 | 做什么 | 不做什么 |
 |---|---|---|
-| 产品 / YunxiaoPMapp | 建需求、打标签、建【交付】【分析】【设计】、推进状态、设计完成灌 AutoPRD、交棒 | 建【开发】【测试】、开分支、提测、发版 |
+| 产品 / YunxiaoPM | 建需求、打标签、建【交付】【分析】【设计】、推进状态、设计完成灌 AutoPRD、交棒 | 建【开发】【测试】、开分支、提测、发版 |
 | 技术经理（接手） | 从「待开发」起拆开发 | 不改写 AutoRDO；不新建第二套【交付】 |
 
 ---
@@ -30,7 +30,7 @@ flowchart TB
     Proto[原型页 Make]
   end
 
-  subgraph pm [产品部 · YunxiaoPMapp]
+  subgraph pm [产品部 · YunxiaoPM]
     S0["0 创建需求\n状态=待处理\n只写 AutoRDO\n不建任务"]
     S1["1 受理确认\n状态=已确认\n仍不建任务"]
     S2["2 分析中\n建【交付】+【分析】"]
@@ -129,7 +129,7 @@ flowchart LR
 产品回报至少包含：
 
 ```text
-【YunxiaoPMapp】
+【YunxiaoPM】
 风险：（占位交棒则首行标红）
 需求：ONEOS-R | 状态=待开发
 交付：ONEOS-a | 负责人=何斐
@@ -155,7 +155,7 @@ flowchart LR
 全链路（含谢佳伟 / 时生亮）见仓库原型：  
 `src/prototypes/yunxiao-pipeline-handbook/`  
 产品 Skill 对接开发说明：  
-`docs-YunxiaoPMapp-实现原理-开发Skill对接.md`
+`docs-YunxiaoPM-实现原理-开发Skill对接.md`
 
 ---
 

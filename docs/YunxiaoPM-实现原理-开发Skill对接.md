@@ -1,15 +1,15 @@
-# YunxiaoPMapp 实现原理说明
+# YunxiaoPM 实现原理说明
 
 > 供**开发部门**设计 / 制作「开发侧 Skill」（暂称 **YunxiaoDevapp**）时对齐契约。  
-> 本文描述产品侧 Skill **YunxiaoPMapp** 的模型、边界、数据契约与交棒接口；**不是**对 `yunxiao-requirement-lifecycle` 的兼容说明。  
-> 技能包：https://github.com/15810879921-coder/oneos-pm-skills · `skills/YunxiaoPMapp/`  
+> 本文描述产品侧 Skill **YunxiaoPM** 的模型、边界、数据契约与交棒接口；**不是**对 `yunxiao-requirement-lifecycle` 的兼容说明。  
+> 技能包：https://github.com/15810879921-coder/oneos-pm-skills · `skills/YunxiaoPM/`  
 > 文档版本：2026-07-24
 
 ---
 
 ## 1. 为什么拆成两个 Skill
 
-| | YunxiaoPMapp（产品） | 开发 Skill（待建） |
+| | YunxiaoPM（产品） | 开发 Skill（待建） |
 |---|---|---|
 | 职责 | 需求从「待处理」到「待开发」交棒 | 从「待开发」到开发完成 / 提测前 |
 | 任务类型 | 【交付】【分析】【设计】 | 【开发】（可多条）、可选挂仓库/分支 |
@@ -103,7 +103,7 @@ flowchart TB
 |---|---|---|
 | AutoRDO | `$AutoRDO` → 产品记需求时 | 占位交棒时**唯一可信**业务原文 |
 | AutoPRD | `$oneos-autoprd` → 设计完成时 | 正式需求说明；缺则有权要求产品补设计完成 |
-| 编号区块 | YunxiaoPMapp | 定位交付树 |
+| 编号区块 | YunxiaoPM | 定位交付树 |
 
 **【交付】描述：** 设计完成前固定占位文案 `等待设计任务完成后自动填入`；设计完成后替换为 AutoPRD 正文。  
 **允许占位交棒**，但产品回报必须标红风险；开发 Skill 应检测占位并提示「材料不齐，可凭 AutoRDO 开工或退回补设计」。
@@ -121,7 +121,7 @@ flowchart TB
 3 设计中                     建【设计】；收口【分析】计划完成
 4 设计完成                   收口【设计】；AutoPRD+附件；灌【交付】描述
 5 待开发交棒 ★               需求→待开发；【交付】负责人→何斐
-                            ★ = YunxiaoPMapp 终点 / 开发 Skill 起点
+                            ★ = YunxiaoPM 终点 / 开发 Skill 起点
 ```
 
 ### 5.1 各步要点（开发需知道的副作用）
@@ -176,14 +176,14 @@ flowchart TB
 
 ### 6.4 共享常量（可引用，勿整包加载）
 
-路径均在 `skills/YunxiaoPMapp/assets/`：
+路径均在 `skills/YunxiaoPM/assets/`：
 
 | 文件 | 内容 |
 |---|---|
 | `runtime-ids.json` | 项目 spaceId、何斐 ID、工作项类型、状态 transit、字段 79/80 |
 | `cn-workday-calendar.json` | 法定节假日 / 调休（阶段日历工时） |
 
-开发侧可复制一份到自己的 `assets/`，或只读引用短路径；**不要**把 YunxiaoPMapp 的 references 全文 include 进开发 Skill。
+开发侧可复制一份到自己的 `assets/`，或只读引用短路径；**不要**把 YunxiaoPM 的 references 全文 include 进开发 Skill。
 
 ---
 
@@ -289,7 +289,7 @@ YunxiaoDevapp/
 - [ ] 是否拒绝创建第二套【交付】或【分析】【设计】  
 - [ ] 占位交棒时是否提示风险且不假装 PRD 齐全  
 - [ ] 【开发】是否可编号幂等、可挂到交付树  
-- [ ] 是否与 YunxiaoPMapp **会话隔离**（不同 Skill、不同口令）  
+- [ ] 是否与 YunxiaoPM **会话隔离**（不同 Skill、不同口令）  
 - [ ] 计划开始字段是否遵守「已有值不覆盖」（若沿用同一字段）  
 - [ ] 提测 / 【测试】是否交给测试 Skill，本包边界清晰  
 
@@ -299,13 +299,13 @@ YunxiaoDevapp/
 
 | 主题 | 路径（仓库内） |
 |---|---|
-| Skill 入口 | `skills/YunxiaoPMapp/SKILL.md` |
-| 交付树模型 | `skills/YunxiaoPMapp/references/model.md` |
-| 交棒契约 | `skills/YunxiaoPMapp/references/handoff-contract.md` |
-| 标准路径 0–5 | `skills/YunxiaoPMapp/references/stage-flow.md` |
-| 交棒门禁 / 回退 | `skills/YunxiaoPMapp/references/handoff-and-rollback.md` |
-| 描述双段 | `skills/YunxiaoPMapp/references/description-split.md` |
-| 编号区块 | `skills/YunxiaoPMapp/references/workitem-ids.md` |
+| Skill 入口 | `skills/YunxiaoPM/SKILL.md` |
+| 交付树模型 | `skills/YunxiaoPM/references/model.md` |
+| 交棒契约 | `skills/YunxiaoPM/references/handoff-contract.md` |
+| 标准路径 0–5 | `skills/YunxiaoPM/references/stage-flow.md` |
+| 交棒门禁 / 回退 | `skills/YunxiaoPM/references/handoff-and-rollback.md` |
+| 描述双段 | `skills/YunxiaoPM/references/description-split.md` |
+| 编号区块 | `skills/YunxiaoPM/references/workitem-ids.md` |
 | 快轨 / 编号直推 | `references/fast-track.md` · `number-push.md` |
 | 工时算法 | `references/work-hours.md` |
 | 实写 API | `references/live-api.md` |
@@ -313,5 +313,5 @@ YunxiaoDevapp/
 安装产品 Skill：
 
 ```bash
-npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoPMapp -a cursor -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoPM -a cursor -g -y
 ```

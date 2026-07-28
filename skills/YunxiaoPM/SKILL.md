@@ -1,20 +1,20 @@
 ---
-name: YunxiaoPMapp
+name: YunxiaoPM
 description: >-
   产品经理云效（Projex）自动化：记录需求（压缩点选 1a2b3a4d：类型/项目/优先级/标签）、
   实时点选云效项目、推进 待处理→已确认→分析中→设计中→设计完成→待开发，
   交付树【交付】ASSOCIATED /【分析】【设计】TASK_SUB，无单快轨与编号直推交棒何斐，
-  创建迭代并挂【交付】（不挂需求）。用户说 YunxiaoPM、YunxiaoPMapp、需求任务、记录需求、受理确认、开始分析、
+  创建迭代并挂【交付】（不挂需求）。用户说 YunxiaoPM、需求任务、记录需求、受理确认、开始分析、
   开始设计、设计完成、交棒开发、快轨待开发、编号直推、创建迭代 时使用。
   不建【开发】/【测试】。凡写云效先 Plan 确认再一口气 apply；禁止对齐
   yunxiao-requirement-lifecycle。
 ---
 
-# 需求任务（YunxiaoPM / YunxiaoPMapp）
+# 需求任务（YunxiaoPM）
 
-产品部云效自动化。斜杠调起 **`/YunxiaoPM`**；对外中文名 **需求任务**（原名 YunxiaoPMapp）。本 Skill **自洽成篇**；**禁止** fork / include / 「对齐」`yunxiao-requirement-lifecycle`。
+产品部云效自动化。斜杠调起 **`/YunxiaoPM`**；对外中文名 **需求任务**。本 Skill **自洽成篇**；**禁止** fork / include / 「对齐」`yunxiao-requirement-lifecycle`。
 
-安装名 **`YunxiaoPMapp`**（`npx skills`）；口令也可说 YunxiaoPM / 需求任务。
+安装名 **`YunxiaoPM`**（`npx skills add … --skill YunxiaoPM`）；斜杠 **`/YunxiaoPM`**；对外中文名 **需求任务**。
 
 产品经理会话**不要**同时挂载旧 lifecycle Skill，避免双建任务。
 

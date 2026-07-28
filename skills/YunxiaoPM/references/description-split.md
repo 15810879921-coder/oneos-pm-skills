@@ -66,4 +66,4 @@
 
 执行顺序：先 AutoPRD 落盘与附件就绪 → 再改需求/交付描述与设计计划完成 → 最后改需求状态。
 
-**禁止**加载 `yunxiao-requirement-lifecycle`；阶段任务树只由本 Skill（YunxiaoPMapp）创建。
+**禁止**加载 `yunxiao-requirement-lifecycle`；阶段任务树只由本 Skill（YunxiaoPM）创建。

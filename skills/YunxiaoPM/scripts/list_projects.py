@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""拉取云效项目列表（供 YunxiaoPMapp 门禁 PJ 点选）。stdout = JSON。
+"""拉取云效项目列表（供 YunxiaoPM 门禁 PJ 点选）。stdout = JSON。
 
 无法对应时自动重拉一次：
   python3 scripts/list_projects.py --match '01_ONEOS'
@@ -210,7 +210,7 @@ def list_projects(
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description="YunxiaoPMapp 项目列表 / 匹配（无法对应则重拉一次）")
+    ap = argparse.ArgumentParser(description="YunxiaoPM 项目列表 / 匹配（无法对应则重拉一次）")
     ap.add_argument("--match", help="按项目名或 customCode 匹配")
     ap.add_argument("--match-id", help="按 spaceIdentifier 匹配")
     args = ap.parse_args()

@@ -6,7 +6,7 @@ description: >-
   auto-detects 类型/优先级/标签/提交部门/提交人 from content; maps OneOS modules via oneos-domain.md;
   splits multi-line into multiple results; if any 待确认 exists, MUST switch to Plan mode
   for choice-based confirmation. Does not change Yunxiao status or create tasks.
-  Pair with YunxiaoPMapp for cloud write; never load yunxiao-requirement-lifecycle.
+  Pair with YunxiaoPM for cloud write; never load yunxiao-requirement-lifecycle.
 ---
 
 # AutoRDO
@@ -26,13 +26,13 @@ description: >-
 | 有待确认 → 强制 Plan 逐条确认 | 停在初稿等口令；把猜测写入定稿 |
 | 去除描述**结尾句号** | 加载 `yunxiao-requirement-lifecycle` |
 
-云效建单与打标由 **`$YunxiaoPMapp`** 负责；本 Skill 只出清洗稿与**推荐元数据**。
+云效建单与打标由 **`$YunxiaoPM`** 负责；本 Skill 只出清洗稿与**推荐元数据**。
 
 ## 何时使用
 
 - 口令含 `AutoRDO` / `清洗聊天` / `录音整理` / `原始诉求`
 - 粘贴反馈台账（含部门/优先级/模块列）或口述碎片
-- YunxiaoPMapp「记录需求」前必须先跑本 Skill（材料为碎片/台账时）
+- YunxiaoPM「记录需求」前必须先跑本 Skill（材料为碎片/台账时）
 
 ## 输入
 
@@ -71,7 +71,7 @@ description: >-
 ```
 
 多条时先写「共 N 条」，再 `### 1` … `### N`。  
-交 YunxiaoPMapp 示例：`记录需求：标题=…；类型=…；优先级=…；标签=…；提交部门=…；提交人=…；描述=…`
+交 YunxiaoPM 示例：`记录需求：标题=…；类型=…；优先级=…；标签=…；提交部门=…；提交人=…；描述=…`
 
 ## 口令
 

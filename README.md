@@ -6,15 +6,15 @@ OneOS 产品团队自用的 AI Agent Skills 合集，支持 `npx skills` 一键�
 
 | Skill | 说明 | 安装 / 更新 |
 |-------|------|----------|
-| **`YunxiaoPMapp`**（推荐 · 口令 YunxiaoPM / 需求任务） | 记录需求 → 分析/设计 → 交棒待开发；压缩点选；迭代只挂交付；**不建【开发】/【测试】** | 见下方「发给产品同事」 |
+| **`YunxiaoPM`**（推荐 · 口令 YunxiaoPM / 需求任务） | 记录需求 → 分析/设计 → 交棒待开发；压缩点选；迭代只挂交付；**不建【开发】/【测试】** | 见下方「发给产品同事」 |
 | `oneos-autoprd`（展示名 OneOS-AutoPRD） | 整模块 AutoPRD + 标注目录；**需求定稿**写功能变更；云效描述「需求说明/更新内容」 | 见下方 |
 | `AutoRDO` | 清洗为标题+描述；自动识别类型/优先级/标签/提交部门/提交人；多行拆多条；有待确认则强制 Plan | 见下方 |
 | `AutoVUL` | 按云效迭代名生成 PC 版本更新日志 | 见下方 |
-| `yunxiao-requirement-lifecycle` | 旧版云效全生命周期口令（**产品会话勿与 YunxiaoPMapp 同时挂载**） | 见下方 |
+| `yunxiao-requirement-lifecycle` | 旧版云效全生命周期口令（**产品会话勿与 YunxiaoPM 同时挂载**） | 见下方 |
 
 ---
 
-## YunxiaoPMapp · 产品经理云效自动化（推荐）
+## YunxiaoPM · 产品经理云效自动化（推荐）
 
 产品侧从「记需求」到「交棒开发」的正式 Skill（口令也可说 **YunxiaoPM / 需求任务 / `/YunxiaoPM`**）：
 
@@ -25,7 +25,7 @@ OneOS 产品团队自用的 AI Agent Skills 合集，支持 `npx skills` 一键�
 
 **不要**在同一会话同时挂载 `yunxiao-requirement-lifecycle`，避免双建任务。
 
-**开发部门对接原理：** [`docs/YunxiaoPMapp-实现原理-开发Skill对接.md`](docs/YunxiaoPMapp-实现原理-开发Skill对接.md)
+**开发部门对接原理：** [`docs/YunxiaoPM-实现原理-开发Skill对接.md`](docs/YunxiaoPM-实现原理-开发Skill对接.md)
 
 ### 发给产品同事 · 丢进 AI 一键安装（推荐复制整段）
 
@@ -34,7 +34,7 @@ OneOS 产品团队自用的 AI Agent Skills 合集，支持 `npx skills` 一键�
 ```text
 请帮我全局安装 OneOS 产品云效 Skill（Cursor）：
 
-npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoPMapp -a cursor -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoPM -a cursor -g -y
 
 装完后：
 1. 确认可用口令「记录需求」或「/YunxiaoPM」触发
@@ -47,7 +47,7 @@ npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoPMapp -a cursor 
 ```text
 请帮我全局安装 OneOS 产品 Skill 套装（Cursor）：
 
-npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoPMapp -a cursor -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoPM -a cursor -g -y
 npx skills add 15810879921-coder/oneos-pm-skills --skill AutoRDO -a cursor -g -y
 npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-autoprd -a cursor -g -y
 
@@ -60,32 +60,35 @@ npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-autoprd -a cursor
 全局 Cursor（推荐）：
 
 ```bash
-npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoPMapp -a cursor -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoPM -a cursor -g -y
 ```
 
 同时装 Cursor + Claude Code：
 
 ```bash
-npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoPMapp -a cursor -a claude-code -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoPM -a cursor -a claude-code -g -y
 ```
 
 仅当前项目：
 
 ```bash
-npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoPMapp -a cursor -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoPM -a cursor -y
 ```
 
 ### 更新到最新版
 
 ```bash
-npx skills update YunxiaoPMapp
+npx skills update YunxiaoPM
 ```
 
 或对 AI 说：
 
 ```text
-请帮我更新 YunxiaoPMapp：npx skills update YunxiaoPMapp
+请帮我更新 YunxiaoPM：npx skills update YunxiaoPM
 ```
+
+> **曾安装旧名 `YunxiaoPMapp` 的同事：** 请改装新名（旧目录可删）：
+> `npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoPM -a cursor -g -y`
 
 ### 怎么用（装完后对 AI 说）
 
@@ -168,7 +171,7 @@ curl -fsSL https://raw.githubusercontent.com/15810879921-coder/oneos-pm-skills/m
 
 ### 与云效组合
 
-建需求描述时先跑本 Skill；**产品侧写云效请用 `YunxiaoPMapp`**（勿与旧 `yunxiao-requirement-lifecycle` 同会话混用）。设计完成阶段由 YunxiaoPMapp 调用本 Skill 灌 PRD。
+建需求描述时先跑本 Skill；**产品侧写云效请用 `YunxiaoPM`**（勿与旧 `yunxiao-requirement-lifecycle` 同会话混用）。设计完成阶段由 YunxiaoPM 调用本 Skill 灌 PRD。
 
 ### 使用方式
 
@@ -317,7 +320,7 @@ npx skills update yunxiao-requirement-lifecycle
 1. 安装：`npx skills add 15810879921-coder/oneos-pm-skills --skill AutoRDO -a cursor -y`
 2. 对 AI 说：`AutoRDO：<材料>`；台账可整表粘贴
 3. 输出每条含：标题、类型、优先级、标签、提交部门、提交人、描述；有待确认则自动切 Plan 选择题确认
-4. 定稿后交 YunxiaoPMapp 按条记录需求（可带上元数据字段）
+4. 定稿后交 YunxiaoPM 按条记录需求（可带上元数据字段）
 
 ### 一键安装
 
@@ -363,7 +366,7 @@ oneos-pm-skills/
 │   ├── oneos-autoprd-sync.mdc          # 可选：改原型自动跟进 PRD
 │   └── yunxiao-record-requirement-fast-path.mdc  # 可选：记录需求 A/B/C 门禁与快路径
 └── skills/
-    ├── YunxiaoPMapp/
+    ├── YunxiaoPM/
     ├── oneos-autoprd/
     ├── yunxiao-requirement-lifecycle/
     ├── AutoVUL/

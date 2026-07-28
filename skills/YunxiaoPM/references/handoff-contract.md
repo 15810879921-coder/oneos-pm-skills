@@ -1,6 +1,6 @@
 # 交接契约（开发 Skill 入口）
 
-YunxiaoPMapp 与开发 Skill **不要**互相 include 全文；仅认下列契约。
+YunxiaoPM 与开发 Skill **不要**互相 include 全文；仅认下列契约。
 
 ```text
 PM 完成交棒 → 需求=待开发；【交付】任务编号=ONEOS-xx；负责人=何斐；ASSOCIATED 需求

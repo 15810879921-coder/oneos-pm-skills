@@ -409,7 +409,7 @@ def summarize_from_create(w: dict, *, status: str, assignee_name: str) -> dict:
 def build_normal() -> dict:
     t0 = time.perf_counter()
     s = session()
-    title = "【新增】故障处置（YunxiaoPMapp标准·极速v2）"
+    title = "【新增】故障处置（YunxiaoPM标准·极速v2）"
     req = create(s, req_payload(title, md_to_html(AUTO_RDO + f"\n原型：{PROTO}\n")))
     rid = req["identifier"]
 
