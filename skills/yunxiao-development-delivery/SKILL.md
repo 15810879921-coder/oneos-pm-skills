@@ -1,11 +1,11 @@
 ---
 name: yunxiao-development-delivery
-description: "Manage Yunxiao development after a YunxiaoPMapp handoff: allocate 【开发】 children, associate them with requirements, run gated `开发任务:任务=ID` implementation either directly or after an optional executable-plan confirmation, and run `/go 完成开发` through validation, direct platform-permitted merge, actual completion-time capture, and Codex conversation-duration conversion into actual development hours. Execute single or batched Bug repair and stable batch development. Use for 接收产品交棒、分配任务、开发任务、输出执行方案、批量实现、完成开发、实际完成时间、实际开发工时、修复Bug、批量修复本人Bug、提交代码、创建分支、创建或合并MR and development-flow diagnosis. In 分配任务, `任务=ID` is the source 【交付】 task; in 开发任务 and 完成开发, it is the development work item."
+description: "Manage Yunxiao development after a YunxiaoPMapp handoff: allocate 【开发】 children, associate them with requirements, run gated `开发任务:任务=ID` implementation either directly or after an optional executable-plan confirmation, and run `/go 完成开发` through validation, direct platform-permitted merge, actual completion-time capture, and Codex conversation-duration conversion into actual development hours. Execute single or batched Bug repair and stable batch development. Every write-capable development, completion, and Bug node must report the exact operations performed and every added, modified, deleted, or renamed code file from Git evidence. Use for 接收产品交棒、分配任务、开发任务、输出执行方案、批量实现、完成开发、实际完成时间、实际开发工时、修复Bug、批量修复本人Bug、提交代码、创建分支、创建或合并MR and development-flow diagnosis. In 分配任务, `任务=ID` is the source 【交付】 task; in 开发任务 and 完成开发, it is the development work item."
 ---
 
 # Yunxiao Development Delivery
 
-Operate development tasks and Codeup assets without using code activity as a substitute for real work state. Suite version: `7.7.0`.
+Operate development tasks and Codeup assets without using code activity as a substitute for real work state. Suite version: `7.8.0`.
 
 ## Load the required references
 
@@ -16,6 +16,7 @@ Read each selected file completely before acting:
 - `开发任务:任务=<ID>` direct/plan modes, 新增/优化材料门禁, prototype comparison, and implementation completion: [references/implementation-materials.md](references/implementation-materials.md).
 - Codex task association, active-duration accounting, minute-to-hour conversion, and completion-field writeback: [references/codex-time-accounting.md](references/codex-time-accounting.md).
 - Batch `/go` discovery, stable snapshots, per-task continuation, worktree isolation, and final reporting: [references/batch-execution.md](references/batch-execution.md).
+- Mandatory per-node operation ledger, Git-grounded file inventory, batch attribution, and blocker reporting: [references/change-reporting.md](references/change-reporting.md).
 - YunxiaoPMapp handoff input, idempotency, and downstream rotation: [references/yunxiaopmapp-handoff.md](references/yunxiaopmapp-handoff.md).
 - Authorization, live-change safety, evidence, and cross-skill handoff: [references/safety-handoff.md](references/safety-handoff.md).
 - For browser-driven Yunxiao work, read the stable-session, batched-write, and delayed-readback procedure: [references/browser-execution-efficiency.md](references/browser-execution-efficiency.md).
@@ -36,6 +37,7 @@ Own these outcomes:
 8. For a new requirement, keep the same `开发任务` goal open while `$yunxiao-test-management` executes its scoped cases and closes verified defects.
 9. Run `/go 实现所有负责人是我的开发任务` as a stable batch that attempts every active assigned development task without letting one task-level blocker abort the remaining queue.
 10. Run `/go 修复负责人是我的所有Bug` as a stable batch: freeze the current developer-actionable Bug list, display it, and invoke the same single-Bug handler for every item while isolating per-Bug blockers.
+11. For every write-capable development, completion, and Bug node, emit the exact operations performed and the complete task-owned code-file inventory required by `references/change-reporting.md`; batch output must retain per-task or per-Bug attribution.
 
 This Skill does not impersonate the tester: delegate case execution, current-run result recording, retest, and Bug closure to `$yunxiao-test-management` inside the same user-visible goal. Test execution must not change the reusable case's lifecycle state. Do not publish production; hand release actions to `$yunxiao-release-operations`.
 
@@ -89,6 +91,7 @@ Creating a Bug does not authorize a fix. Generic diagnosis or code editing does 
 30. Reproduce the Bug, determine the evidence-backed root cause, create or reuse `fix/<BUG-ID>` from the resolved frontend `develop` or backend `dev`, and formally associate the branch/MR with the Bug itself. Preserve and use requirement, development-task, and failed-case relations only when they already exist or are independently proven; never fabricate them and never require them for a standalone Bug. Implement the smallest in-scope fix and verify the failing path, boundaries, and adjacent paths.
 31. Keep the same single-Bug node active while fetching latest code, rerunning scoped verification, committing, pushing, opening or reusing the MR, and immediately attempting a platform-permitted merge to the verified integration branch. Do not inspect or wait for review approval, CI status, or discussion resolution; self-approval is allowed but optional. Code conflicts, a wrong target branch, a technically non-mergeable MR, or a platform rejection still stop that Bug without bypassing protection. Coordinate or verify test deployment without modifying production pipelines. Only after the deployed test version is proven may development set the Bug to `已修复` and hand it to `$yunxiao-test-management`; never close it or write a passing retest.
 32. For `/go 修复负责人是我的所有Bug`, resolve the current account ID, freeze and display all Bugs assigned to that account whose live workflow state requires developer action, and exclude deleted, archived, cancelled, closed, or `已修复`/waiting-for-retest items. Invoke `修复bug:<BUG-ID>` sequentially in isolated worktrees; a per-Bug blocker stops only that Bug, is recorded, and does not abort the remaining list.
+33. Before the final response for `分配任务`, `开发任务`, batch development, `完成开发`, single-Bug repair, or batch Bug repair, execute `references/change-reporting.md`. Record repository baselines before writes, derive file lists from live Git evidence, distinguish planned from actual changes, and emit both `实际执行操作` and `实际代码变更` even when blocked. Do not report a node or batch complete when these sections are missing.
 
 ## Non-negotiable gates
 
@@ -110,6 +113,12 @@ Creating a Bug does not authorize a fix. Generic diagnosis or code editing does 
 - Plan mode is read-only until explicit same-task confirmation. Keep the goal unfinished while waiting; do not mark it complete or blocked merely because confirmation is pending.
 - Direct mode skips plan presentation and confirmation only. It never skips requirement/material, state, repository, implementation, or verification gates.
 - Re-read plan inputs before executing a confirmed plan. Any execution-relevant change invalidates the confirmation and requires a revised plan.
+- Plan mode must label its operation and code sections as planned and unexecuted. After confirmation, replace them with actual evidence; never present a proposal as completed work.
+- Every write-capable node must report `实际执行操作` and `实际代码变更`. Use Git status/diff/commit/MR evidence and include every task-owned added, modified, deleted, or renamed file with behavior, reason, line counts, and verification.
+- Record the pre-write repository baseline and exclude unrelated pre-existing dirty files. Never claim another task's or the user's existing changes.
+- Batch development and batch Bug repair must repeat the operation ledger and code inventory for every item. Aggregate counts never replace per-item details.
+- A blocked node must still report completed operations, current task-owned differences, unexecuted actions, retained worktree/branch, and continuation condition.
+- If no code changed, write `代码变更：无` with an evidence-backed reason. Do not claim a code implementation or code-defect repair complete without code changes unless the proven resolution is configuration, data, environment, or genuinely no-code.
 - Prefer frontend=`develop` and backend=`dev`, but their absence is not a gate; use the repository's verified actual integration branch.
 - Missing or failed branch-association automation is not a gate. Record whether state changes were native, bridged, or direct.
 - An optimization requirement with empty, unreadable, placeholder, or ambiguous description must stop with specific missing information.
@@ -147,6 +156,7 @@ Creating a Bug does not authorize a fix. Generic diagnosis or code editing does 
 ## Return
 
 ```text
+执行结论：完成|部分完成|阻塞|仅输出方案
 项目/迭代：
 需求/交付任务/开发任务：
 负责人/计划开始/计划完成/预计工时：
@@ -157,6 +167,11 @@ Codex总时长（分钟）：
 实际开发工时（小时）：
 仓库/分支/MR：
 状态变化：
+实际执行操作：
+1. <系统> <对象> <操作> <变更前→变更后> <结果/证据>
+实际代码变更：
+- <仓库>/<分支> [新增|修改|删除|重命名] <文件> <代码位置> <修改内容和原因> <+N/-N> <验证>
+未执行操作及原因：
 门禁结果：
 验证：
 用例/Bug闭环：
