@@ -6,7 +6,7 @@ description: >-
   auto-detects 类型/优先级/标签/提交部门/提交人 from content; maps OneOS modules via oneos-domain.md;
   splits multi-line into multiple results; if any 待确认 exists, MUST switch to Plan mode
   for choice-based confirmation. Does not change Yunxiao status or create tasks.
-  Pair with YunxiaoPM for cloud write; never load yunxiao-requirement-lifecycle.
+  Pair with YunxiaoPMapp for cloud write; never load yunxiao-requirement-lifecycle.
 ---
 
 # AutoRDO
@@ -17,6 +17,22 @@ description: >-
 
 **强制**：清洗结果中**只要存在任意「待确认」**，Agent **必须立刻** `SwitchMode` → **plan**，逐条用选择题消解；**无需**用户再说「确认待确认」。无待确认则可直接交定稿。
 
+## 交付任务专用（YunxiaoPM 调用）
+
+生成/回填 **【交付】** 描述时，YunxiaoPM **必须直接调用本 Skill**，按 [references/delivery-rules-chapter.md](references/delivery-rules-chapter.md) 产出**单独一章**：
+
+```markdown
+## 规则对照（AutoRDO）
+
+### 修改前规则
+- …
+
+### 修改后规则
+- …
+```
+
+需求侧「原始诉求」仍用下文常规模板；**不要**把规则对照章与需求清洗稿混成一段。
+
 ## 边界（强制）
 
 | 做 | 不做 |
@@ -26,13 +42,14 @@ description: >-
 | 有待确认 → 强制 Plan 逐条确认 | 停在初稿等口令；把猜测写入定稿 |
 | 去除描述**结尾句号** | 加载 `yunxiao-requirement-lifecycle` |
 
-云效建单与打标由 **`$YunxiaoPM`** 负责；本 Skill 只出清洗稿与**推荐元数据**。
+云效建单与打标由 **`$YunxiaoPM`（需求任务）** 负责；本 Skill 只出清洗稿、推荐元数据，以及【交付】用的**规则对照章**。
 
 ## 何时使用
 
 - 口令含 `AutoRDO` / `清洗聊天` / `录音整理` / `原始诉求`
 - 粘贴反馈台账（含部门/优先级/模块列）或口述碎片
 - YunxiaoPM「记录需求」前必须先跑本 Skill（材料为碎片/台账时）
+- **YunxiaoPM 生成/回填【交付】描述**：必须调用本 Skill，产出 [delivery-rules-chapter.md](references/delivery-rules-chapter.md) 规则对照章（修改前 + 修改后）
 
 ## 输入
 
@@ -71,7 +88,8 @@ description: >-
 ```
 
 多条时先写「共 N 条」，再 `### 1` … `### N`。  
-交 YunxiaoPM 示例：`记录需求：标题=…；类型=…；优先级=…；标签=…；提交部门=…；提交人=…；描述=…`
+交 YunxiaoPM 示例：`记录需求：标题=…；类型=…；优先级=…；标签=…；提交部门=…；提交人=…；描述=…`  
+交【交付】描述：先跑本 Skill 产出规则对照章，再由 YunxiaoPM 写入交付任务。
 
 ## 口令
 
