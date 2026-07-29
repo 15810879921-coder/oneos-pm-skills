@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compute YunxiaoPM stage calendar hours = workdays × 8.
+"""Compute YunxiaoPMapp stage calendar hours = workdays × 8.
 
 Usage:
   python3 workday_hours.py YYYY-MM-DD YYYY-MM-DD

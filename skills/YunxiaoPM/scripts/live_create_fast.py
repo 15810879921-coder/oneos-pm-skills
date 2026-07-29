@@ -409,7 +409,7 @@ def summarize_from_create(w: dict, *, status: str, assignee_name: str) -> dict:
 def build_normal() -> dict:
     t0 = time.perf_counter()
     s = session()
-    title = "【新增】故障处置（YunxiaoPM标准·极速v2）"
+    title = "【新增】故障处置（YunxiaoPMapp标准·极速v2）"
     req = create(s, req_payload(title, md_to_html(AUTO_RDO + f"\n原型：{PROTO}\n")))
     rid = req["identifier"]
 
@@ -487,8 +487,9 @@ def build_fast(
 ) -> dict:
     """无单快轨。
 
+    - 【交付】描述：须由调用方先跑 AutoRDO 产出「规则对照」章（修改前+修改后），
+      经 delivery_html 传入；禁止无故占位；禁止只整文同步需求当作交付描述
     - 设计描述 = 需求 document
-    - 交付描述 = 手工同步需求正文（无原型）或传入 AutoPRD HTML；禁止无故占位
     - 设计 79/80=当日；交付 79=当日
     - 需求/交付/设计同标签
     - 需求预计/实际工时各 2

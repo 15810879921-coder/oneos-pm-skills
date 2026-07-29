@@ -1,4 +1,4 @@
-# 云效实写 API（YunxiaoPM 已验证）
+# 云效实写 API（YunxiaoPMapp 已验证）
 
 `verified_at`: 2026-07-25 · **项目须门禁 PJ 点选**（见 [project-selection.md](project-selection.md)）；历史验证样本项目为 `01_ONEOS` / 原「统一运营管理平台」（`last_selected.spaceIdentifier` 见 `assets/runtime-ids.json`，禁止未点选即使用）。
 
