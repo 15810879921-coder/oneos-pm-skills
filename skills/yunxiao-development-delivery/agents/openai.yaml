@@ -1,4 +1,4 @@
 interface:
   display_name: "云效开发交付"
-  short_description: "开发、复验、合并并强制回报实际操作和逐文件代码变更"
-  default_prompt: "使用 $yunxiao-development-delivery 执行开发任务；需要审查方案时追加“输出执行方案”，否则直接执行。所有开发、完成和Bug节点都必须输出实际执行操作及逐文件新增、修改、删除、重命名代码清单。"
+  short_description: "开发、复验、合并并生成含测试建议和临时变更的测试交接"
+  default_prompt: "使用 $yunxiao-development-delivery 执行开发任务；需要审查方案时追加“输出执行方案”，否则直接执行。所有开发、完成和Bug节点都必须输出实际操作与逐文件代码清单；完成开发创建测试任务时补充并回读测试建议和临时需求变更点。"
