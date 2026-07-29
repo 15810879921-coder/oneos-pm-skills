@@ -7,6 +7,7 @@ OneOS 产品团队自用的 AI Agent Skills 合集，支持 `npx skills` 一键�
 | Skill | 说明 | 安装 / 更新 |
 |-------|------|----------|
 | **`YunxiaoPM`**（推荐 · 口令 YunxiaoPM / 需求任务） | 记录需求 → 分析/设计 → 交棒待开发；压缩点选；迭代只挂交付；**不建【开发】/【测试】** | 见下方「发给产品同事」 |
+| **`yunxiao-development-delivery`** | 接收待开发交棒 → 分配开发 → 开始/完成开发 → Bug闭环 → 严格按项目唯一测试主管创建测试任务 | 见下方「云效开发交付」 |
 | `oneos-autoprd`（展示名 OneOS-AutoPRD） | 整模块 AutoPRD + 标注目录；**需求定稿**写功能变更；云效描述「需求说明/更新内容」 | 见下方 |
 | `AutoRDO` | 清洗为标题+描述；自动识别类型/优先级/标签/提交部门/提交人；多行拆多条；有待确认则强制 Plan | 见下方 |
 | `AutoVUL` | 按云效迭代名生成 PC 版本更新日志 | 见下方 |
@@ -107,6 +108,37 @@ npx skills update YunxiaoPM
 凡写云效会先进入 Plan，确认后再执行。
 
 仓库：https://github.com/15810879921-coder/oneos-pm-skills
+
+---
+
+## yunxiao-development-delivery · 云效开发交付
+
+从 `YunxiaoPM` 的待开发交棒开始，负责创建和分配【开发】任务、开始开发、完成开发、Bug修复、代码资产提交以及测试交接。
+
+v7.6.1 对测试交接增加强制门禁：
+
+- 创建测试任务前必须在当前项目中唯一解析“测试主管”角色。
+- 新测试任务禁止继承创建人、交付负责人、开发负责人或平台默认负责人。
+- 复用测试任务时，现负责人不是测试主管必须纠正。
+- 负责人用户 ID 与测试主管用户 ID 回读不一致时，不推进需求到“待测试”。
+
+### 全局安装到 Cursor
+
+```bash
+npx skills add 15810879921-coder/oneos-pm-skills --skill yunxiao-development-delivery -a cursor -g -y
+```
+
+### 全局安装到 Codex
+
+```bash
+npx skills add 15810879921-coder/oneos-pm-skills --skill yunxiao-development-delivery -a codex -g -y
+```
+
+### 更新已安装的 Skill
+
+```bash
+npx skills update yunxiao-development-delivery
+```
 
 ---
 
@@ -367,6 +399,7 @@ oneos-pm-skills/
 │   └── yunxiao-record-requirement-fast-path.mdc  # 可选：记录需求 A/B/C 门禁与快路径
 └── skills/
     ├── YunxiaoPM/
+    ├── yunxiao-development-delivery/
     ├── oneos-autoprd/
     ├── yunxiao-requirement-lifecycle/
     ├── AutoVUL/
