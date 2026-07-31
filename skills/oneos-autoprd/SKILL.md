@@ -4,7 +4,7 @@ description: >-
   OneOS AutoPRD: generates PM-facing requirements (总览/目标/边界/角色/用户故事
   起点→运作→闭环/故事点/正逆向/流程图/关键逻辑/状态/风险/交付) and syncs Axhub Make
   annotation PRD. On 需求定稿/本轮定稿 appends functional changelog with auto
-  V主.副.子 (user 主/副/子 override wins). With YunxiaoPMapp design-complete,
+  V主.副.子 (user 主/副/子 override wins). With YunxiaoPM design-complete,
   writes Markdown into 【交付】 by task number (not at create; placeholder until then).
   Use for AutoPRD, prototypes, 产品说明, 本轮定稿. Never create same-titled stage
   tasks; never load retired yunxiao-requirement-lifecycle; cloud combo is YunxiaoPM only.
@@ -14,7 +14,7 @@ description: >-
 
 为 OneOS 业务模块生成**产品经理可读、可评审、可排期**的需求说明，并**自动挂到 Axhub Make 标注工具 → 原型目录**。
 
-另支持：**本轮定稿 / 需求定稿**时汇总功能变更并**自动递增 PRD 版本号**；与 **`$YunxiaoPMapp`** 组合时，在**设计完成**（或显式同步交付）把 Markdown 写入【交付】任务描述。
+另支持：**本轮定稿 / 需求定稿**时汇总功能变更并**自动递增 PRD 版本号**；与 **`$YunxiaoPM`** 组合时，在**设计完成**（或显式同步交付）把 Markdown 写入【交付】任务描述。
 
 旧包 `yunxiao-requirement-lifecycle` **已下架**勿加载。云效状态机与【交付】/【分析】/【设计】树**只**由 YunxiaoPM 负责；本 Skill **不**建同名无前缀阶段任务。
 
@@ -36,11 +36,17 @@ description: >-
 - 关键字：`需求定稿` / `定稿` / `确认定稿` / `本次定稿` / **`本轮定稿`**
 - 执行 [references/release-changelog.md](references/release-changelog.md)：第 10 章 + `prdVersion` 基线
 
-**与 YunxiaoPMapp 组合（强制 · 唯一云效组合）**
+**与 YunxiaoPM 组合（强制 · 唯一云效组合）**
 
-- 设计完成或完善「产品说明」：先本 Skill 落盘 MD，再由 YunxiaoPMapp / 本 Skill 按 [yunxiao-description.md](references/yunxiao-description.md) 写入需求 `## 产品说明（AutoPRD）`（**不覆盖** `## 原始诉求（AutoRDO）` / `## 工作项编号（系统）`）
-- **创建【交付】时不写 PRD 正文**（占位由 YunxiaoPMapp 写入）；设计完成或口令「同步交付说明」时按 [yunxiao-delivery-sync.md](references/yunxiao-delivery-sync.md) 用任务**编号**回填【交付】
-- 入库前聊天/录音清洗：先 `$AutoRDO`，再 YunxiaoPMapp 记录需求
+- 设计完成或完善「产品说明」：先本 Skill 落盘 MD，再由 YunxiaoPM / 本 Skill 按 [yunxiao-description.md](references/yunxiao-description.md) 写入需求 `## 产品说明（AutoPRD）`（**不覆盖** `## 原始诉求（AutoRDO）` / `## 工作项编号（系统）`）
+- **创建【交付】时不写 PRD 正文**（占位由 YunxiaoPM 写入）；设计完成或口令「同步交付说明」时按 [yunxiao-delivery-sync.md](references/yunxiao-delivery-sync.md) 用任务**编号**回填【交付】
+- 入库前聊天/录音清洗：先 `$AutoRDO`，再 YunxiaoPM 记录需求
+
+**跨 Skill 逻辑交接（强制）**
+
+- 只向 `YunxiaoPM` 传递正式 Skill 名、需求/交付任务编号、PRD 版本、正文或对象存储证据标识；不得传递安装位置。
+- 禁止定位或读取其他 Skill 的安装目录。每个 Skill 只读取自身包内资源；缺少云效上下文时，按编号实时查询或要求上游补齐逻辑交接字段。
+- 下一跳只能输出正式选择器 `/skill YunxiaoPM`。
 
 ## 工作流
 
@@ -67,7 +73,7 @@ description: >-
 
 见 [references/release-changelog.md](references/release-changelog.md)。含自动 `V主.副.子`；**用户显式指定主/副/子时以用户为准**。
 
-### 云效需求「产品说明」（与 YunxiaoPMapp 双段模板）
+### 云效需求「产品说明」（与 YunxiaoPM 双段模板）
 
 见 [references/yunxiao-description.md](references/yunxiao-description.md)。
 
@@ -129,7 +135,7 @@ description: >-
 - [ ] 用户故事为起点 / 怎么运作 / 闭环
 - [ ] `.spec/requirements-prd.md` + 标注目录已同步
 - [ ] 定稿时：第 10 章含版本号 + `autoprd-baseline.json` 含 `prdVersion`
-- [ ] 与 YunxiaoPMapp 设计完成：【交付】按**编号**回填，创建时未提前灌 MD
+- [ ] 与 YunxiaoPM 设计完成：【交付】按**编号**回填，创建时未提前灌 MD
 - [ ] 全文无已下架 lifecycle 引导；无同名阶段任务建单
 - [ ] 变更记录无样式/UI/表结构废话
 
@@ -142,5 +148,5 @@ description: >-
 - 模板：[references/template.md](references/template.md)
 - 故事示例：[references/granularity-example.md](references/granularity-example.md)
 - 业务条线：`src/prototypes/lease-business-line-overview/lines.ts`
-- 云效组合（唯一）：`$YunxiaoPMapp`
+- 云效组合（唯一）：`$YunxiaoPM`
 - 入库清洗：`$AutoRDO`

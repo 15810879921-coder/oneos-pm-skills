@@ -61,7 +61,7 @@ workdays = 0
 - 计算脚本：[../scripts/workday_hours.py](../scripts/workday_hours.py)
 
 ```bash
-python3 scripts/workday_hours.py 2026-03-06 2026-03-09
+skill-run workday_hours.py 2026-03-06 2026-03-09
 ```
 
 缺计划开始则只写结束、不推工时，回报提示。

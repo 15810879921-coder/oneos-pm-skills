@@ -1,4 +1,4 @@
 interface:
   display_name: "云效开发交付"
-  short_description: "开发、复验、合并并在交付树中创建测试子任务"
-  default_prompt: "使用 $yunxiao-development-delivery 执行开发任务；需要审查方案时追加“输出执行方案”，否则直接执行。所有开发、完成和Bug节点都必须输出实际操作与逐文件代码清单；完成开发时把测试任务建为源交付子项并关联需求，再补充和回读测试建议及临时需求变更点。"
+  short_description: "开发、批量修Bug、集中提交与单次test发布；交付保持处理中"
+  default_prompt: "使用 $yunxiao-development-delivery 执行开发或Bug修复；批量Bug集中修改后统一提交并只发布一次test；开发侧保持验证者不变，只回写已修复状态。"

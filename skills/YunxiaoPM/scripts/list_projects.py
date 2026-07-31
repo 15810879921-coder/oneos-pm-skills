@@ -1,14 +1,15 @@
-#!/usr/bin/env python3
-"""拉取云效项目列表（供 YunxiaoPMapp 门禁 PJ 点选）。stdout = JSON。
+#!/usr/bin/env python
+"""拉取云效项目列表（供 YunxiaoPM 门禁 PJ 点选）。stdout = JSON。
 
 无法对应时自动重拉一次：
-  python3 scripts/list_projects.py --match '01_ONEOS'
-  python3 scripts/list_projects.py --match-id 1280be963a5a2cc126a4118dca
+  skill-run list_projects.py --match '01_ONEOS'
+  skill-run list_projects.py --match-id 1280be963a5a2cc126a4118dca
 """
 from __future__ import annotations
 
 import argparse
 import json
+import tempfile
 import urllib.parse
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -38,7 +39,7 @@ def load_jar() -> dict[str, str]:
     except Exception:
         pass
     if not jar.get("XSRF-TOKEN"):
-        p = Path("/tmp/yunxiao_cookies.json")
+        p = Path(tempfile.gettempdir()) / "yunxiao_cookies.json"
         if p.exists():
             raw = json.loads(p.read_text())
             jar = (
@@ -210,7 +211,7 @@ def list_projects(
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description="YunxiaoPMapp 项目列表 / 匹配（无法对应则重拉一次）")
+    ap = argparse.ArgumentParser(description="YunxiaoPM 项目列表 / 匹配（无法对应则重拉一次）")
     ap.add_argument("--match", help="按项目名或 customCode 匹配")
     ap.add_argument("--match-id", help="按 spaceIdentifier 匹配")
     args = ap.parse_args()

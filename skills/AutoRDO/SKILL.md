@@ -6,7 +6,7 @@ description: >-
   auto-detects 类型/优先级/标签/提交部门/提交人 from content; maps OneOS modules via oneos-domain.md;
   splits multi-line into multiple results; if any 待确认 exists, MUST switch to Plan mode
   for choice-based confirmation. Does not change Yunxiao status or create tasks.
-  Pair with YunxiaoPMapp for cloud write; never load retired lifecycle skill; use YunxiaoPM only.
+  Pair with YunxiaoPM for cloud write; never load retired lifecycle skill.
 ---
 
 # AutoRDO
@@ -43,6 +43,12 @@ description: >-
 | 去除描述**结尾句号** | 加载已下架的旧云效 lifecycle Skill |
 
 云效建单与打标由 **`$YunxiaoPM`（需求任务）** 负责；本 Skill 只出清洗稿、推荐元数据，以及【交付】用的**规则对照章**。
+
+## 跨 Skill 逻辑交接（强制）
+
+- 下游只传正式 Skill 名 **`YunxiaoPM`**、清洗后的标题/描述、结构化元数据，以及材料版本或内容哈希等必要证据标识。
+- 禁止定位、读取或要求用户提供其他 Skill 的安装目录；不同客户端之间不得通过物理文件路径交接。
+- 下游需要调用时只输出正式选择器 **`/skill YunxiaoPM`**，不得输出旧名称或安装路径。
 
 ## 何时使用
 

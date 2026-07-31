@@ -14,6 +14,15 @@ PM 完成交棒 → 需求=待开发；【交付】=ONEOS-xx；负责人=何斐�
   · 细则：dev-task-description.md
 ```
 
-共享常量可引用本 Skill `assets/` 短路径，勿加载整份对方规则。
+## 跨 Skill 交接载荷
 
-测试侧：**YunxiaoQA**（`~/.cursor/skills/YunxiaoQA/`）；本契约不覆盖提测/缺陷。
+交接只允许携带以下逻辑信息：
+
+- 正式 Skill 名与选择器；
+- 需求、【交付】及可选【分析】/【设计】任务编号；
+- 当前状态与已回读的 `ASSOCIATED`、`TASK_SUB` 正式关系；
+- 负责人用户 ID、PRD/附件版本、证据 ID/URL/哈希和幂等键。
+
+禁止把安装目录、其他 Skill 的 `assets/`/`references/`/`scripts/` 路径或客户端目录作为契约字段。开发 Skill 必须使用自己的资源；常量缺失时按上述编号实时查询云效。
+
+开发侧正式目标：**yunxiao-development-delivery**。测试侧正式目标：**YunxiaoQA**；本契约不覆盖提测/缺陷。

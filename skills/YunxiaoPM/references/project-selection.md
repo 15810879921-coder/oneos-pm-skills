@@ -70,4 +70,4 @@ GET /projex/api/workspace/project/search/list
 ## 脚本
 
 `scripts/list_projects.py`：stdout JSON `projects[]`。  
-带查询时：`python3 scripts/list_projects.py --match '01_ONEOS'` —— 0 命中/多命中则自动重拉一次再匹配（`refetched: true`）。
+带查询时：`skill-run list_projects.py --match '01_ONEOS'` —— 0 命中/多命中则自动重拉一次再匹配（`refetched: true`）。启动方式按 [runtime-launcher.md](runtime-launcher.md) 解析。

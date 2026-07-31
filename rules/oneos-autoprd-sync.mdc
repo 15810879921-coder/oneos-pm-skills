@@ -1,5 +1,5 @@
 ---
-description: 改原型跟进 AutoPRD；定稿写功能变更与版本号；云效仅与 YunxiaoPMapp 组合；禁止旧 lifecycle 同名任务
+description: 改原型跟进 AutoPRD；定稿写功能变更与版本号；云效仅与 YunxiaoPM 组合；禁止旧 lifecycle 同名任务
 alwaysApply: true
 ---
 
@@ -25,7 +25,7 @@ alwaysApply: true
 
 ## 云效（唯一组合 · YunxiaoPM）
 
-产品侧写云效**只**与 `$YunxiaoPM`（别名 YunxiaoPMapp）组合；旧 `yunxiao-requirement-lifecycle` **已下架**勿加载。
+产品侧写云效**只**与 `$YunxiaoPM`组合；旧 `yunxiao-requirement-lifecycle` **已下架**勿加载。
 
 - 入库碎片：先 `$AutoRDO`，再 YunxiaoPM 记录需求（原始诉求段）。
 - 设计完成 / 完善产品说明：先 `oneos-autoprd` 落盘 MD，再写需求 `## 产品说明（AutoPRD）`；按交付**任务编号**回填【交付】描述（创建交付时保持占位，见 AutoPRD `yunxiao-delivery-sync.md`）。

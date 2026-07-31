@@ -10,6 +10,8 @@ OneOS 产品团队自用的 AI Agent Skills 合集，支持 `npx skills` 一键�
 |-------|------|----------|
 | **`YunxiaoPM`**（推荐 · 口令 YunxiaoPM / 需求任务） | 记录需求 → 分析/设计 → 交棒待开发；压缩点选；迭代只挂交付；**不建【开发】/【测试】** | 见下方「发给产品同事」 |
 | **`yunxiao-development-delivery`** | 接收待开发交棒 → 分配开发 → 开始/完成开发 → Bug闭环 → 严格按项目唯一测试主管创建测试任务 | 见下方「云效开发交付」 |
+| **`YunxiaoQA`** | 接收测试任务 → 执行用例 → 创建/复测缺陷 → 测试完成 → 交接发布 | Codex/Cursor 双版本 |
+| **`yunxiao-release-operations`** | 组建发布批次 → 生产发布 → 上线验证 → 自动回滚/重新发布 → 交接产品验收 | Codex/Cursor 双版本 |
 | `oneos-autoprd`（展示名 OneOS-AutoPRD） | 整模块 AutoPRD + 标注目录；**需求定稿**写功能变更；云效描述「需求说明/更新内容」 | 见下方 |
 | `AutoRDO` | 清洗为标题+描述；自动识别类型/优先级/标签/提交部门/提交人；多行拆多条；有待确认则强制 Plan | 见下方 |
 | `AutoVUL` | 按云效迭代名生成 PC 版本更新日志 | 见下方 |
@@ -22,6 +24,33 @@ OneOS 产品团队自用的 AI Agent Skills 合集，支持 `npx skills` 一键�
 ## 双端一键安装 / 更新（Cursor + Codex）
 
 统一用 [skills.sh](https://skills.sh) 的 `npx skills`；`-a cursor -a codex` 一次装到两端。
+
+### 双版本发布模型
+
+六套生命周期 Skill 使用同一份业务规则源，发布时生成两个独立版本，避免两端业务口径漂移：
+
+- **Codex 版**：包含 `SKILL.md`、业务资源、跨平台启动器和 `agents/openai.yaml`。
+- **Cursor 版**：包含相同的 `SKILL.md`、业务资源和跨平台启动器，不携带 Codex 专用 UI 元数据。
+- Windows 与 macOS 均通过 Skill 自带启动器选择本机可用 Python；Skill 不读取 `~/.cursor/skills`、`~/.codex/skills` 或固定盘符。
+- 双版本离线包位于 [`packages/codex`](packages/codex) 与 [`packages/cursor`](packages/cursor)，SHA-256 见各目录 `manifest.json`。
+
+只安装 Codex 版：
+
+```bash
+npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoPM -a codex -g -y
+```
+
+只安装 Cursor 版：
+
+```bash
+npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoPM -a cursor -g -y
+```
+
+构建六套双版本离线包：
+
+```powershell
+pwsh -File ./scripts/build-dual-client-packages.ps1
+```
 
 ### 产品套装（推荐）
 
@@ -133,7 +162,7 @@ npx skills update YunxiaoPM -g -y
 
 从 `YunxiaoPM` 的待开发交棒开始，负责创建和分配【开发】任务、开发实现、完成开发、Bug修复、代码资产提交以及测试交接。
 
-v7.8.2 提供两种开发任务执行模式、真实变更回报和可直接执行的测试交接：
+v8.5.0 提供两种开发任务执行模式、真实变更回报和可直接执行的测试交接：
 
 - `/go 开发任务:任务=ONEOS-789 输出执行方案`：完整读取需求与代码事实后输出可落地方案，确认前零写入；确认时先检查方案快照是否仍然有效。
 - `/go 开发任务:任务=ONEOS-789`：内部执行同等分析和门禁，不展示方案、不等待确认，直接实现。

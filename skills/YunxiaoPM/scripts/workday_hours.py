@@ -1,9 +1,9 @@
-#!/usr/bin/env python3
-"""Compute YunxiaoPMapp stage calendar hours = workdays × 8.
+#!/usr/bin/env python
+"""Compute YunxiaoPM stage calendar hours = workdays × 8.
 
 Usage:
-  python3 workday_hours.py YYYY-MM-DD YYYY-MM-DD
-  python3 workday_hours.py YYYY-MM-DD YYYY-MM-DD --calendar /path/to/cn-workday-calendar.json
+  skill-run workday_hours.py YYYY-MM-DD YYYY-MM-DD
+  skill-run workday_hours.py YYYY-MM-DD YYYY-MM-DD --calendar assets/cn-workday-calendar.json
 """
 
 from __future__ import annotations

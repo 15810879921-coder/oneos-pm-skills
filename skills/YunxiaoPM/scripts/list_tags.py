@@ -1,9 +1,10 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """标签候选列表（聚合工作项 tag + runtime）；未命中可 --match 后自动重拉一次。"""
 from __future__ import annotations
 
 import argparse
 import json
+import tempfile
 import urllib.parse
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -30,7 +31,7 @@ def load_jar() -> dict[str, str]:
     except Exception:
         pass
     if not jar.get("XSRF-TOKEN"):
-        p = Path("/tmp/yunxiao_cookies.json")
+        p = Path(tempfile.gettempdir()) / "yunxiao_cookies.json"
         if p.exists():
             raw = json.loads(p.read_text())
             jar = (

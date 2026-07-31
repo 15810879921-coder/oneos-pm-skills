@@ -1,8 +1,9 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """YunxiaoPM 极速真实建单 v5：快轨描述/计划/标签/工时 2+2/设计 ASSOCIATED 补挂。"""
 from __future__ import annotations
 
 import json
+import tempfile
 import time
 import urllib.parse
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -75,7 +76,7 @@ def load_auth() -> None:
             except Exception:
                 pass
     if not jar:
-        p = Path("/tmp/yunxiao_cookies.json")
+        p = Path(tempfile.gettempdir()) / "yunxiao_cookies.json"
         if p.exists():
             raw = json.loads(p.read_text())
             jar = (
@@ -409,7 +410,7 @@ def summarize_from_create(w: dict, *, status: str, assignee_name: str) -> dict:
 def build_normal() -> dict:
     t0 = time.perf_counter()
     s = session()
-    title = "【新增】故障处置（YunxiaoPMapp标准·极速v2）"
+    title = "【新增】故障处置（YunxiaoPM标准·极速v2）"
     req = create(s, req_payload(title, md_to_html(AUTO_RDO + f"\n原型：{PROTO}\n")))
     rid = req["identifier"]
 
@@ -651,7 +652,7 @@ def main() -> None:
             "http": "requests.Session keep-alive",
         },
     }
-    Path("/tmp/yunxiao_pmapp_fast_v2_result.json").write_text(
+    (Path(tempfile.gettempdir()) / "yunxiao_pm_fast_v2_result.json").write_text(
         json.dumps(out, ensure_ascii=False, indent=2)
     )
     print(json.dumps(out, ensure_ascii=False, indent=2))

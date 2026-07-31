@@ -1,4 +1,4 @@
 interface:
-  display_name: "AutoRDO"
-  short_description: "清洗诉求并识别类型优先级标签部门提交人"
-  default_prompt: "按 AutoRDO 清洗：先读 oneos-domain.md 与 meta-fields.md；多行拆多条；出标题+描述+类型/优先级/标签/提交部门/提交人。有待确认则同轮强制切 Plan 用选择题消解；不改云效、不直接打标、不贴词典全文。"
+  display_name: "AutoRDO 需求描述优化"
+  short_description: "整理原始诉求并输出可记录到云效的结构化需求"
+  default_prompt: "使用 $AutoRDO 整理这批原始需求材料并输出结构化结果。"

@@ -2,7 +2,7 @@
 
 > 来源：产品经理口述规则整理（2026-07-24）  
 > 上游终点：产品部 `docs-产品部流转流程图.md` → 需求=**待开发**，【交付】负责人=**何斐**  
-> 本文件目标：把「何斐拆任务 → 开发执行 → AI 用例门禁 → 提测」画清，供后续 **YunxiaoDevapp** Skill 定稿  
+> 本文件目标：把「何斐拆任务 → 开发执行 → AI 用例门禁 → 提测」画清，供正式 **yunxiao-development-delivery** Skill 维护
 > 状态：**草案**（文末有待拍板项）
 
 ---
@@ -111,7 +111,7 @@ flowchart TB
 
 ```mermaid
 flowchart LR
-  PM["产品 YunxiaoPMapp\n待开发 + 交付→何斐"] --> DevSkill["开发 Skill 草案\n本文 D1–D5"]
+  PM["产品 YunxiaoPM\n待开发 + 交付→何斐"] --> DevSkill["开发 Skill 草案\n本文 D1–D5"]
   DevSkill --> QA["测试执行人/Skill\n待测试之后"]
 ```
 
@@ -216,7 +216,7 @@ AI 跑测试计划放在 **待测试之后**，与【测试】任务负责人（
 ## 7. 下一步
 
 1. 你拍板：**方案 A 或 B**，以及多【开发】时「开发完成 / 待测试」的聚合规则  
-2. 我按定稿输出 `YunxiaoDevapp` 的 `SKILL.md` 骨架 + 与产品交棒契约对齐段落  
+2. 我按定稿维护 `yunxiao-development-delivery` 的 `SKILL.md` + 与产品交棒契约对齐段落
 3. 再补一版「仅开发侧」验收清单（10 条以内）
 
 ---
@@ -226,5 +226,5 @@ AI 跑测试计划放在 **待测试之后**，与【测试】任务负责人（
 | 文档 | 路径 |
 |---|---|
 | 产品部流转 | `docs-产品部流转流程图.md` |
-| 产品↔开发契约 | `docs-YunxiaoPMapp-实现原理-开发Skill对接.md` |
+| 产品↔开发契约 | `docs-YunxiaoPM-实现原理-开发Skill对接.md` |
 | 全链路手册 | `src/prototypes/yunxiao-pipeline-handbook/` |

@@ -1,15 +1,15 @@
-# YunxiaoPMapp 实现原理说明
+# YunxiaoPM 实现原理说明
 
-> 供**开发部门**设计 / 制作「开发侧 Skill」（暂称 **YunxiaoDevapp**）时对齐契约。  
-> 本文描述产品侧 Skill **YunxiaoPMapp** 的模型、边界、数据契约与交棒接口；**不是**对已下架旧 lifecycle 的兼容说明。  
-> 技能包：https://github.com/15810879921-coder/oneos-pm-skills · `skills/YunxiaoPMapp/`  
+> 供**开发部门**维护正式开发 Skill **yunxiao-development-delivery** 时对齐契约。
+> 本文描述产品侧正式 Skill **YunxiaoPM** 的模型、边界、数据契约与交棒接口；**不是**对 `yunxiao-requirement-lifecycle` 的兼容说明。
+> 技能包：https://github.com/15810879921-coder/oneos-pm-skills
 > 文档版本：2026-07-24
 
 ---
 
 ## 1. 为什么拆成两个 Skill
 
-| | YunxiaoPMapp（产品） | 开发 Skill（待建） |
+| | YunxiaoPM（产品） | yunxiao-development-delivery（开发） |
 |---|---|---|
 | 职责 | 需求从「待处理」到「待开发」交棒 | 从「待开发」到开发完成 / 提测前 |
 | 任务类型 | 【交付】【分析】【设计】 | 【开发】（可多条）、可选挂仓库/分支 |
@@ -103,7 +103,7 @@ flowchart TB
 |---|---|---|
 | AutoRDO | `$AutoRDO` → 产品记需求时 | 占位交棒时**唯一可信**业务原文 |
 | AutoPRD | `$oneos-autoprd` → 设计完成时 | 正式需求说明；缺则有权要求产品补设计完成 |
-| 编号区块 | YunxiaoPMapp | 定位交付树 |
+| 编号区块 | YunxiaoPM | 定位交付树 |
 
 **【交付】描述：** 设计完成前固定占位文案 `等待设计任务完成后自动填入`；设计完成后替换为 AutoPRD 正文。  
 **允许占位交棒**，但产品回报必须标红风险；开发 Skill 应检测占位并提示「材料不齐，可凭 AutoRDO 开工或退回补设计」。
@@ -121,7 +121,7 @@ flowchart TB
 3 设计中                     建【设计】；收口【分析】计划完成
 4 设计完成                   收口【设计】；AutoPRD+附件；灌【交付】描述
 5 待开发交棒 ★               需求→待开发；【交付】负责人→何斐
-                            ★ = YunxiaoPMapp 终点 / 开发 Skill 起点
+                            ★ = YunxiaoPM 终点 / yunxiao-development-delivery 起点
 ```
 
 ### 5.1 各步要点（开发需知道的副作用）
@@ -174,16 +174,16 @@ flowchart TB
 | 检测交付描述是否仍为占位并提示 | 假装 AutoPRD 已齐全 |
 | 全部【开发】完成后通知测试 Skill / 建【测试】 | 在产品 Skill 会话里混跑 |
 
-### 6.4 共享常量（可引用，勿整包加载）
+### 6.4 逻辑交接边界（禁止物理路径耦合）
 
-路径均在 `skills/YunxiaoPMapp/assets/`：
+产品侧只向开发侧传递：
 
-| 文件 | 内容 |
-|---|---|
-| `runtime-ids.json` | 项目 spaceId、何斐 ID、工作项类型、状态 transit、字段 79/80 |
-| `cn-workday-calendar.json` | 法定节假日 / 调休（阶段日历工时） |
+- 正式 Skill 名 `YunxiaoPM` → `yunxiao-development-delivery`；
+- 需求、【交付】及可选【分析】/【设计】编号；
+- 当前状态、负责人用户 ID、`ASSOCIATED`/`TASK_SUB` 回读结果；
+- PRD/附件版本和必要证据 ID、URL、哈希、幂等键。
 
-开发侧可复制一份到自己的 `assets/`，或只读引用短路径；**不要**把 YunxiaoPMapp 的 references 全文 include 进开发 Skill。
+开发侧不得发现、复制或只读引用产品 Skill 的安装目录、资源文件或规则文件。开发 Skill 只使用自身随包资源；缺少项目、人员、状态或字段常量时，依据交接编号实时查询云效。不同客户端只靠上述逻辑载荷交接。
 
 ---
 
@@ -233,7 +233,7 @@ flowchart TB
 每次 apply 后自检（产品侧清单见 `references/acceptance.md`）。开发侧建议至少回报：
 
 ```text
-【YunxiaoDevapp】
+【yunxiao-development-delivery】
 需求：ONEOS-R | 状态=待开发|开发中|…
 交付：ONEOS-a | 负责人=…
 开发：ONEOS-d1, ONEOS-d2 | …
@@ -262,21 +262,10 @@ flowchart TB
 
 ---
 
-## 10. 建议的「YunxiaoDevapp」目录骨架
+## 10. 正式开发 Skill 的逻辑边界
 
 ```text
-YunxiaoDevapp/
-├── SKILL.md
-├── assets/runtime-ids.json
-├── references/
-│   ├── model.md
-│   ├── handoff-intake.md
-│   ├── split-dev-tasks.md
-│   ├── dev-task-description.md   # 从 YunxiaoPM 复制约定：仅【优化】写改前规则
-│   ├── codeup.md
-│   ├── commands.md
-│   └── acceptance.md
-└── scripts/
+正式名称：`yunxiao-development-delivery`。它必须自带所需的 `SKILL.md`、资源、规则和脚本，不依赖产品 Skill 的物理安装位置。
 ```
 
 `SKILL.md` description 建议写明：触发词「接手开发 / 拆分开发 / 开始开发」；**Does NOT create 【分析】/【设计】**；入口条件需求=待开发；**【优化】描述**遵守 YunxiaoPM `dev-task-description.md`。
@@ -289,7 +278,7 @@ YunxiaoDevapp/
 - [ ] 是否拒绝创建第二套【交付】或【分析】【设计】  
 - [ ] 占位交棒时是否提示风险且不假装 PRD 齐全  
 - [ ] 【开发】是否可编号幂等、可挂到交付树  
-- [ ] 是否与 YunxiaoPMapp **会话隔离**（不同 Skill、不同口令）  
+- [ ] 是否与 YunxiaoPM **会话隔离**（不同 Skill、不同正式选择器）
 - [ ] 计划开始字段是否遵守「已有值不覆盖」（若沿用同一字段）  
 - [ ] 提测 / 【测试】是否交给测试 Skill，本包边界清晰  
 
@@ -315,5 +304,5 @@ YunxiaoDevapp/
 安装产品 Skill：
 
 ```bash
-npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoPM -a cursor -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoPM -a '*' -g -y
 ```

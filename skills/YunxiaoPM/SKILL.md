@@ -4,15 +4,15 @@ description: >-
   产品经理云效（Projex）自动化：记录需求（压缩点选 1a2b3a4d：类型仅新增/优化、项目、优先级、标签）、
   实时点选云效项目、推进 待处理→已确认→分析中→设计中→设计完成→待开发，
   交付树【交付】ASSOCIATED /【分析】【设计】TASK_SUB，无单快轨与编号直推交棒何斐，
-  创建迭代并挂【交付】（不挂需求）。用户说 YunxiaoPM、YunxiaoPMapp、需求任务、记录需求、受理确认、开始分析、
-  开始设计、设计完成、交棒开发、快轨待开发、编号直推、创建迭代 时使用。
-  不建【开发】/【测试】。凡写云效先 Plan 再 apply；禁止对齐已下架的旧 lifecycle。
+  创建迭代并挂【交付】（不挂需求）。用户说 YunxiaoPM、需求任务、记录需求、受理确认、开始分析、
+  开始设计、设计完成、交棒开发、快轨待开发、编号直推、创建迭代、拉取待验收需求、验收通过、验收不通过、验收续跑 时使用。
+  不建【开发】/【测试】。凡写云效先 Plan 再 apply；禁止对齐 yunxiao-requirement-lifecycle。
   交棒后开发 Skill：仅【优化】类从需求 MD 精炼写「修改前规则」。
 ---
 
 # 需求任务（YunxiaoPM）
 
-产品部云效自动化。斜杠 **`/YunxiaoPM`**；对外中文名 **需求任务**（旧名 YunxiaoPMapp 仍可触发）。
+产品部云效自动化。正式 Skill 名 **`YunxiaoPM`**，选择器 **`/skill YunxiaoPM`**；对外中文名 **需求任务**。
 
 **自洽成篇**；**禁止** fork / include / 「对齐」已下架的旧 lifecycle。  
 产品经理会话**不要**同时挂载旧 lifecycle Skill。
@@ -64,6 +64,14 @@ description: >-
 | PJ 项目点选 | [project-selection.md](references/project-selection.md) · [scripts/list_projects.py](scripts/list_projects.py) |
 | 压缩点选 | [compact-select.md](references/compact-select.md) · [scripts/list_tags.py](scripts/list_tags.py) |
 | 阶段日历工时 | [work-hours.md](references/work-hours.md) · [assets/cn-workday-calendar.json](assets/cn-workday-calendar.json) · [scripts/workday_hours.py](scripts/workday_hours.py) |
+| 跨平台脚本启动 | [runtime-launcher.md](references/runtime-launcher.md) · `skill-run <script.py> [参数...]` |
+
+## 跨 Skill 逻辑交接（强制）
+
+- 上游/下游只传正式 Skill 名、需求/交付/开发/测试/发版任务编号、当前状态、`ASSOCIATED`/`TASK_SUB` 等正式关系，以及必要的附件、流水线、MR、版本或幂等证据标识。
+- 禁止定位、读取、复制或要求用户提供其他 Skill 的安装目录；不同客户端之间不得通过物理文件路径共享常量、规则或运行时文件。
+- 本 Skill 只读取自身包内资源；缺少人员、状态或项目常量时应实时查询云效，缺少交接编号时要求上游补齐，禁止跨 Skill 文件系统回退。
+- 下一跳只输出正式选择器：开发用 `/skill yunxiao-development-delivery`，测试用 `/skill YunxiaoQA`，发布用 `/skill yunxiao-release-operations`。
 
 ## 路由（按需阅读）
 
@@ -79,12 +87,14 @@ description: >-
 | 计划工时 | [work-hours.md](references/work-hours.md) |
 | Make 导出附件 | [make-export-attach.md](references/make-export-attach.md) |
 | 创建迭代 | [sprint.md](references/sprint.md) |
+| 生产后产品验收 | [release-acceptance.md](references/release-acceptance.md) · [scripts/accept_release.py](scripts/accept_release.py) |
 | 口令面 | [commands.md](references/commands.md) |
 | 记录需求元字段 | [record-meta-fields.md](references/record-meta-fields.md) |
 | 验收 / 回报 | [acceptance.md](references/acceptance.md) |
 | 交接契约（开发入口） | [handoff-contract.md](references/handoff-contract.md) |
 | 【开发】描述（仅【优化】） | [dev-task-description.md](references/dev-task-description.md) |
 | 实写 API | [live-api.md](references/live-api.md) · [scripts/live_create_fast.py](scripts/live_create_fast.py) |
+| 跨平台脚本启动器 | [runtime-launcher.md](references/runtime-launcher.md) |
 | 耗时复盘 | [live-perf-2026-07-23.md](references/live-perf-2026-07-23.md) |
 
 说明性长文（非执行必读）：根目录 `docs-*.md`。
@@ -101,13 +111,18 @@ description: >-
 快轨待开发：ONEOS-xx
 编号直推：分析任务=ONEOS-b / 设计任务=ONEOS-c / 交付任务=ONEOS-a
 创建迭代：版本类型=主|副|子；交付任务=ONEOS-a,ONEOS-b,…；名称前缀=…
+拉取待验收需求：发版任务=TASK-900
+验收通过：发版任务=TASK-900；验收人=…；证据=…
+验收不通过：发版任务=TASK-900；验收人=…；原因=…；证据=…
 ```
 
 类型写入标题时只用 **【新增】** 或 **【优化】**。
 
-## 本 Skill 终点
+## 本 Skill 的两个边界
 
-交棒完成（需求=待开发；【交付】负责人=何斐）→「请技术经理使用开发 Skill」。  
+1. 开发前：交棒完成（需求=待开发；【交付】负责人=何斐）→「请技术经理使用开发 Skill」。
+2. 生产后：按发版任务执行产品验收；通过后逐项、幂等地关闭需求、交付容器和发版任务，部分成功时重试只续跑未完成对象；不通过则记录统一证据、尝试将发版任务标为发布失败并正式交给测试侧发起修复回流。
+
 例外：交棒后「创建迭代并关联交付」仍属本 Skill。
 
 ## §0.1 五条补齐（摘要）

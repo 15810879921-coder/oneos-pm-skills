@@ -56,7 +56,7 @@
 
 3. **标注目录**：同步「产品需求说明（PRD）」全文节点。
 
-4. **云效**（若本轮走 YunxiaoPMapp）：按 [yunxiao-description.md](yunxiao-description.md) 更新需求产品说明；勿加载已下架 lifecycle。
+4. **云效**（若本轮走 YunxiaoPM）：按 [yunxiao-description.md](yunxiao-description.md) 更新需求产品说明；勿加载已下架 lifecycle。
 
 ## 定稿工作流
 
