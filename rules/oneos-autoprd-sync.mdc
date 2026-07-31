@@ -1,5 +1,5 @@
 ---
-description: 改原型跟进 AutoPRD；定稿写功能变更；云效建需求先跑 AutoPRD；状态推进建同名任务
+description: 改原型跟进 AutoPRD；定稿写功能变更与版本号；云效仅与 YunxiaoPMapp 组合；禁止旧 lifecycle 同名任务
 alwaysApply: true
 ---
 
@@ -7,7 +7,7 @@ alwaysApply: true
 
 ## 改原型
 
-修改 `src/prototypes/**` 且涉及**行为、文案、流程、判定或验收**时，同一轮必须跟进 **oneos-autoprd**：
+修改 `src/prototypes/**` 且涉及**行为、文案、流程、判定或验收**时，同一轮必须跟进 **oneos-autoprd**（AutoPRD）：
 
 1. 更新 `.spec/requirements-prd.md`（用户故事：起点 → 怎么运作 → 闭环）。
 2. 更新 `annotation-source.json` **顶层** `directory.nodes` 中「产品需求说明（PRD）」。
@@ -17,26 +17,16 @@ alwaysApply: true
 
 ## 需求定稿
 
-用户回复含 `需求定稿` / `定稿` / `确认定稿` / `本次定稿` 时：
+用户回复含 `需求定稿` / `定稿` / `确认定稿` / `本次定稿` / `本轮定稿` 时：
 
-1. 按 skill `references/release-changelog.md` 汇总**自上次定稿**的功能/逻辑变更。
-2. 追加到 PRD `## 10. 功能变更记录`（最新在上）；更新 `.spec/autoprd-baseline.json`。
+1. 按 skill `references/release-changelog.md` 汇总**自上次定稿**的功能/逻辑变更，并递增 `prdVersion`（用户显式指定主/副/子时以用户为准）。
+2. 追加到 PRD `## 10. 功能变更记录`（最新在上）；更新 `.spec/autoprd-baseline.json`（含 `prdVersion`）。
 3. **不要**写布局/UI/表结构类条目。
 
-## 云效建需求
+## 云效（唯一组合 · YunxiaoPM）
 
-使用 `yunxiao-requirement-lifecycle` **创建或完善**需求描述时，**先**跑 `oneos-autoprd`：
+产品侧写云效**只**与 `$YunxiaoPM`（别名 YunxiaoPMapp）组合；旧 `yunxiao-requirement-lifecycle` **已下架**勿加载。
 
-- **需求说明** ← 将 `.spec/requirements-prd.md` **Markdown 全文原样复制**进云效描述（禁止只用摘要）；见 `references/yunxiao-description.md`
-- **更新内容** ← 第 10 章自上次定稿以来的条目（无则首版/无增量）  
-- 旧更新内容 →「更新内容·历史」
-
-## 云效状态 → 同名任务（AutoPRD 规则，不改云效 Skill）
-
-需求推进至 **分析中 / 设计中 / 待开发** 时，按 `references/yunxiao-stage-tasks.md`：
-
-- 建与需求**同名**任务并正式关联  
-- 标签：分析 / 设计 / 交付（或开发）  
-- 创建时间口径沿用需求  
-- 分析中、设计中负责人=创建人；待开发负责人=**何斐**  
-- 同阶段已有未取消关联任务则复用，不重复建  
+- 入库碎片：先 `$AutoRDO`，再 YunxiaoPM 记录需求（原始诉求段）。
+- 设计完成 / 完善产品说明：先 `oneos-autoprd` 落盘 MD，再写需求 `## 产品说明（AutoPRD）`；按交付**任务编号**回填【交付】描述（创建交付时保持占位，见 AutoPRD `yunxiao-delivery-sync.md`）。
+- 【交付】/【分析】/【设计】树与交棒由 **YunxiaoPM** 负责；AutoPRD **不**建同名无前缀阶段任务。

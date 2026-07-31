@@ -11,7 +11,47 @@ OneOS 产品团队自用的 AI Agent Skills 合集，支持 `npx skills` 一键�
 | `oneos-autoprd`（展示名 OneOS-AutoPRD） | 整模块 AutoPRD + 标注目录；**需求定稿**写功能变更；云效描述「需求说明/更新内容」 | 见下方 |
 | `AutoRDO` | 清洗为标题+描述；自动识别类型/优先级/标签/提交部门/提交人；多行拆多条；有待确认则强制 Plan | 见下方 |
 | `AutoVUL` | 按云效迭代名生成 PC 版本更新日志 | 见下方 |
-| `yunxiao-requirement-lifecycle` | 旧版云效全生命周期口令（**产品会话勿与 YunxiaoPM 同时挂载**） | 见下方 |
+
+> **已下架：** `yunxiao-requirement-lifecycle`（旧全生命周期 Skill）已从本仓库删除。产品侧云效**只**用 `YunxiaoPM`；`oneos-autoprd` **只**写 PRD/标注/描述，**不**建同名阶段任务。本机若仍有旧包请卸载：  
+> `npx skills remove yunxiao-requirement-lifecycle -g -y -a cursor -a codex`
+
+---
+
+## 双端一键安装 / 更新（Cursor + Codex）
+
+统一用 [skills.sh](https://skills.sh) 的 `npx skills`；`-a cursor -a codex` 一次装到两端。
+
+### 产品套装（推荐）
+
+```bash
+npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoPM -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill AutoRDO -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-autoprd -a cursor -a codex -g -y
+```
+
+### 一键更新已装 Skill
+
+```bash
+npx skills update YunxiaoPM AutoRDO oneos-autoprd -g -y
+```
+
+### 丢进 AI 代装（复制整段）
+
+```text
+请帮我全局安装 OneOS 产品 Skill 套装到 Cursor + Codex：
+
+npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoPM -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill AutoRDO -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-autoprd -a cursor -a codex -g -y
+
+若本机曾装 yunxiao-requirement-lifecycle，请先卸载：
+npx skills remove yunxiao-requirement-lifecycle -g -y -a cursor -a codex
+
+装完后确认口令可用：记录需求 / AutoRDO / oneos-autoprd。
+使用云效前请先登录 https://devops.aliyun.com 。
+```
+
+仓库：https://github.com/15810879921-coder/oneos-pm-skills
 
 ---
 
@@ -24,18 +64,14 @@ OneOS 产品团队自用的 AI Agent Skills 合集，支持 `npx skills` 一键�
 - 快轨待开发 / 编号直推；创建迭代 **只挂【交付】**（不挂需求）
 - 终点：待开发且【交付】负责人=何斐；**不建【开发】/【测试】**
 
-**不要**在同一会话同时挂载 `yunxiao-requirement-lifecycle`，避免双建任务。
-
 **开发部门对接原理：** [`docs/YunxiaoPM-实现原理-开发Skill对接.md`](docs/YunxiaoPM-实现原理-开发Skill对接.md)
 
 ### 发给产品同事 · 丢进 AI 一键安装（推荐复制整段）
 
-把下面整段发给同事，让他们粘贴到 Cursor / Claude 对话即可（AI 会代跑命令）：
-
 ```text
-请帮我全局安装 OneOS 产品云效 Skill（Cursor）：
+请帮我全局安装 OneOS 产品云效 Skill 到 Cursor + Codex：
 
-npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoPM -a cursor -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoPM -a cursor -a codex -g -y
 
 装完后：
 1. 确认可用口令「记录需求」或「/YunxiaoPM」触发
@@ -43,53 +79,33 @@ npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoPM -a cursor -g 
 3. 凡写云效会先 Plan，我确认后再执行
 ```
 
-**产品套装（云效 + 清洗诉求 + 写 PRD，推荐一次装齐）：**
-
-```text
-请帮我全局安装 OneOS 产品 Skill 套装（Cursor）：
-
-npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoPM -a cursor -g -y
-npx skills add 15810879921-coder/oneos-pm-skills --skill AutoRDO -a cursor -g -y
-npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-autoprd -a cursor -g -y
-
-装完后确认口令可用：记录需求 / AutoRDO / oneos-autoprd。
-使用云效前请先登录 https://devops.aliyun.com 。
-```
-
-### 终端自己装（同事有命令行时）
-
-全局 Cursor（推荐）：
+### 终端自己装
 
 ```bash
-npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoPM -a cursor -g -y
-```
+# Cursor + Codex 全局（推荐）
+npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoPM -a cursor -a codex -g -y
 
-同时装 Cursor + Claude Code：
+# 再加 Claude Code
+npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoPM -a cursor -a codex -a claude-code -g -y
 
-```bash
-npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoPM -a cursor -a claude-code -g -y
-```
-
-仅当前项目：
-
-```bash
-npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoPM -a cursor -y
+# 仅当前项目
+npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoPM -a cursor -a codex -y
 ```
 
 ### 更新到最新版
 
 ```bash
-npx skills update YunxiaoPM
+npx skills update YunxiaoPM -g -y
 ```
 
 或对 AI 说：
 
 ```text
-请帮我更新 YunxiaoPM：npx skills update YunxiaoPM
+请帮我更新 YunxiaoPM（Cursor + Codex）：npx skills update YunxiaoPM -g -y
 ```
 
 > **曾安装旧名 `YunxiaoPMapp` 的同事：** 请改装新名（旧目录可删）：
-> `npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoPM -a cursor -g -y`
+> `npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoPM -a cursor -a codex -g -y`
 
 ### 怎么用（装完后对 AI 说）
 
@@ -154,29 +170,17 @@ npx skills update yunxiao-development-delivery
 
 原理说明（可转发同事）：[`docs/OneOS-AutoPRD-Skill运作原理说明.pdf`](docs/OneOS-AutoPRD-Skill运作原理说明.pdf)
 
-### 一键安装
+### 一键安装（Cursor + Codex）
 
 ```bash
-npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-autoprd
-```
-
-仅安装到 Cursor：
-
-```bash
-npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-autoprd -a cursor -y
-```
-
-安装到用户目录（全局，所有项目可用）：
-
-```bash
-npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-autoprd -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-autoprd -a cursor -a codex -g -y
 ```
 
 ### 发给 AI 的安装指令（复制给同事）
 
 ```text
-请帮我安装 skill：
-npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-autoprd -a cursor -y
+请帮我安装 skill 到 Cursor + Codex：
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-autoprd -a cursor -a codex -g -y
 ```
 
 ### 建议同时安装「改原型自动跟进」规则（可选）
@@ -207,7 +211,7 @@ curl -fsSL https://raw.githubusercontent.com/15810879921-coder/oneos-pm-skills/m
 
 ### 与云效组合
 
-建需求描述时先跑本 Skill；**产品侧写云效请用 `YunxiaoPM`**（勿与旧 `yunxiao-requirement-lifecycle` 同会话混用）。设计完成阶段由 YunxiaoPM 调用本 Skill 灌 PRD。
+建需求描述时先跑本 Skill；**产品侧写云效请用 `YunxiaoPM`**（本 Skill 不建阶段任务）。设计完成阶段由 YunxiaoPM 调用本 Skill 灌 PRD。
 
 ### 使用方式
 
@@ -226,7 +230,7 @@ curl -fsSL https://raw.githubusercontent.com/15810879921-coder/oneos-pm-skills/m
 ### 更新已安装的 Skill
 
 ```bash
-npx skills update oneos-autoprd
+npx skills update oneos-autoprd -g -y
 ```
 
 ---
@@ -262,80 +266,20 @@ npx skills update oneos-autoprd
 更新时间：07月16日16:00
 ```
 
-### 一键安装
+### 一键安装（Cursor + Codex）
 
 ```bash
-npx skills add 15810879921-coder/oneos-pm-skills --skill AutoVUL -a cursor -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill AutoVUL -a cursor -a codex -g -y
 ```
 
 ### 发给 AI 的安装指令（复制给同事）
 
 ```text
-请帮我安装 skill：
-npx skills add 15810879921-coder/oneos-pm-skills --skill AutoVUL -a cursor -y
+请帮我安装 skill 到 Cursor + Codex：
+npx skills add 15810879921-coder/oneos-pm-skills --skill AutoVUL -a cursor -a codex -g -y
 ```
 
-路径：`skills/AutoVUL` · 更新已安装：`npx skills update AutoVUL`
-
----
-
-## yunxiao-requirement-lifecycle · 云效需求生命周期
-
-产品/研发/测试用**短口令**推进云效需求（记录需求、开始分析、安排开发、提交测试、发布成功、验收通过等）；统一运营管理平台「记录需求」走已验证 **API 快路径**（Plan 点选优先级 / 推进至 / 标签 → AutoPRD → 建单 → 打标 → 状态推进）。
-
-### 何时使用
-
-- 口语化口令：`记录需求`、`确认需求`、`开始分析`、`开始设计`、`安排开发`、`提交测试`、`测试完成`、`发布成功`、`验收通过`
-- 统一运营管理平台建需求：配合 `$oneos-autoprd`，A/B/C 三门禁 + 30 项云效标签 catalog
-- 需求推进至分析中 / 设计中 / 待开发：自动建与需求同名阶段任务（见 skill 内 `auto-stage-task.md`）
-
-完整可复制建单口令：`skills/yunxiao-requirement-lifecycle/references/oneos-pc-record-requirement-prompt.md`
-
-### 一键安装
-
-```bash
-npx skills add 15810879921-coder/oneos-pm-skills --skill yunxiao-requirement-lifecycle -a cursor -y
-```
-
-### 发给 AI 的安装指令（复制给同事）
-
-```text
-请帮我安装 skill：
-npx skills add 15810879921-coder/oneos-pm-skills --skill yunxiao-requirement-lifecycle -a cursor -y
-```
-
-### 建议同时安装「记录需求快路径」规则（可选）
-
-```bash
-mkdir -p ~/.cursor/rules
-curl -fsSL https://raw.githubusercontent.com/15810879921-coder/oneos-pm-skills/main/rules/yunxiao-record-requirement-fast-path.mdc \
-  -o ~/.cursor/rules/yunxiao-record-requirement-fast-path.mdc
-```
-
-### 使用方式
-
-建需求（先点选 A/B/C，再执行）：
-
-```text
-使用 $yunxiao-requirement-lifecycle + $oneos-autoprd
-记录需求到云效 · 统一运营管理平台
-【需求名】…
-【描述来源】$oneos-autoprd，原型/模块：…
-请先 Plan 让我点选 A 优先级、B 推进至、C 标签（30 项 catalog）。
-```
-
-日常推进：
-
-```text
-项目：统一运营管理平台PC端
-开始分析：ONEOS-91；负责人=王冕
-```
-
-### 更新已安装的 Skill
-
-```bash
-npx skills update yunxiao-requirement-lifecycle
-```
+路径：`skills/AutoVUL` · 更新已安装：`npx skills update AutoVUL -g -y`
 
 ---
 
@@ -353,32 +297,32 @@ npx skills update yunxiao-requirement-lifecycle
 
 ### 怎么用
 
-1. 安装：`npx skills add 15810879921-coder/oneos-pm-skills --skill AutoRDO -a cursor -y`
+1. 安装：`npx skills add 15810879921-coder/oneos-pm-skills --skill AutoRDO -a cursor -a codex -g -y`
 2. 对 AI 说：`AutoRDO：<材料>`；台账可整表粘贴
 3. 输出每条含：标题、类型、优先级、标签、提交部门、提交人、描述；有待确认则自动切 Plan 选择题确认
 4. 定稿后交 YunxiaoPM 按条记录需求（可带上元数据字段）
 
-### 一键安装
+### 一键安装（Cursor + Codex）
 
 ```bash
-npx skills add 15810879921-coder/oneos-pm-skills --skill AutoRDO -a cursor -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill AutoRDO -a cursor -a codex -g -y
 ```
 
 ### 发给 AI 的安装指令（复制给同事）
 
 ```text
-请帮我安装 skill：
-npx skills add 15810879921-coder/oneos-pm-skills --skill AutoRDO -a cursor -y
+请帮我安装 skill 到 Cursor + Codex：
+npx skills add 15810879921-coder/oneos-pm-skills --skill AutoRDO -a cursor -a codex -g -y
 ```
 
-路径：`skills/AutoRDO` · 更新已安装：`npx skills update AutoRDO`
+路径：`skills/AutoRDO` · 更新已安装：`npx skills update AutoRDO -g -y`
 
 ---
 
-## 一次安装仓库内全部 Skill
+## 一次安装仓库内全部 Skill（Cursor + Codex）
 
 ```bash
-npx skills add 15810879921-coder/oneos-pm-skills --skill '*' -a cursor -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill '*' -a cursor -a codex -g -y
 ```
 
 ### 查看仓库内所有 Skill
@@ -400,12 +344,11 @@ oneos-pm-skills/
 │   └── OneOS-AutoVUL-Skill运作原理说明.html
 ├── rules/
 │   ├── oneos-autoprd-sync.mdc          # 可选：改原型自动跟进 PRD
-│   └── yunxiao-record-requirement-fast-path.mdc  # 可选：记录需求 A/B/C 门禁与快路径
+│   └── yunxiao-record-requirement-fast-path.mdc  # 产品侧云效唯一入口=YunxiaoPM
 └── skills/
     ├── YunxiaoPM/
     ├── yunxiao-development-delivery/
     ├── oneos-autoprd/
-    ├── yunxiao-requirement-lifecycle/
     ├── AutoVUL/
     └── AutoRDO/
 ```

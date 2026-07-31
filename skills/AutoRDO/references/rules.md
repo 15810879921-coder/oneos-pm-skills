@@ -45,7 +45,7 @@
 - 不生成 AutoPRD 十章或「产品说明」
 - 不写验收清单、故事点、mermaid
 - 不改云效、不建【交付】/分析/设计
-- 不加载 `yunxiao-requirement-lifecycle`
+- 不加载已下架的旧 lifecycle
 - 不把多条独立诉求合并成一条「大杂烩」需求
 
 ## 录音

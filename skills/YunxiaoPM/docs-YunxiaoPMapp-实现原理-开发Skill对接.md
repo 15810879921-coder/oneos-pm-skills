@@ -1,7 +1,7 @@
 # YunxiaoPMapp 实现原理说明
 
 > 供**开发部门**设计 / 制作「开发侧 Skill」（暂称 **YunxiaoDevapp**）时对齐契约。  
-> 本文描述产品侧 Skill **YunxiaoPMapp** 的模型、边界、数据契约与交棒接口；**不是**对 `yunxiao-requirement-lifecycle` 的兼容说明。  
+> 本文描述产品侧 Skill **YunxiaoPMapp** 的模型、边界、数据契约与交棒接口；**不是**对已下架旧 lifecycle 的兼容说明。  
 > 技能包：https://github.com/15810879921-coder/oneos-pm-skills · `skills/YunxiaoPMapp/`  
 > 文档版本：2026-07-24
 
@@ -16,7 +16,7 @@
 | 负责人交接 | 交棒时【交付】→ **何斐** | 拆【开发】子任务并指派研发 |
 | 明确不做 | 建【开发】/【测试】、开分支、提测 | 不建【分析】/【设计】、不改 AutoRDO 段 |
 
-**硬规则：** 两个 Skill **禁止互相 include / fork 全文**；只认本文第 6 章「交棒契约」。产品会话与开发会话不要同时挂载旧 `yunxiao-requirement-lifecycle`，避免双建任务树。
+**硬规则：** 两个 Skill **禁止互相 include / fork 全文**；只认本文第 6 章「交棒契约」。产品会话与开发会话勿再挂载已下架旧 lifecycle，避免双建任务树。
 
 ---
 

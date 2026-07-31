@@ -6,7 +6,7 @@ description: >-
   交付树【交付】ASSOCIATED /【分析】【设计】TASK_SUB，无单快轨与编号直推交棒何斐，
   创建迭代并挂【交付】（不挂需求）。用户说 YunxiaoPM、YunxiaoPMapp、需求任务、记录需求、受理确认、开始分析、
   开始设计、设计完成、交棒开发、快轨待开发、编号直推、创建迭代 时使用。
-  不建【开发】/【测试】。凡写云效先 Plan 再 apply；禁止对齐 yunxiao-requirement-lifecycle。
+  不建【开发】/【测试】。凡写云效先 Plan 再 apply；禁止对齐已下架的旧 lifecycle。
   交棒后开发 Skill：仅【优化】类从需求 MD 精炼写「修改前规则」。
 ---
 
@@ -14,7 +14,7 @@ description: >-
 
 产品部云效自动化。斜杠 **`/YunxiaoPM`**；对外中文名 **需求任务**（旧名 YunxiaoPMapp 仍可触发）。
 
-**自洽成篇**；**禁止** fork / include / 「对齐」`yunxiao-requirement-lifecycle`。  
+**自洽成篇**；**禁止** fork / include / 「对齐」已下架的旧 lifecycle。  
 产品经理会话**不要**同时挂载旧 lifecycle Skill。
 
 > **已定口径（优先读）** → [references/settled-rules.md](references/settled-rules.md)

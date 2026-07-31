@@ -88,4 +88,4 @@
 
 执行顺序：先 AutoRDO 规则对照章就绪（+ AutoPRD/附件若本轮需要）→ 再改需求/交付描述与设计计划完成 → 最后改需求状态。
 
-**禁止**加载 `yunxiao-requirement-lifecycle`；阶段任务树只由本 Skill（YunxiaoPM）创建。
+旧 lifecycle **已下架**勿加载；阶段任务树只由本 Skill（YunxiaoPM）创建。
