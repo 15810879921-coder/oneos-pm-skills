@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OneOS Skill 安装中心</title>
+  <meta name="description" content="OneOS / 王冕 Skill 一键复制安装与更新（Cursor + Codex）" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #F8FAFC;
+      --surface: #FFFFFF;
+      --text: #1E293B;
+      --muted: #64748B;
+      --line: #E2E8F0;
+      --primary: #2563EB;
+      --primary-hover: #1D4ED8;
+      --primary-soft: #EFF6FF;
+      --ok: #059669;
+      --ok-soft: #ECFDF5;
+      --warn-soft: #FFF7ED;
+      --warn: #C2410C;
+      --radius: 12px;
+      --shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 8px 24px rgba(15, 23, 42, 0.04);
+      --focus: 0 0 0 3px rgba(37, 99, 235, 0.28);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: "IBM Plex Sans", system-ui, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(1200px 500px at 10% -10%, #DBEAFE 0%, transparent 55%),
+        radial-gradient(900px 400px at 100% 0%, #E2E8F0 0%, transparent 50%),
+        var(--bg);
+      line-height: 1.55;
+      min-height: 100vh;
+    }
+
+    a { color: var(--primary); }
+    code, .mono {
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 0.84em;
+    }
+
+    .wrap {
+      width: min(1100px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 32px 0 80px;
+    }
+
+    .hero {
+      display: grid;
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      width: fit-content;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: var(--primary-soft);
+      color: var(--primary);
+      font-size: 13px;
+      font-weight: 600;
+    }
+    h1 {
+      margin: 0;
+      font-size: clamp(28px, 4vw, 40px);
+      letter-spacing: -0.03em;
+      line-height: 1.15;
+    }
+    .lead {
+      margin: 0;
+      max-width: 62ch;
+      color: var(--muted);
+      font-size: 16px;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      margin: 20px 0 24px;
+    }
+    .search {
+      flex: 1 1 240px;
+      min-height: 44px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 0 14px;
+      background: var(--surface);
+      font: inherit;
+      color: var(--text);
+    }
+    .search:focus {
+      outline: none;
+      box-shadow: var(--focus);
+      border-color: var(--primary);
+    }
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .chip {
+      min-height: 44px;
+      padding: 0 14px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      color: var(--muted);
+      font: inherit;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .chip[aria-pressed="true"] {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+    }
+    .chip:focus-visible { outline: none; box-shadow: var(--focus); }
+
+    .batch, .note, .card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .batch {
+      padding: 18px 18px 14px;
+      margin-bottom: 20px;
+    }
+    .batch h2 {
+      margin: 0 0 6px;
+      font-size: 18px;
+    }
+    .batch p {
+      margin: 0 0 12px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .batch-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-height: 100%;
+    }
+    .card[hidden] { display: none !important; }
+    .card-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+    }
+    .role {
+      flex-shrink: 0;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: #F1F5F9;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .card h3 {
+      margin: 0;
+      font-size: 18px;
+      letter-spacing: -0.02em;
+    }
+    .purpose {
+      margin: 0;
+      color: var(--text);
+      font-size: 14.5px;
+    }
+    .meta {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .meta a { word-break: break-all; }
+
+    .cmd-block {
+      background: #0F172A;
+      color: #E2E8F0;
+      border-radius: 10px;
+      padding: 12px;
+      overflow-x: auto;
+    }
+    .cmd-label {
+      display: block;
+      margin-bottom: 6px;
+      color: #94A3B8;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .cmd-block pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 12.5px;
+      line-height: 1.5;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: auto;
+    }
+    .btn {
+      min-height: 44px;
+      padding: 0 14px;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      font: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 180ms ease, border-color 180ms ease, color 180ms ease;
+    }
+    .btn:focus-visible { outline: none; box-shadow: var(--focus); }
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+    }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-secondary {
+      background: var(--surface);
+      border-color: var(--line);
+      color: var(--text);
+    }
+    .btn-secondary:hover { background: #F8FAFC; }
+    .btn-ghost {
+      background: var(--primary-soft);
+      color: var(--primary);
+    }
+    .btn-ghost:hover { background: #DBEAFE; }
+    .btn.is-copied {
+      background: var(--ok-soft) !important;
+      color: var(--ok) !important;
+      border-color: #A7F3D0 !important;
+    }
+
+    .note {
+      margin-top: 24px;
+      padding: 16px 18px;
+      background: var(--warn-soft);
+      border-color: #FED7AA;
+    }
+    .note h2 {
+      margin: 0 0 8px;
+      font-size: 16px;
+      color: var(--warn);
+    }
+    .note ol {
+      margin: 0;
+      padding-left: 18px;
+      color: #9A3412;
+      font-size: 14px;
+    }
+    .note li + li { margin-top: 4px; }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      transform: translateX(-50%) translateY(20px);
+      background: #0F172A;
+      color: #fff;
+      padding: 12px 16px;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 600;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 180ms ease, transform 180ms ease;
+      z-index: 50;
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; scroll-behavior: auto !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <span class="eyebrow">OneOS · Cursor / Codex</span>
+      <h1>Skill 安装中心</h1>
+      <p class="lead">每个能力单独一张卡：看用途，一键复制「安装 / 更新 / 发给 AI」。同事粘贴到终端，或整段丢给 Cursor / Codex 代跑即可。</p>
+    </header>
+
+    <div class="toolbar">
+      <input class="search" id="search" type="search" placeholder="搜索 skill / 用途 / 口令…" aria-label="搜索 skill" />
+      <div class="filters" role="group" aria-label="按角色筛选">
+        <button type="button" class="chip" data-role="all" aria-pressed="true">全部</button>
+        <button type="button" class="chip" data-role="产品" aria-pressed="false">产品</button>
+        <button type="button" class="chip" data-role="测试" aria-pressed="false">测试</button>
+        <button type="button" class="chip" data-role="研发" aria-pressed="false">研发</button>
+        <button type="button" class="chip" data-role="分身" aria-pressed="false">分身</button>
+      </div>
+    </div>
+
+    <section class="batch" data-batch>
+      <h2>产品三件套</h2>
+      <p>YunxiaoPM + AutoRDO + oneos-autoprd，一次复制装齐或更新。</p>
+      <div class="batch-actions">
+        <button type="button" class="btn btn-primary" data-copy="batch-install">复制一键安装</button>
+        <button type="button" class="btn btn-secondary" data-copy="batch-update">复制一键更新</button>
+        <button type="button" class="btn btn-ghost" data-copy="batch-ai">复制发给 AI</button>
+      </div>
+      <div class="cmd-block">
+        <span class="cmd-label">一键安装</span>
+        <pre id="batch-install">npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoPM -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill AutoRDO -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-autoprd -a cursor -a codex -g -y</pre>
+      </div>
+    </section>
+
+    <section class="batch" data-batch>
+      <h2>王冕分身双 skill</h2>
+      <p>推荐用官方脚本一次装齐 brain + twin；也可分别安装。</p>
+      <div class="batch-actions">
+        <button type="button" class="btn btn-primary" data-copy="twin-install">复制一键安装脚本</button>
+        <button type="button" class="btn btn-secondary" data-copy="twin-update">复制一键更新</button>
+        <button type="button" class="btn btn-ghost" data-copy="twin-ai">复制发给 AI</button>
+      </div>
+      <div class="cmd-block">
+        <span class="cmd-label">一键安装脚本</span>
+        <pre id="twin-install">curl -fsSL https://raw.githubusercontent.com/15810879921-coder/wangmian-skills/main/install.sh | bash</pre>
+      </div>
+    </section>
+
+    <div class="grid" id="grid"></div>
+
+    <section class="note">
+      <h2>备注</h2>
+      <ol>
+        <li>需要 Node.js（可用 npx）。</li>
+        <li>云效相关 skill：浏览器先登录 https://devops.aliyun.com 。</li>
+        <li>旧 lifecycle 若本机还在，先卸载：npx skills remove yunxiao-requirement-lifecycle -g -y -a cursor -a codex</li>
+        <li>装完后建议新开 Chat / 重启 Codex 再喊口令。</li>
+      </ol>
+      <div class="batch-actions" style="margin-top:12px">
+        <button type="button" class="btn btn-secondary" data-copy="remove-lifecycle">复制卸载旧 lifecycle</button>
+      </div>
+      <pre id="remove-lifecycle" hidden>npx skills remove yunxiao-requirement-lifecycle -g -y -a cursor -a codex</pre>
+      <pre id="batch-update" hidden>npx skills update YunxiaoPM AutoRDO oneos-autoprd -g -y</pre>
+      <pre id="batch-ai" hidden>请帮我全局安装 OneOS 产品三件套到 Cursor + Codex：
+
+npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoPM -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill AutoRDO -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-autoprd -a cursor -a codex -g -y
+
+装完后确认口令可用：记录需求 / AutoRDO / oneos-autoprd。
+使用云效前请先登录 https://devops.aliyun.com 。</pre>
+      <pre id="twin-update" hidden>npx skills update wangmian-brain wangmian-twin -g -y</pre>
+      <pre id="twin-ai" hidden>请执行分身双 skill 一键安装：
+curl -fsSL https://raw.githubusercontent.com/15810879921-coder/wangmian-skills/main/install.sh | bash
+装完请新开 Chat。口令：王冕分身 / $wangmian-twin ；王冕分身大脑 / $wangmian-brain</pre>
+    </section>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite">已复制</div>
+
+  <script>
+    const SKILLS = [
+      {
+        id: "YunxiaoPM",
+        name: "YunxiaoPM（需求任务）",
+        role: "产品",
+        purpose: "产品侧在云效记需求、推进状态、建【交付】/【分析】/【设计】、交棒待开发；不建【开发】/【测试】。",
+        repo: "https://github.com/15810879921-coder/oneos-pm-skills",
+        tips: "口令：记录需求 / /YunxiaoPM / 需求任务",
+        install: "npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoPM -a cursor -a codex -g -y",
+        update: "npx skills update YunxiaoPM -g -y",
+        ai: "请帮我全局安装 YunxiaoPM 到 Cursor + Codex：\nnpx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoPM -a cursor -a codex -g -y\n装完后确认可用口令「记录需求」或「/YunxiaoPM」。使用前请登录 https://devops.aliyun.com 。"
+      },
+      {
+        id: "AutoRDO",
+        name: "AutoRDO",
+        role: "产品",
+        purpose: "把聊天记录、录音转写、反馈台账清洗成标准「标题+描述」，并识别类型/优先级/标签/部门/提交人；不直接写云效。",
+        repo: "https://github.com/15810879921-coder/oneos-pm-skills",
+        tips: "口令：AutoRDO：<粘贴材料>",
+        install: "npx skills add 15810879921-coder/oneos-pm-skills --skill AutoRDO -a cursor -a codex -g -y",
+        update: "npx skills update AutoRDO -g -y",
+        ai: "请帮我全局安装 AutoRDO 到 Cursor + Codex：\nnpx skills add 15810879921-coder/oneos-pm-skills --skill AutoRDO -a cursor -a codex -g -y"
+      },
+      {
+        id: "oneos-autoprd",
+        name: "oneos-autoprd",
+        role: "产品",
+        purpose: "写/同步产品需求说明（AutoPRD）和原型标注目录；定稿写功能变更；配合 YunxiaoPM 回填产品说明；不建同名阶段任务。",
+        repo: "https://github.com/15810879921-coder/oneos-pm-skills",
+        tips: "口令：oneos-autoprd / 需求定稿 / 本轮定稿",
+        install: "npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-autoprd -a cursor -a codex -g -y",
+        update: "npx skills update oneos-autoprd -g -y",
+        ai: "请帮我全局安装 oneos-autoprd 到 Cursor + Codex：\nnpx skills add 15810879921-coder/oneos-pm-skills --skill oneos-autoprd -a cursor -a codex -g -y"
+      },
+      {
+        id: "AutoVUL",
+        name: "AutoVUL",
+        role: "产品",
+        purpose: "按云效迭代名称拉取关联需求，生成 OneOS PC 版本更新日志（发版公告素材）。",
+        repo: "https://github.com/15810879921-coder/oneos-pm-skills",
+        tips: "口令：AutoVUL / 版本更新日志",
+        install: "npx skills add 15810879921-coder/oneos-pm-skills --skill AutoVUL -a cursor -a codex -g -y",
+        update: "npx skills update AutoVUL -g -y",
+        ai: "请帮我全局安装 AutoVUL 到 Cursor + Codex：\nnpx skills add 15810879921-coder/oneos-pm-skills --skill AutoVUL -a cursor -a codex -g -y"
+      },
+      {
+        id: "yunxiao-development-delivery",
+        name: "yunxiao-development-delivery（开发交付）",
+        role: "研发",
+        purpose: "接产品交棒后分配【开发】、执行/完成开发、Bug 修复与代码提交，并交接测试；给研发同学用。",
+        repo: "https://github.com/15810879921-coder/oneos-pm-skills",
+        tips: "口令：开发任务 / 完成开发 / 分配任务",
+        install: "npx skills add 15810879921-coder/oneos-pm-skills --skill yunxiao-development-delivery -a cursor -a codex -g -y",
+        update: "npx skills update yunxiao-development-delivery -g -y",
+        ai: "请帮我全局安装 yunxiao-development-delivery 到 Cursor + Codex：\nnpx skills add 15810879921-coder/oneos-pm-skills --skill yunxiao-development-delivery -a cursor -a codex -g -y"
+      },
+      {
+        id: "YunxiaoQA",
+        name: "YunxiaoQA（测试任务）",
+        role: "测试",
+        purpose: "测试侧拉【测试】任务、发起缺陷、关闭/再次打开、并入迭代、闭环测试任务；不建【开发】、不代开发改已修复。",
+        repo: "https://github.com/15810879921-coder/YunxiaoQA",
+        tips: "若 Codex 列不出，再复制「Codex 保险链接」",
+        install: "npx skills add 15810879921-coder/YunxiaoQA -a cursor -a codex -g -y",
+        update: "npx skills update YunxiaoQA -g -y",
+        extra: "mkdir -p ~/.codex/skills && ln -sfn ~/.agents/skills/yunxiaoqa ~/.codex/skills/yunxiaoqa",
+        ai: "请帮我全局安装 YunxiaoQA 到 Cursor + Codex：\nnpx skills add 15810879921-coder/YunxiaoQA -a cursor -a codex -g -y\nmkdir -p ~/.codex/skills && ln -sfn ~/.agents/skills/yunxiaoqa ~/.codex/skills/yunxiaoqa\n装完后说「拉取测试任务」。使用前请登录 https://devops.aliyun.com 。"
+      },
+      {
+        id: "wangmian-brain",
+        name: "wangmian-brain（分身大脑）",
+        role: "分身",
+        purpose: "按 OneOS 知识库窄检索业务口径、做冲突裁决；只答规则/能不能做，不改原型。",
+        repo: "https://github.com/15810879921-coder/wangmian-skills",
+        tips: "口令：王冕分身大脑 / $wangmian-brain",
+        install: "npx skills add 15810879921-coder/wangmian-skills --skill wangmian-brain -a cursor -a codex -g -y",
+        update: "npx skills update wangmian-brain -g -y",
+        ai: "请帮我全局安装 wangmian-brain 到 Cursor + Codex：\nnpx skills add 15810879921-coder/wangmian-skills --skill wangmian-brain -a cursor -a codex -g -y\n装完新开 Chat，口令：王冕分身大脑 / $wangmian-brain"
+      },
+      {
+        id: "wangmian-twin",
+        name: "wangmian-twin（数字分身）",
+        role: "分身",
+        purpose: "按王冕习惯产出需求、改原型 UI/UX；内嵌调大脑；写云效前会先确认。",
+        repo: "https://github.com/15810879921-coder/wangmian-skills",
+        tips: "口令：王冕分身 / $wangmian-twin",
+        install: "npx skills add 15810879921-coder/wangmian-skills --skill wangmian-twin -a cursor -a codex -g -y",
+        update: "npx skills update wangmian-twin -g -y",
+        ai: "请帮我全局安装 wangmian-twin 到 Cursor + Codex：\nnpx skills add 15810879921-coder/wangmian-skills --skill wangmian-twin -a cursor -a codex -g -y\n装完新开 Chat，口令：王冕分身 / $wangmian-twin"
+      }
+    ];
+
+    const grid = document.getElementById("grid");
+    const toast = document.getElementById("toast");
+    let activeRole = "all";
+
+    function escapeHtml(s) {
+      return String(s)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+    }
+
+    function render() {
+      grid.innerHTML = SKILLS.map((s) => {
+        const extra = s.extra
+          ? `<div class="cmd-block" style="margin-top:8px">
+              <span class="cmd-label">Codex 保险链接</span>
+              <pre id="extra-${escapeHtml(s.id)}">${escapeHtml(s.extra)}</pre>
+            </div>`
+          : "";
+        return `
+        <article class="card" data-role="${escapeHtml(s.role)}" data-search="${escapeHtml((s.name + " " + s.purpose + " " + (s.tips || "") + " " + s.id).toLowerCase())}">
+          <div class="card-top">
+            <h3>${escapeHtml(s.name)}</h3>
+            <span class="role">${escapeHtml(s.role)}</span>
+          </div>
+          <p class="purpose"><strong>用途：</strong>${escapeHtml(s.purpose)}</p>
+          <p class="meta">仓库：<a href="${escapeHtml(s.repo)}" target="_blank" rel="noopener">${escapeHtml(s.repo)}</a>${s.tips ? `<br>${escapeHtml(s.tips)}` : ""}</p>
+          <div class="cmd-block">
+            <span class="cmd-label">安装</span>
+            <pre id="install-${escapeHtml(s.id)}">${escapeHtml(s.install)}</pre>
+          </div>
+          <div class="cmd-block">
+            <span class="cmd-label">更新</span>
+            <pre id="update-${escapeHtml(s.id)}">${escapeHtml(s.update)}</pre>
+          </div>
+          ${extra}
+          <pre id="ai-${escapeHtml(s.id)}" hidden>${escapeHtml(s.ai)}</pre>
+          <div class="actions">
+            <button type="button" class="btn btn-primary" data-copy="install-${escapeHtml(s.id)}">复制安装</button>
+            <button type="button" class="btn btn-secondary" data-copy="update-${escapeHtml(s.id)}">复制更新</button>
+            <button type="button" class="btn btn-ghost" data-copy="ai-${escapeHtml(s.id)}">复制发给 AI</button>
+            ${s.extra ? `<button type="button" class="btn btn-secondary" data-copy="extra-${escapeHtml(s.id)}">复制 Codex 链接</button>` : ""}
+          </div>
+        </article>`;
+      }).join("");
+    }
+
+    function applyFilter() {
+      const q = document.getElementById("search").value.trim().toLowerCase();
+      document.querySelectorAll(".card").forEach((card) => {
+        const roleOk = activeRole === "all" || card.dataset.role === activeRole;
+        const textOk = !q || (card.dataset.search || "").includes(q);
+        card.hidden = !(roleOk && textOk);
+      });
+    }
+
+    async function copyText(text, btn) {
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch {
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        ta.remove();
+      }
+      toast.textContent = "已复制到剪贴板";
+      toast.classList.add("show");
+      if (btn) {
+        const old = btn.textContent;
+        btn.classList.add("is-copied");
+        btn.textContent = "已复制";
+        setTimeout(() => {
+          btn.classList.remove("is-copied");
+          btn.textContent = old;
+        }, 1200);
+      }
+      setTimeout(() => toast.classList.remove("show"), 1600);
+    }
+
+    document.addEventListener("click", (e) => {
+      const chip = e.target.closest(".chip");
+      if (chip) {
+        activeRole = chip.dataset.role;
+        document.querySelectorAll(".chip").forEach((c) => c.setAttribute("aria-pressed", String(c === chip)));
+        applyFilter();
+        return;
+      }
+      const btn = e.target.closest("[data-copy]");
+      if (!btn) return;
+      const id = btn.getAttribute("data-copy");
+      const el = document.getElementById(id);
+      if (!el) return;
+      copyText(el.textContent, btn);
+    });
+
+    document.getElementById("search").addEventListener("input", applyFilter);
+
+    render();
+    applyFilter();
+  </script>
+</body>
+</html>
