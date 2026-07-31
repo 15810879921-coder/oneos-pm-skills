@@ -2,6 +2,8 @@
 
 OneOS 产品团队自用的 AI Agent Skills 合集，支持 `npx skills` 一键安装（[skills.sh](https://skills.sh) 生态）。
 
+**同事安装页（一键复制安装/更新）：** https://15810879921-coder.github.io/oneos-pm-skills/
+
 ## Skills 列表
 
 | Skill | 说明 | 安装 / 更新 |
