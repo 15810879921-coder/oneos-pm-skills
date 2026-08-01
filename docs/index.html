@@ -348,8 +348,8 @@ npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-autoprd -a cursor
     </section>
 
     <section class="batch" data-batch>
-      <h2>王冕分身双 skill</h2>
-      <p>推荐用官方脚本一次装齐 brain + twin；也可分别安装。</p>
+      <h2>王冕驱动双 skill</h2>
+      <p>言出法随 + 法眼如炬；推荐官方脚本一次装齐（含旧名兼容 stub）；也可分别安装。</p>
       <div class="batch-actions">
         <button type="button" class="btn btn-primary" data-copy="twin-install">复制一键安装脚本</button>
         <button type="button" class="btn btn-secondary" data-copy="twin-update">复制一键更新</button>
@@ -384,10 +384,13 @@ npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-autoprd -a cursor
 
 装完后确认口令可用：记录需求 / AutoRDO / oneos-autoprd。
 使用云效前请先登录 https://devops.aliyun.com 。</pre>
-      <pre id="twin-update" hidden>npx skills update wangmian-brain wangmian-twin -g -y</pre>
-      <pre id="twin-ai" hidden>请执行分身双 skill 一键安装：
+      <pre id="twin-update" hidden>npx skills update yanchufasui fayanruju -g -y</pre>
+      <pre id="twin-ai" hidden>请执行王冕驱动双 skill 一键安装：
 curl -fsSL https://raw.githubusercontent.com/15810879921-coder/wangmian-skills/main/install.sh | bash
-装完请新开 Chat。口令：王冕分身 / $wangmian-twin ；王冕分身大脑 / $wangmian-brain</pre>
+装完请新开 Chat。
+主唤名：言出法随 / $yanchufasui ；法眼如炬 / $fayanruju
+签名：王冕驱动 · 言出法随 / 王冕驱动 · 法眼如炬
+旧口令 wangmian-twin / wangmian-brain 仍兼容。</pre>
     </section>
   </div>
 
@@ -463,26 +466,26 @@ curl -fsSL https://raw.githubusercontent.com/15810879921-coder/wangmian-skills/m
         ai: "请帮我全局安装 YunxiaoQA 到 Cursor + Codex：\nnpx skills add 15810879921-coder/YunxiaoQA -a cursor -a codex -g -y\nmkdir -p ~/.codex/skills && ln -sfn ~/.agents/skills/yunxiaoqa ~/.codex/skills/yunxiaoqa\n装完后说「拉取测试任务」。使用前请登录 https://devops.aliyun.com 。"
       },
       {
-        id: "wangmian-brain",
-        name: "wangmian-brain（分身大脑）",
+        id: "yanchufasui",
+        name: "言出法随（yanchufasui）",
         role: "分身",
-        purpose: "按 OneOS 知识库窄检索业务口径、做冲突裁决；只答规则/能不能做，不改原型。",
+        purpose: "王冕驱动的产品分身：按本尊习惯落需求、改原型 UI/UX；内嵌调法眼如炬；写云效前会先确认。",
         repo: "https://github.com/15810879921-coder/wangmian-skills",
-        tips: "口令：王冕分身大脑 / $wangmian-brain",
-        install: "npx skills add 15810879921-coder/wangmian-skills --skill wangmian-brain -a cursor -a codex -g -y",
-        update: "npx skills update wangmian-brain -g -y",
-        ai: "请帮我全局安装 wangmian-brain 到 Cursor + Codex：\nnpx skills add 15810879921-coder/wangmian-skills --skill wangmian-brain -a cursor -a codex -g -y\n装完新开 Chat，口令：王冕分身大脑 / $wangmian-brain"
+        tips: "口令：言出法随 / $yanchufasui / /yanchufasui｜签名：王冕驱动 · 言出法随｜旧口令王冕分身 / $wangmian-twin 兼容",
+        install: "npx skills add 15810879921-coder/wangmian-skills --skill yanchufasui -a cursor -a codex -g -y",
+        update: "npx skills update yanchufasui -g -y",
+        ai: "请帮我全局安装言出法随（yanchufasui）到 Cursor + Codex：\nnpx skills add 15810879921-coder/wangmian-skills --skill yanchufasui -a cursor -a codex -g -y\n装完新开 Chat。口令：言出法随 / $yanchufasui。签名：王冕驱动 · 言出法随。"
       },
       {
-        id: "wangmian-twin",
-        name: "wangmian-twin（数字分身）",
+        id: "fayanruju",
+        name: "法眼如炬（fayanruju）",
         role: "分身",
-        purpose: "按王冕习惯产出需求、改原型 UI/UX；内嵌调大脑；写云效前会先确认。",
+        purpose: "王冕驱动的口径裁决：按 OneOS 知识库窄检索、冲突裁决与置信度；只答规则/能不能做，不改原型。",
         repo: "https://github.com/15810879921-coder/wangmian-skills",
-        tips: "口令：王冕分身 / $wangmian-twin",
-        install: "npx skills add 15810879921-coder/wangmian-skills --skill wangmian-twin -a cursor -a codex -g -y",
-        update: "npx skills update wangmian-twin -g -y",
-        ai: "请帮我全局安装 wangmian-twin 到 Cursor + Codex：\nnpx skills add 15810879921-coder/wangmian-skills --skill wangmian-twin -a cursor -a codex -g -y\n装完新开 Chat，口令：王冕分身 / $wangmian-twin"
+        tips: "口令：法眼如炬 / $fayanruju / /fayanruju｜签名：王冕驱动 · 法眼如炬｜旧口令分身大脑 / $wangmian-brain 兼容",
+        install: "npx skills add 15810879921-coder/wangmian-skills --skill fayanruju -a cursor -a codex -g -y",
+        update: "npx skills update fayanruju -g -y",
+        ai: "请帮我全局安装法眼如炬（fayanruju）到 Cursor + Codex：\nnpx skills add 15810879921-coder/wangmian-skills --skill fayanruju -a cursor -a codex -g -y\n装完新开 Chat。口令：法眼如炬 / $fayanruju。签名：王冕驱动 · 法眼如炬。"
       }
     ];
 
