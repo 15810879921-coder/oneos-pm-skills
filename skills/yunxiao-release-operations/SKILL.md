@@ -1,22 +1,19 @@
 ---
 name: yunxiao-release-operations
 description: >-
-  Manage Alibaba Cloud Yunxiao release operations through eight consolidated commands:
-  组建发布批次, 执行测试流水线, 执行生产流水线, 准备发布, 执行发布, 执行回滚,
-  重新发布, and 查询发布.
-  组建发布批次 classifies selected and deferred iteration requirements, creates the exact
-  execution task, and produces the ID consumed by 准备发布. The state-driven 执行发布
-  handles production execution, post-deployment production verification, success/failure evidence,
-  and one verified automatic rollback. 执行回滚 handles an evidenced post-release defect or
-  business-verification failure before product acceptance closes the lifecycle. Use when operating
-  Yunxiao pipelines, diagnosing failures, rolling back an unsuccessful production release, or
-  closing the operations boundary. Never use pipeline success alone as production release success,
-  expose secrets from logs, or change an existing pipeline definition without exact authorization.
+  Manage Alibaba Cloud Yunxiao release operations through eight commands: 组建发布批次,
+  执行测试流水线, 执行生产流水线, 准备发布, 执行发布, 执行回滚, 重新发布, and 查询发布.
+  Classify exact iteration scope, create execution/release tasks, run and diagnose pipelines,
+  verify production, preserve attempt evidence, and perform one gated rollback or authorized
+  re-release. Every Projex, Flow, Codeup, and AppStack read/write uses the official aliyun devops
+  CLI with guarded preflight, drift detection, one write pass, targeted read-back, and idempotent
+  receipts. Browser, visual, DOM, Cookie, connector, and webpage-internal API fallbacks are forbidden.
+  Never treat pipeline success alone as release success, expose secrets, or change pipeline definitions.
 ---
 
 # Yunxiao Release Operations
 
-Operate deployment and release evidence while keeping test, production verification, rollback, and product acceptance separate. Suite version: `8.4.0`.
+Operate deployment and release evidence while keeping test, production verification, rollback, and product acceptance separate. Suite version: `9.0.0`.
 
 ## Load the required references
 
@@ -26,6 +23,7 @@ Read each selected file completely before acting:
 - Short Chinese commands and expected actions: [references/commands.md](references/commands.md).
 - Release-batch creation and A/B/C/D scope rules: [references/release-batch.md](references/release-batch.md).
 - Runtime write order and callback verification: [references/execution-runtime.md](references/execution-runtime.md).
+- Official CLI environment, guarded transactions, pipeline monitoring, idempotency, and performance: [references/yunxiao-cli-runtime.md](references/yunxiao-cli-runtime.md).
 - Cross-platform bundled-script launcher: [references/runtime-launcher.md](references/runtime-launcher.md).
 - Callback, evidence, authorization, live-change safety, and cross-skill handoff: [references/safety-handoff.md](references/safety-handoff.md).
 
@@ -68,17 +66,19 @@ Do not execute test cases, edit application code, or close a requirement after r
 
 Every command that runs or monitors a pipeline must automatically collect and output the first failed stage, job, task, step, redacted log evidence, diagnosis confidence, impact, and next action when it ends unsuccessfully. Do not require or generate a separate failure-analysis command.
 
-`执行发布：发版任务=ID` is one state-driven authorization. After gates pass it may start the stored production pipeline, resume monitoring an active execution, run the frozen production-verification plan after technical success, write the verified success or failure state, reconcile erroneous auto-close, and automatically execute or continue one verified rollback after either an unrecoverable terminal production failure or an explicit production-verification failure. It never retries a failed release, reruns an already successful pipeline, or duplicates an active/successful rollback. A failed release can continue only through `重新发布`. It does not authorize changing pipeline definitions or validation thresholds, bypassing an approval stage, guessing a rollback target, deleting tags or evidence, or closing product acceptance.
+`执行发布：发版任务=ID` is the initial-attempt command and same-attempt continuation. After all gates pass, create or reuse exactly one persisted `releaseAttemptId` with `attemptNo=1` and `attemptType=initial`; start at most one production execution for that attempt, or resume its existing execution, verification, or automatic rollback. A repeated `执行发布` may continue the same nonterminal attempt after an interruption, but it never creates a second production attempt. Once that attempt reaches verified success or failure, it is terminal: success is returned idempotently, while failure may only finish/return the stored rollback and repair handoff. Any new production execution after a failed release requires `重新发布`. It does not authorize changing pipeline definitions or validation thresholds, bypassing an approval stage, guessing a rollback target, deleting tags or evidence, or closing product acceptance.
 
 `执行回滚：发版任务=ID 原因=<问题> 证据=<ID或URL>` is an explicit active-rollback authorization for a uniquely resolved release that technically deployed or reached `发布完成` but has not been closed by product acceptance. Re-read and verify the supplied incident evidence, current production version, affected scope, stored stable target, rollback mechanism, artifact, permission, and idempotency before running exactly one rollback. Do not accept it as authority to reopen an `已完成/已关闭` lifecycle, invent an incident, change the rollback plan, or modify unrelated scope.
 
-`重新发布：发版任务=ID 回归证据=<ID或URL>` is the only repair-to-production continuation. Require the existing incident or product-acceptance-failure evidence, exact original iteration/scope, a successful repair test deployment, `oneos.release-repair-qa/v1`, every affected Bug closed with its own `oneos.bug-retest/v1`, successful rollback or an explicitly approved fix-forward disposition, and renewed release approval. Never treat a repeated `执行发布` as repair authorization.
+`重新发布：发版任务=ID 回归证据=<ID或URL>` is the only command that may create a production attempt after a terminal failed attempt or failed product acceptance. Require the existing incident or product-acceptance-failure evidence, exact original iteration/scope, a successful repair test deployment, `oneos.release-repair-qa/v1`, every affected Bug closed with its own `oneos.bug-retest/v1`, successful rollback or an explicitly approved fix-forward disposition, and renewed release approval. Create `attemptNo=previous+1`, `attemptType=re_release`, a new `releaseAttemptId`, and `previousAttemptId`; never treat a repeated `执行发布` as repair authorization.
 
 `查询发布：发版任务=ID` is always read-only and uses only one exact release-task ID to consolidate scope, state, execution, callback, failure, and auto-close diagnostics. Do not accept requirement IDs or pipeline execution IDs as query entry points.
 
 `组建发布批次：迭代=<名称>；需求=<ID,...>` authorizes creation or reuse of one exact `【执行】` task after the A/B/C/D classifier passes. It does not authorize production execution, release-state changes, or silently including every requirement in the iteration.
 
 ## Execute
+
+All Yunxiao Projex, Flow, Codeup, and AppStack discovery, state reads, relations, task writes, pipeline/deployment actions, logs, callbacks, and read-back must use `yunxiao_cli_gateway.py` through the official `aliyun devops` CLI. Never use a browser, screenshot/OCR, semantic DOM, Cookie, connector, or webpage-internal API, including as a fallback after CLI failure.
 
 1. For a direct pipeline command, resolve the pipeline name within the current Yunxiao organization and active project context. Require exactly one match and verify its environment matches the command.
 2. Start the exact matched pipeline immediately, submit only once for the current user message, and return the new execution ID, environment, start time, URL, and initial status.
@@ -89,7 +89,7 @@ Every command that runs or monitors a pipeline must automatically collect and ou
 7. For `组建发布批次`, resolve the iteration uniquely, freeze its formal requirement snapshot and the explicit selected IDs, run `skill-run classify_release_scope.py ...` through [references/runtime-launcher.md](references/runtime-launcher.md), and require A non-empty with C/D empty. Create/reuse and read back the exact `【执行】` task as defined in [references/release-batch.md](references/release-batch.md).
 8. For `准备发布`, accept only `执行任务ID=<ID>` and `迭代=<迭代名称>`. Resolve the execution task globally by exact ID, then resolve the named iteration inside that task's project. Zero or multiple task/iteration matches stop the command.
 9. Follow formal relations from the execution task and iteration to derive the project, frozen A-class requirement batch, test task/plan and completion evidence, production pipeline, owner, approver, window, rollback plan, and release scope. B-class deferred requirements remain recorded but excluded and non-blocking; any C/D item blocks. Never substitute the full iteration or manually supplied scope.
-10. For `执行发布`, read the real release-task state and apply the state table in [references/controls.md](references/controls.md); never choose an action from chat history alone.
+10. For `执行发布`, read the real release-task state and persisted attempt ledger, then apply the state table in [references/controls.md](references/controls.md). With no prior attempt and a ready state, create attempt 1 immediately before the production submission; with a nonterminal attempt, resume it without creating another; with a terminal failed attempt, prohibit a new production execution and return the repair/`重新发布` path. Never choose an action from chat history alone.
 11. Before any production execution, require the stored approval, release window, rollback plan, production target, and frozen production-verification plan with explicit checks, thresholds, observation window, evidence sources, and rollback-trigger mapping.
 12. Keep five evidence classes separate: test deployment, production pipeline, production verification, release change, and product acceptance.
 13. Validate callback signature, timestamp, execution ID, environment, scope, current state, idempotency, and replay protection with `skill-run verify_release_callback.py ...` before any callback-driven state write.
@@ -103,7 +103,7 @@ Every command that runs or monitors a pipeline must automatically collect and ou
 21. On rollback failure, preserve logs and partial state and prohibit automatic retry until an authorized recovery plan exists.
 22. If the task is already release-complete and there is no explicit `执行回滚`, do not rerun production; only reconcile status and evidence, then idempotently re-emit any missing product handoff.
 23. After a stable rollback or evidenced product-acceptance failure, emit `/skill YunxiaoQA` plus `接收发布回流：发版任务=<ID>；触发=<发布失败|产品验收失败>；证据=<ID或URL>`.
-24. On `重新发布`, verify the complete repair chain, create a new release-attempt idempotency key and production execution, preserve every previous attempt, rerun the frozen production-verification plan and then emit a fresh product-acceptance handoff.
+24. On `重新发布`, verify the complete repair chain, increment the attempt number, create a new release-attempt ID/idempotency key linked to the previous terminal attempt, start one new production execution, preserve every previous attempt, rerun the frozen production-verification plan and then emit a fresh product-acceptance handoff.
 
 ## Non-negotiable gates
 
@@ -120,6 +120,7 @@ Every command that runs or monitors a pipeline must automatically collect and ou
 - Never print or store Webhook secrets, cookies, tokens, or private keys.
 - A repeated execution ID must not advance the requirement twice.
 - An active or successful release execution must never be duplicated by `执行发布`.
+- Every first and subsequent production attempt must have a persisted attempt number, type, ID, authorized command, production execution ID, status, and idempotency key. A terminal failed attempt can never be replaced, cleared, or reused by `执行发布`.
 - `执行发布` must not guess a rollback target, reuse a stale artifact, or start a second rollback while one is active or already successful.
 - Automatic rollback requires either a verified terminal production failure or an explicit failure from a frozen production-verification check, plus a stored, uniquely resolvable rollback plan and stable version anchor. A blocked or indeterminate execution or observation is not sufficient.
 - Active rollback requires an explicit `执行回滚` command, a release not yet closed by product acceptance, verified incident evidence, and the same rollback target/artifact/permission/idempotency gates.
@@ -127,6 +128,7 @@ Every command that runs or monitors a pipeline must automatically collect and ou
 - Never mark `发布完成` until technical production execution and every required production-verification check have passed.
 - Release success must stop at `发布完成`; product or business acceptance owns final closure.
 - Do not delete pipelines, rules, release tasks, MR records, tags, artifacts, or execution evidence without separate authorization.
+- Missing CLI/plugin/PAT/organization-or-endpoint capability is a zero-write blocker and never authorizes another platform execution channel.
 
 ## Return
 
@@ -143,7 +145,7 @@ Every command that runs or monitors a pipeline must automatically collect and ou
 审批和回滚/回滚执行ID：
 回滚前后版本/恢复结果：
 修复回流批次/逐Bug复测/回归证据：
-重新发布尝试ID：
+发布尝试序号/类型/ID/前次尝试ID：
 状态变化：
 回调与幂等证据：
 生产版本锚点：

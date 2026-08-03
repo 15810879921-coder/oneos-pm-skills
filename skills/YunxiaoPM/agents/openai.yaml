@@ -1,4 +1,4 @@
 interface:
   display_name: "需求任务"
   short_description: "云效：需求分析设计交棒，并在生产发布后闭环产品验收"
-  default_prompt: "按需求任务（/skill YunxiaoPM）处理：需求阶段先读 settled-rules；生产验收按发版任务校验生产证据，Plan确认后再apply。"
+  default_prompt: "使用 $YunxiaoPM 处理需求分析、设计交棒和生产发布后的产品验收。"
