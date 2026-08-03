@@ -13,16 +13,13 @@
 
 ## 执行顺序（建单前）
 
-1. **实时拉取**云效项目列表（Cookie + XSRF）：
+1. **实时拉取**云效项目列表，只用官方 CLI：
 
-```http
-GET /projex/api/workspace/project/search/list
-  ?category=Project&scope=all&toPage=1&pageSize=100
-  &conditions={"conditionGroups":[[]]}
-  &extraConditions=…（可与页面一致：当前用户参与 + public）
-  &orderBy={"fieldIdentifier":"gmtCreate","format":"input","order":"desc","className":"date"}
-  &_input_charset=utf-8
+```text
+aliyun devops projex-search-projects --page 1 --per-page 100 --order-by gmtCreate --sort desc
 ```
+
+分页直到返回不足一页；认证只读取本机 PAT/组织环境变量。禁止 Cookie、XSRF、浏览器或网页内部接口。
 
 2. 将结果整理为单选列表：`{name}（{customCode}）`；选项 id 用 `identifier`（spaceId）。
 3. **AskQuestion / Plan 单选**「PJ. 云效项目」；未点选 → **禁止 create**。
@@ -44,7 +41,7 @@ GET /projex/api/workspace/project/search/list
 
 **动作（固定一次）：**
 
-1. **立即再调一次**同一 `project/search/list`（强制网络，不用缓存）。
+1. **立即再调一次**同一 `projex-search-projects` CLI 查询（强制网络，不用缓存）。
 2. 用新列表重新做匹配 / 刷新 Plan 单选选项；可回写 `projects_catalog`。
 3. 回报注明：`已自动重拉项目列表（因无法对应）`。
 4. **仍无法对应** → 停，展示最新列表请用户重选；**禁止**再自动拉第 3 次；**禁止**猜一个 spaceId 继续建单。
@@ -67,7 +64,6 @@ GET /projex/api/workspace/project/search/list
 
 若口令已含项目名/编号前缀且在实时列表中**唯一命中**：Plan 可预勾该选项，但仍须用户确认；0 命中或多命中 → **先自动重拉一次**再匹配；仍 0/多 → 不预勾，只展示最新列表。
 
-## 脚本
+## 执行入口
 
-`scripts/list_projects.py`：stdout JSON `projects[]`。  
-带查询时：`skill-run list_projects.py --match '01_ONEOS'` —— 0 命中/多命中则自动重拉一次再匹配（`refetched: true`）。启动方式按 [runtime-launcher.md](runtime-launcher.md) 解析。
+项目点选查询直接使用官方 `projex-search-projects`；标准生命周期由 `skill-run yunxiao_cli_pm.py preflight-standard` 再次回读并冻结项目ID与名称。旧 `list_projects.py` 不再执行。

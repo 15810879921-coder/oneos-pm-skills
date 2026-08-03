@@ -26,7 +26,7 @@
 ### 优先级（已验证）
 
 - 映射：`runtime-ids.json` → `priority`（紧急 / 高 / 中 / 低）。
-- create 时写入 `fieldIdentifier: "priority"`（与 [live-api.md](live-api.md) / `live_create_fast.py` 一致）。
+- create 时通过官方 `projex-create-workitem --custom-field-values` 写入 `priority`，并按 [live-api.md](live-api.md) 回读。
 - 未给优先级时：Plan 追问；脚本默认「中」仅作既有兜底，口令/网页有值时以用户值为准。
 
 ### 标签（已验证）

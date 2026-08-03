@@ -34,7 +34,7 @@ GET {adminOrigin}/api/export-html?path={prototypePath}&projectId={projectId}&inc
 1. 上传到需求 identifier  
 2. 上传到【交付】任务 identifier  
 
-优先 API；未知 upload 端点时用已登录浏览器在详情页「附件」上传。
+附件只允许使用官方 CLI 已公开的上传或外部资源关联能力；当前插件无法完成时停止并报告，不得切换浏览器或网页内部接口补传。
 
 ## 4. 与对象存储的关系
 

@@ -1,4 +1,4 @@
 interface:
   display_name: "需求任务"
-  short_description: "云效：需求分析设计交棒，并在生产发布后闭环产品验收"
-  default_prompt: "使用 $YunxiaoPM 处理需求分析、设计交棒和生产发布后的产品验收。"
+  short_description: "通过官方 CLI 完成云效需求分析设计、迭代交棒与产品验收"
+  default_prompt: "使用 $YunxiaoPM 通过官方 aliyun devops CLI 处理需求分析、设计交棒、迭代和生产发布后的产品验收。"

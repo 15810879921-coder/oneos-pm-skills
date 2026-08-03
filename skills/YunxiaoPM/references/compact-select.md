@@ -82,7 +82,7 @@
 2. 目标项目（或预填项目）下近期工作项 `tag` 字段聚合去重
 3. 重拉 = 再请求工作项列表聚合 + 合并 runtime；命中后可回写 `tags` 缓存
 
-（专用 `tag/list` Cookie API 尚未稳定；有稳定端点后改写入 `live-api.md` 并切换。）
+标签候选实时来源为官方 `aliyun devops projex-list-labels --id <项目ID>`；禁止 Cookie API。
 
 ## 项目列表顺序
 

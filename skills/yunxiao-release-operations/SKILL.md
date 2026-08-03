@@ -13,7 +13,7 @@ description: >-
 
 # Yunxiao Release Operations
 
-Operate deployment and release evidence while keeping test, production verification, rollback, and product acceptance separate. Suite version: `9.0.0`.
+Operate deployment and release evidence while keeping test, production verification, rollback, and product acceptance separate. Suite version: `9.1.0`.
 
 ## Load the required references
 
@@ -80,7 +80,7 @@ Every command that runs or monitors a pipeline must automatically collect and ou
 
 All Yunxiao Projex, Flow, Codeup, and AppStack discovery, state reads, relations, task writes, pipeline/deployment actions, logs, callbacks, and read-back must use `yunxiao_cli_gateway.py` through the official `aliyun devops` CLI. Never use a browser, screenshot/OCR, semantic DOM, Cookie, connector, or webpage-internal API, including as a fallback after CLI failure.
 
-1. For a direct pipeline command, resolve the pipeline name within the current Yunxiao organization and active project context. Require exactly one match and verify its environment matches the command.
+1. For a direct pipeline command, resolve the supplied name to one existing definition. For lifecycle-driven test or production execution, derive affected Codeup repositories from formal scope and resolve existing Flow definitions by exact code source and target branch: names must carry `test/测试` for test or `prod/生产` for production. Require one match per repository, deduplicate a shared pipeline, and verify the environment. Never create, copy, update, rename, or delete a pipeline.
 2. Start the exact matched pipeline immediately, submit only once for the current user message, and return the new execution ID, environment, start time, URL, and initial status.
 3. Follow the execution to a terminal state. While it is running, send concise progress updates at intervals no longer than 60 seconds rather than using one long blocking wait.
 4. If it fails, identify the first failed stage, job, task, and step; retrieve the failed-step log plus enough adjacent context to diagnose it; redact credentials and return the evidence and diagnosis.
@@ -109,6 +109,7 @@ All Yunxiao Projex, Flow, Codeup, and AppStack discovery, state reads, relations
 
 - Test deployment is never production release evidence.
 - Direct pipeline execution does not itself prove deployment success or authorize any work-item state change.
+- Test and production pipelines are pre-created project configuration. Missing or ambiguous repository-to-pipeline mapping blocks execution and must never trigger pipeline creation, copying, updating, renaming, or service-connection creation.
 - Reject a direct execution when the pipeline name has zero or multiple matches, the resolved environment conflicts with the command, or required runtime parameters are missing.
 - Redact passwords, tokens, cookies, access keys, private keys, authorization headers, and secret variable values before returning or saving logs.
 - Distinguish an explicit log-confirmed cause from a likely inference and from a visible failure symptom.

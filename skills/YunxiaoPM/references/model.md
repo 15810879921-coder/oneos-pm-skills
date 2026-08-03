@@ -18,7 +18,7 @@ SUB / TASK_SUB = 纵向拆解（交付 → 分析/设计）
 | ASSOCIATED | **仅【交付】** ↔ 需求 | 交付详情「关联项」能看到需求（**强制**） | 交付必过 |
 | TASK_SUB | 【分析】/【设计】 → 【交付】 | 交付详情「子项」能看到阶段任务（**强制**） | 阶段任务必过 |
 
-建单规则（Cookie 路径 · 同一 create 只能一条 `createWorkitemRelationInfo`）：
+建单规则（官方 CLI 路径；关系必须分别创建并回读）：
 
 | 对象 | `createWorkitemRelationInfo` | 另写字段 |
 |---|---|---|

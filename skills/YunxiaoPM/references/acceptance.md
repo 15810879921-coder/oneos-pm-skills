@@ -49,4 +49,4 @@
 |---|---|
 | 改状态 | 只用 `status/transit`（见 [live-api.md](live-api.md)） |
 | 改【交付】负责人 | 只用 `PATCH …/{id}` + `propertyKey=assignedTo` |
-| 极速复测 | `scripts/live_create_fast.py`；默认不开浏览器 |
+| CLI 复测 | `scripts/yunxiao_cli_pm.py`；先预检哈希，再 apply 并按内部ID回读 |

@@ -6,7 +6,8 @@ description: >-
   交付树【交付】ASSOCIATED /【分析】【设计】TASK_SUB，无单快轨与编号直推交棒何斐，
   创建迭代并挂【交付】（不挂需求）。用户说 YunxiaoPM、需求任务、记录需求、受理确认、开始分析、
   开始设计、设计完成、交棒开发、快轨待开发、编号直推、创建迭代、拉取待验收需求、验收通过、验收不通过、验收续跑 时使用。
-  不建【开发】/【测试】。凡写云效先 Plan 再 apply；禁止对齐 yunxiao-requirement-lifecycle。
+  全部云效读取和写入只走官方 aliyun devops CLI/PAT，不依赖浏览器 Cookie。 不建【开发】/【测试】。
+  凡写云效先 Plan 再 apply；禁止对齐 yunxiao-requirement-lifecycle。
   交棒后开发 Skill：仅【优化】类从需求 MD 精炼写「修改前规则」。
 ---
 
@@ -27,6 +28,15 @@ description: >-
 4. **开发 Skill**【开发】描述：仅【优化】精炼写「修改前规则」（见 [dev-task-description.md](references/dev-task-description.md)）
 5. 碎片入库先 **`$AutoRDO`**；设计完成灌 PRD 用 **`$oneos-autoprd`**
 6. 凡写云效：**Plan → 确认 → 一口气 apply**；新建必 **PJ 点选项目**；记录需求默认 **`1a2b3a4d`**
+7. 云效执行只允许官方 `aliyun devops` CLI 与本 Skill 的 `yunxiao_cli_pm.py`；禁止 Cookie、XSRF、浏览器、DOM 或网页内部接口回退
+
+## 官方 CLI 运行时（强制）
+
+1. 运行 `skill-run yunxiao_cli_pm.py doctor`，认证只读取本机环境变量中的 PAT、组织ID或 Region API 地址
+2. 写入前运行 `preflight-standard` 或对应命令的预检，冻结项目、人员、状态、关系、同名对象、文档哈希和幂等键
+3. 用户已通过 Plan 门禁后才运行 `apply-standard`；apply 必须重新读取守卫，发生漂移时零写入
+4. 写入后按工作项内部ID回读状态、负责人、正式关系、迭代和文档；不得按标题猜测成功
+5. 旧 `list_projects.py`、`list_tags.py`、`live_create_fast.py` 和 Cookie API 仅属历史实现，不得执行
 
 ## Plan 模式门禁（强制 · 凡写云效）
 
@@ -61,8 +71,8 @@ description: >-
 | **生成/回填【交付】非占位描述** | **`$AutoRDO`** → 规则对照章（修改前+修改后）；见 AutoRDO `delivery-rules-chapter.md` |
 | 设计完成 PRD + 原型链接 | **`$oneos-autoprd`**（创建【交付】仍可占位；回填时规则对照章仍走 AutoRDO） |
 | 人员/状态/字段；项目 catalog 仅缓存 | [assets/runtime-ids.json](assets/runtime-ids.json) |
-| PJ 项目点选 | [project-selection.md](references/project-selection.md) · [scripts/list_projects.py](scripts/list_projects.py) |
-| 压缩点选 | [compact-select.md](references/compact-select.md) · [scripts/list_tags.py](scripts/list_tags.py) |
+| PJ 项目点选 | [project-selection.md](references/project-selection.md) · 官方 `projex-search-projects` |
+| 压缩点选 | [compact-select.md](references/compact-select.md) · 官方 `projex-list-labels` |
 | 阶段日历工时 | [work-hours.md](references/work-hours.md) · [assets/cn-workday-calendar.json](assets/cn-workday-calendar.json) · [scripts/workday_hours.py](scripts/workday_hours.py) |
 | 跨平台脚本启动 | [runtime-launcher.md](references/runtime-launcher.md) · `skill-run <script.py> [参数...]` |
 
@@ -93,7 +103,7 @@ description: >-
 | 验收 / 回报 | [acceptance.md](references/acceptance.md) |
 | 交接契约（开发入口） | [handoff-contract.md](references/handoff-contract.md) |
 | 【开发】描述（仅【优化】） | [dev-task-description.md](references/dev-task-description.md) |
-| 实写 API | [live-api.md](references/live-api.md) · [scripts/live_create_fast.py](scripts/live_create_fast.py) |
+| CLI 实写与回读 | [live-api.md](references/live-api.md) · [scripts/yunxiao_cli_pm.py](scripts/yunxiao_cli_pm.py) |
 | 跨平台脚本启动器 | [runtime-launcher.md](references/runtime-launcher.md) |
 | 耗时复盘 | [live-perf-2026-07-23.md](references/live-perf-2026-07-23.md) |
 
