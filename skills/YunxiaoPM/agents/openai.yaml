@@ -1,4 +1,4 @@
 interface:
   display_name: "需求任务"
-  short_description: "通过官方 CLI 完成云效需求分析设计、迭代交棒与产品验收"
-  default_prompt: "使用 $YunxiaoPM 通过官方 aliyun devops CLI 处理需求分析、设计交棒、迭代和生产发布后的产品验收。"
+  short_description: "通过官方 CLI 完成云效需求分析设计、迭代闭环与产品验收"
+  default_prompt: "使用 $YunxiaoPM 通过官方 aliyun devops CLI 处理需求分析、设计交棒、迭代和生产发布后的产品验收；关闭迭代先核验 CLI，缺口才走受控视觉兜底。"

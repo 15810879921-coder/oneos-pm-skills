@@ -5,8 +5,8 @@ description: >-
   实时点选云效项目、推进 待处理→已确认→分析中→设计中→设计完成→待开发，
   交付树【交付】ASSOCIATED /【分析】【设计】TASK_SUB，无单快轨与编号直推交棒何斐，
   创建迭代并挂【交付】（不挂需求）。用户说 YunxiaoPM、需求任务、记录需求、受理确认、开始分析、
-  开始设计、设计完成、交棒开发、快轨待开发、编号直推、创建迭代、拉取待验收需求、验收通过、验收不通过、验收续跑 时使用。
-  全部云效读取和写入只走官方 aliyun devops CLI/PAT，不依赖浏览器 Cookie。 不建【开发】/【测试】。
+  开始设计、设计完成、交棒开发、快轨待开发、编号直推、创建迭代、关闭迭代、拉取待验收需求、验收通过、验收不通过、验收续跑 时使用。
+  全部云效读取和写入优先走官方 aliyun devops CLI/PAT；仅“关闭迭代”在已核实 CLI 缺少对应状态动作时，允许按受控视觉流程兜底，不依赖浏览器 Cookie。 不建【开发】/【测试】。
   凡写云效先 Plan 再 apply；禁止对齐 yunxiao-requirement-lifecycle。
   交棒后开发 Skill：仅【优化】类从需求 MD 精炼写「修改前规则」。
 ---
@@ -28,7 +28,7 @@ description: >-
 4. **开发 Skill**【开发】描述：仅【优化】精炼写「修改前规则」（见 [dev-task-description.md](references/dev-task-description.md)）
 5. 碎片入库先 **`$AutoRDO`**；设计完成灌 PRD 用 **`$oneos-autoprd`**
 6. 凡写云效：**Plan → 确认 → 一口气 apply**；新建必 **PJ 点选项目**；记录需求默认 **`1a2b3a4d`**
-7. 云效执行只允许官方 `aliyun devops` CLI 与本 Skill 的 `yunxiao_cli_pm.py`；禁止 Cookie、XSRF、浏览器、DOM 或网页内部接口回退
+7. 云效执行只允许官方 `aliyun devops` CLI 与本 Skill 的 `yunxiao_cli_pm.py`；禁止 Cookie、XSRF、DOM 或网页内部接口回退。唯一例外为“关闭迭代”：先按 [iteration-close.md](references/iteration-close.md) 核验官方 CLI 与页面完整交互；CLI 缺少状态动作时才允许受控视觉兜底
 
 ## 官方 CLI 运行时（强制）
 
@@ -97,6 +97,7 @@ description: >-
 | 计划工时 | [work-hours.md](references/work-hours.md) |
 | Make 导出附件 | [make-export-attach.md](references/make-export-attach.md) |
 | 创建迭代 | [sprint.md](references/sprint.md) |
+| 关闭 / 归档迭代 | [iteration-close.md](references/iteration-close.md) |
 | 生产后产品验收 | [release-acceptance.md](references/release-acceptance.md) · [scripts/accept_release.py](scripts/accept_release.py) |
 | 口令面 | [commands.md](references/commands.md) |
 | 记录需求元字段 | [record-meta-fields.md](references/record-meta-fields.md) |
@@ -121,6 +122,7 @@ description: >-
 快轨待开发：ONEOS-xx
 编号直推：分析任务=ONEOS-b / 设计任务=ONEOS-c / 交付任务=ONEOS-a
 创建迭代：版本类型=主|副|子；交付任务=ONEOS-a,ONEOS-b,…；名称前缀=…
+关闭迭代：迭代ID=…
 拉取待验收需求：发版任务=TASK-900
 验收通过：发版任务=TASK-900；验收人=…；证据=…
 验收不通过：发版任务=TASK-900；验收人=…；原因=…；证据=…
