@@ -13,7 +13,7 @@ description: >-
 
 # Yunxiao Release Operations
 
-Operate deployment and release evidence while keeping test, production verification, rollback, and product acceptance separate. Suite version: `9.1.0`.
+Operate deployment and release evidence while keeping test, production verification, rollback, and product acceptance separate. Suite version: `9.1.1`.
 
 ## Load the required references
 
@@ -76,6 +76,16 @@ Every command that runs or monitors a pipeline must automatically collect and ou
 
 `组建发布批次：迭代=<名称>；需求=<ID,...>` authorizes creation or reuse of one exact `【执行】` task after the A/B/C/D classifier passes. It does not authorize production execution, release-state changes, or silently including every requirement in the iteration.
 
+### Explicit simulated-production exception
+
+Only when the user explicitly authorizes a simulated-production smoke test may the Skill set up a disposable Flow definition through `flow-create-smoke-pipeline`. This is not a normal release command and never changes the real production definition:
+
+- The source must be one existing `test` pipeline in the daily environment; the target name must contain both `smoke` and `prod`, and must not equal any real `prod` pipeline name.
+- The copy may reuse exactly one already-accessible Codeup service connection and the source pipeline's existing build-group identifier. It must never create a service connection, runner, host group, container, deployment target, secret, or webhook.
+- Remove notification plugins, use only a manual run, record `releaseMode=smoke` and `isRealProduction=false`, and run only in the daily/test environment.
+- If Flow does not expose the source build group to YAML creation, stop the copy attempt without retrying through a browser or another channel. An existing test pipeline may then be run once as a clearly labelled simulated-production execution.
+- A successful simulation may close only its `【执行】` and `【发版】【模拟生产】` evidence tasks. It never writes `发布完成`, never closes a requirement, and never substitutes product acceptance or real production verification.
+
 ## Execute
 
 All Yunxiao Projex, Flow, Codeup, and AppStack discovery, state reads, relations, task writes, pipeline/deployment actions, logs, callbacks, and read-back must use `yunxiao_cli_gateway.py` through the official `aliyun devops` CLI. Never use a browser, screenshot/OCR, semantic DOM, Cookie, connector, or webpage-internal API, including as a fallback after CLI failure.
@@ -109,7 +119,7 @@ All Yunxiao Projex, Flow, Codeup, and AppStack discovery, state reads, relations
 
 - Test deployment is never production release evidence.
 - Direct pipeline execution does not itself prove deployment success or authorize any work-item state change.
-- Test and production pipelines are pre-created project configuration. Missing or ambiguous repository-to-pipeline mapping blocks execution and must never trigger pipeline creation, copying, updating, renaming, or service-connection creation.
+- Test and production pipelines are pre-created project configuration. Missing or ambiguous repository-to-pipeline mapping blocks execution and must never trigger pipeline creation, copying, updating, renaming, or service-connection creation, except for the explicit simulated-production exception above.
 - Reject a direct execution when the pipeline name has zero or multiple matches, the resolved environment conflicts with the command, or required runtime parameters are missing.
 - Redact passwords, tokens, cookies, access keys, private keys, authorization headers, and secret variable values before returning or saving logs.
 - Distinguish an explicit log-confirmed cause from a likely inference and from a visible failure symptom.

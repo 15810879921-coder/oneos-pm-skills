@@ -11,6 +11,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+import yaml
+
 import yunxiao_cli_runtime as core
 
 
@@ -32,6 +34,7 @@ WRITE_OPERATIONS = {
     "codeup-update-change-request", "codeup-update-change-request-related-person",
     "codeup-merge-change-request", "codeup-delete-branch",
     "flow-create-pipeline-run", "flow-execute-pipeline-job-action",
+    "flow-create-smoke-pipeline",
     "flow-execute-pipeline-job-run", "flow-rerun-pipeline-job-run",
     "flow-retry-pipeline-job-run", "flow-resume-vm-deploy-order",
     "flow-retry-vm-deploy-machine", "flow-pass-pipeline-validate",
@@ -139,6 +142,171 @@ def resolve_args(args: list[str], action_outputs: list[Any]) -> list[str]:
             replacement = json.dumps(replacement, ensure_ascii=False, separators=(",", ":"))
         resolved.append(str(replacement))
     return resolved
+
+
+def parse_flag_args(args: list[str], required: set[str]) -> dict[str, str]:
+    if len(args) % 2:
+        raise core.AdapterError("模拟生产流水线参数必须为成对的--参数 值。")
+    values: dict[str, str] = {}
+    for index in range(0, len(args), 2):
+        key, value = args[index], args[index + 1]
+        if not key.startswith("--") or key in values:
+            raise core.AdapterError("模拟生产流水线参数重复或格式无效。")
+        values[key] = value
+    if set(values) != required:
+        raise core.AdapterError("模拟生产流水线参数不完整或包含未允许字段。")
+    return values
+
+
+def strip_pipeline_plugins(flow: str) -> str:
+    """Remove notification/plugin blocks so copied YAML never carries secrets."""
+    output: list[str] = []
+    lines = flow.splitlines()
+    index = 0
+    while index < len(lines):
+        line = lines[index]
+        match = re.match(r"^(\s*)plugins:\s*$", line)
+        if not match:
+            output.append(line)
+            index += 1
+            continue
+        indent = len(match.group(1))
+        output.append(" " * indent + "plugins: []")
+        index += 1
+        while index < len(lines):
+            candidate = lines[index]
+            if candidate.strip() and len(candidate) - len(candidate.lstrip(" ")) <= indent:
+                break
+            index += 1
+    return "\n".join(output) + "\n"
+
+
+def build_smoke_pipeline_flow(source: dict[str, Any]) -> str:
+    config = source.get("pipelineConfig") or {}
+    flow = str(config.get("flow") or "")
+    sources = config.get("sources") or []
+    if not flow or not isinstance(sources, list) or len(sources) != 1:
+        raise core.AdapterError("源test流水线缺少唯一的YAML或Codeup代码源。")
+    source_data = sources[0].get("data") if isinstance(sources[0], dict) else None
+    if not isinstance(source_data, dict):
+        raise core.AdapterError("源test流水线代码源格式无效。")
+    repo = str(source_data.get("repo") or "")
+    branch = str(source_data.get("branch") or "")
+    if not repo or not branch:
+        raise core.AdapterError("源test流水线缺少仓库或分支。")
+    clean_flow = strip_pipeline_plugins(flow)
+    if SECRET_RE.search(clean_flow):
+        raise core.AdapterError("源流水线脱敏后仍含敏感配置，拒绝复制。")
+    try:
+        document = yaml.safe_load(clean_flow)
+    except yaml.YAMLError as exc:
+        raise core.AdapterError(f"源test流水线YAML无法解析：{exc}") from exc
+    if not isinstance(document, dict) or document.get("schema") != "tb":
+        raise core.AdapterError("源test流水线不是受支持的YAML格式。")
+    legacy_pipeline = document.pop("pipeline", None)
+    if not isinstance(legacy_pipeline, list) or not legacy_pipeline:
+        raise core.AdapterError("源test流水线缺少可转换的阶段配置。")
+    # 旧版 UI 配置将构建组保存在任务参数中；创建 API 要求将其显式映射为
+    # runsOn。只接受源流水线已经在用的唯一标识，绝不猜测或创建构建组。
+    source_runs_on = ""
+    for phase in legacy_pipeline:
+        if not isinstance(phase, dict):
+            continue
+        for phase_stage in phase.get("stages") or []:
+            for job in (phase_stage.get("jobs") if isinstance(phase_stage, dict) else []) or []:
+                params = job.get("params") if isinstance(job, dict) else None
+                candidate = str((params or {}).get("buildNodeGroup") or "").strip()
+                if candidate:
+                    source_runs_on = candidate
+                    break
+            if source_runs_on:
+                break
+        if source_runs_on:
+            break
+    if not source_runs_on:
+        raise core.AdapterError("源test流水线未声明可继承的构建组，拒绝猜测runsOn。")
+    stages: dict[str, Any] = {}
+    for phase_index, phase in enumerate(legacy_pipeline, start=1):
+        if not isinstance(phase, dict) or not str(phase.get("name") or "").strip():
+            raise core.AdapterError("源test流水线阶段配置无效。")
+        phase_stages = phase.get("stages")
+        if not isinstance(phase_stages, list) or len(phase_stages) != 1:
+            raise core.AdapterError("源test流水线阶段层级不支持安全复制。")
+        phase_stage = phase_stages[0]
+        jobs_raw = phase_stage.get("jobs") if isinstance(phase_stage, dict) else None
+        if not isinstance(jobs_raw, list) or not jobs_raw:
+            raise core.AdapterError("源test流水线缺少可运行任务。")
+        jobs: dict[str, Any] = {}
+        for job_index, job in enumerate(jobs_raw, start=1):
+            if not isinstance(job, dict):
+                raise core.AdapterError("源test流水线任务配置无效。")
+            converted_job = dict(job)
+            display_name = str(converted_job.pop("displayName", "") or "")
+            if display_name:
+                converted_job["name"] = display_name
+            # 旧版 Flow UI 导出的任务未显式写出运行集群；创建 API 的 YAML
+            # 则要求 runsOn。只继承源测试流水线已经在用的构建组。
+            if not str(converted_job.get("runsOn") or "").strip():
+                converted_job["runsOn"] = source_runs_on
+            jobs[f"smoke_job_{phase_index}_{job_index}"] = converted_job
+        stages[f"smoke_stage_{phase_index}"] = {"name": str(phase["name"]), "jobs": jobs}
+    document["stages"] = stages
+    document["sources"] = {
+        "smoke_source": {
+            "type": "codeup",
+            "name": "ln-one-os-web",
+            "endpoint": repo,
+            "branch": branch,
+            "certificate": {"type": "serviceConnection", "serviceConnection": "${SMOKE_CODEUP_CONNECTION}"},
+        }
+    }
+    document["defaultWorkspace"] = "smoke_source"
+    return yaml.safe_dump(document, allow_unicode=True, sort_keys=False)
+
+
+def execute_smoke_pipeline_create(executable: str, args: list[str]) -> dict[str, Any]:
+    flags = parse_flag_args(
+        args,
+        {"--source-pipeline-id", "--pipeline-name", "--env-id"},
+    )
+    source_id = flags["--source-pipeline-id"]
+    name = flags["--pipeline-name"]
+    if flags["--env-id"] != "0":
+        raise core.AdapterError("模拟生产流水线只能创建在日常环境（env-id=0）。")
+    lowered = name.lower()
+    if "smoke" not in lowered or "prod" not in lowered or lowered == "oneos-web-prod":
+        raise core.AdapterError("模拟生产流水线名称必须包含smoke和prod，且不得为真实prod名称。")
+    source = core.unwrap(core.run_devops(executable, ["flow-get-pipeline", "--pipeline-id", source_id]))
+    if not isinstance(source, dict):
+        raise core.AdapterError("源test流水线无法回读。")
+    source_name = str(source.get("name") or "").lower()
+    if "test" not in source_name or source.get("envId") != 0:
+        raise core.AdapterError("源流水线必须是日常环境的test流水线。")
+    connections = core.unwrap(core.run_devops(executable, [
+        "flow-list-service-connections", "--service-connection-type", "Codeup",
+    ]))
+    if not isinstance(connections, list) or len(connections) != 1:
+        raise core.AdapterError("无法唯一解析可用的Codeup服务连接。")
+    connection_uuid = str((connections[0] or {}).get("uuid") or "")
+    if not connection_uuid:
+        raise core.AdapterError("Codeup服务连接缺少UUID。")
+    flow = build_smoke_pipeline_flow(source).replace("${SMOKE_CODEUP_CONNECTION}", connection_uuid)
+    created = core.unwrap(core.run_devops(executable, [
+        "flow-create-pipeline", "--name", name, "--content", flow,
+    ]))
+    if not isinstance(created, dict):
+        raise core.AdapterError("创建模拟生产流水线后未返回流水线信息。")
+    pipeline_id = created.get("id") or created.get("pipelineId")
+    if pipeline_id is None:
+        raise core.AdapterError("创建模拟生产流水线后未返回流水线ID。")
+    return {
+        "pipelineId": str(pipeline_id),
+        "pipelineName": name,
+        "sourcePipelineId": source_id,
+        "environment": "日常环境",
+        "releaseMode": "smoke",
+        "pluginsStripped": True,
+    }
 
 
 def assert_expect(value: Any, expect: Any, label: str) -> None:
@@ -263,7 +431,12 @@ def cmd_apply(args: argparse.Namespace) -> int:
     action_outputs: list[Any] = []
     for action in plan["actions"]:
         resolved = resolve_args(action["args"], action_outputs)
-        action_outputs.append(core.run_devops(executable, [action["operation"], *resolved]))
+        if action["operation"] == "flow-create-smoke-pipeline":
+            action_outputs.append(execute_smoke_pipeline_create(executable, resolved))
+        else:
+            # 写接口沿用 CLI 外层响应包装；事务模板只能引用业务返回体。
+            # 统一拆包后，${action.0.pipelineRunId} 等回读模板可稳定解析。
+            action_outputs.append(core.unwrap(core.run_devops(executable, [action["operation"], *resolved])))
     verification_receipts = []
     for index, verification in enumerate(plan["verifications"]):
         value = execute_read(executable, verification, action_outputs)
