@@ -130,6 +130,6 @@ skill-run close_test_task.py --sn ONEOS-xx --dry-run
 该脚本固定返回退出码`4`且不写状态。唯一完整入口是：
 
 ```powershell
-skill-run transit_test_lifecycle.py complete --test-sn ONEOS-xx --req-sn ONEOS-yy `
-  --evidence-manifest C:\evidence\ONEOS-xx.json --dry-run
+skill-run yunxiao_cli_test_lifecycle.py complete --space-id <项目ID> --test-sn ONEOS-xx --req-sn ONEOS-yy `
+  --evidence-manifest C:\evidence\ONEOS-xx.json --idempotency-key qa-ONEOS-xx-v1
 ```

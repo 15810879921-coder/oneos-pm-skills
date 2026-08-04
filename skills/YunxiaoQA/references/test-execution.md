@@ -26,11 +26,14 @@
 1. 按编号精确读取【测试】，验证`TASK_SUB→【交付】`和`ASSOCIATED→需求`。
 2. 口令给需求时必须与正式关系一致；未给时从正式关系唯一反查。
 3. 验证【测试】=`待处理`、需求=`待测试`。
-4. 先 dry-run，再在同一已确认 Plan 中执行：
+4. 先预检，再在同一已确认 Plan 中加`--apply`执行：
 
 ```powershell
-skill-run transit_test_lifecycle.py start --test-sn ONEOS-xx --req-sn ONEOS-yy --dry-run
-skill-run transit_test_lifecycle.py start --test-sn ONEOS-xx --req-sn ONEOS-yy
+skill-run yunxiao_cli_test_lifecycle.py start `
+  --space-id <项目ID> `
+  --test-sn ONEOS-xx `
+  --req-sn ONEOS-yy `
+  --idempotency-key 'qa-start-ONEOS-xx'
 ```
 
 5. 回读两侧编号、标题和状态。任一失败时报告部分状态，不用浏览器补写。
@@ -52,14 +55,15 @@ skill-run transit_test_lifecycle.py start --test-sn ONEOS-xx --req-sn ONEOS-yy
 测试进行中可先独立记录并回读证据，不推进状态：
 
 ```powershell
-skill-run transit_test_lifecycle.py record `
+skill-run yunxiao_cli_test_lifecycle.py record `
+  --space-id <项目ID> `
   --test-sn ONEOS-xx `
   --req-sn ONEOS-yy `
   --evidence-manifest '.\evidence\ONEOS-xx.qa.json' `
-  --dry-run
+  --idempotency-key 'qa-ONEOS-xx-<版本>'
 ```
 
-去掉`--dry-run`后只写受管证据区块。此时允许非零用例计数和活动缺陷；它们会在`complete`阶段阻塞完成。
+预检成功后加`--apply`只写受管证据区块。此时允许活动缺陷；它们会在`complete`阶段阻塞完成。
 
 ## 完成测试
 
@@ -71,15 +75,16 @@ skill-run transit_test_lifecycle.py record `
 脚本入口：
 
 ```powershell
-skill-run transit_test_lifecycle.py complete `
+skill-run yunxiao_cli_test_lifecycle.py complete `
+  --space-id <项目ID> `
   --test-sn ONEOS-xx `
   --req-sn ONEOS-yy `
   --evidence-manifest '.\evidence\ONEOS-xx.qa.json' `
   --risk-approval 'ONEOS-901=王冕|APPROVAL-ID-or-URL' `
-  --dry-run
+  --idempotency-key 'qa-ONEOS-xx-<版本>'
 ```
 
-去掉`--dry-run`前必须满足：
+预检成功后加`--apply`。脚本必须满足：
 
 - 【测试】=`处理中`、需求=`测试中`。
 - 测试任务含开发侧写入并回读的`oneos.test-deployment/v1`，环境=`test`且部署成功，版本、项目、迭代、需求和测试任务一致。
@@ -87,6 +92,7 @@ skill-run transit_test_lifecycle.py complete `
 - 每条已关闭Bug有自己的`oneos.bug-retest/v1`复测通过证据；其他缺陷仅允许有批准证据的`暂不修复`。
 - 完成时由脚本从测试任务正式关系实时生成完整`bugSnapshot`及SHA-256；发布侧必须重新读取全部关联Bug并与该快照一致，不能用手填活动Bug数量代替。
 - 证据与本项目、迭代、需求、测试任务一致。
+- TestHub计划概览必须是`/testhub/plan/<计划ID>/dashboard`，作为同一计划的正式汇总报告；脚本同时回读计划计数和目标用例执行ID，禁止只信URL。
 
 完成后回读【测试】=`已完成`和需求=`测试完成`。
 

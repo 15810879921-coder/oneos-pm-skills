@@ -10,7 +10,8 @@
 | `list_bugs.py` | 按状态拉缺陷（默认已修复+暂不修复） |
 | `create_bug.py` | **发起缺陷**（独立/测试用例共同入口；验证者强制当前登录用户；ASSOCIATED→【测试】） |
 | `transit_bug.py` | 测试侧流转：已修复→已关闭时强制逐Bug复测证据；再次打开保留原证据（含编号回读） |
-| `transit_test_lifecycle.py` | **完整测试闭环**：校验test部署和真实QA证据清单，同步需求状态，写证据并回读 |
+| `yunxiao_cli_test_lifecycle.py` | **当前完整测试闭环**：官方CLI校验test部署、TestHub、真实QA证据和Bug，同步需求状态，写证据并回读 |
+| `transit_test_lifecycle.py` | 旧Cookie兼容实现；新执行禁止使用 |
 | `close_test_task.py` | 已停用的旧入口：固定拒绝写入并指向完整闭环命令 |
 | `discover_bug_constants.py` | 早期探测（常量已写入 runtime-ids） |
 
@@ -57,19 +58,25 @@ skill-run transit_bug.py --sn DEMO-91 --from 已修复 --to 已关闭 `
   --retest-evidence https://example.invalid/evidence/RUN-9001 `
   --environment test --deployed-version v2026.07.31.1 --verified-by USER-1 --dry-run
 
-# 开始测试（先 dry-run；禁止浏览器点状态）
-skill-run transit_test_lifecycle.py start --test-sn ONEOS-343 --req-sn ONEOS-300 --dry-run
-
 # 测试中记录证据（读取真实证据清单，不推进状态）
-skill-run transit_test_lifecycle.py record --test-sn ONEOS-343 --req-sn ONEOS-300 `
-  --evidence-manifest C:\evidence\ONEOS-343.json --dry-run
+skill-run yunxiao_cli_test_lifecycle.py record --space-id <项目ID> `
+  --test-sn ONEOS-343 --req-sn ONEOS-300 `
+  --evidence-manifest C:\evidence\ONEOS-343.json `
+  --idempotency-key qa-ONEOS-343-v1
 
-# 完成测试（先dry-run；必须提供真实证据清单）
-skill-run transit_test_lifecycle.py complete --test-sn ONEOS-343 --req-sn ONEOS-300 `
-  --evidence-manifest C:\evidence\ONEOS-343.json --dry-run
+# 开始测试（先预检；同一命令加 --apply 才写入）
+skill-run yunxiao_cli_test_lifecycle.py start --space-id <项目ID> `
+  --test-sn ONEOS-343 --req-sn ONEOS-300 `
+  --idempotency-key qa-start-ONEOS-343
+
+# 完成测试（先预检；同一命令加 --apply 才写入）
+skill-run yunxiao_cli_test_lifecycle.py complete --space-id <项目ID> `
+  --test-sn ONEOS-343 --req-sn ONEOS-300 `
+  --evidence-manifest C:\evidence\ONEOS-343.json `
+  --idempotency-key qa-ONEOS-343-v1
 ```
 
-`create_bug.py` / `transit_bug.py` / `transit_test_lifecycle.py` 为写操作：须先走 YunxiaoQA **Plan 门禁**，用户确认后再去掉 `--dry-run` 执行。`close_test_task.py`始终拒绝写入。
+`create_bug.py` / `transit_bug.py` / `yunxiao_cli_test_lifecycle.py` 为写操作：须先走 YunxiaoQA **Plan 门禁**，用户确认后再加`--apply`或去掉旧脚本的`--dry-run`执行。`close_test_task.py`始终拒绝写入。
 **禁止**用浏览器 DOM 点击改云效状态。
 
 ### `create_bug.py` 退出码

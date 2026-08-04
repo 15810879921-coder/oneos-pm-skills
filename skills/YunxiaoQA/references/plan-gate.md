@@ -58,7 +58,7 @@
 - [ ] 关联缺陷清单；活跃缺陷为0
 - [ ] 每条已关闭Bug均有自己的`oneos.bug-retest/v1`，且复测版本等于本次test部署版本
 - [ ] 每条`暂不修复`均列出批准人和批准记录ID/URL
-- [ ] 将用`transit_test_lifecycle.py complete --evidence-manifest <文件>`校验文件哈希、写证据并回读，再推进两侧状态
+- [ ] 将用`yunxiao_cli_test_lifecycle.py complete --evidence-manifest <文件>`校验文件哈希、写证据并回读，再推进两侧状态
 - [ ] 发布候选交接字段与幂等键
 - [ ] 确认不走浏览器点状态；回报两侧`编号 | 标题 | from→to`
 

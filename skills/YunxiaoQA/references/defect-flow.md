@@ -70,7 +70,7 @@ flowchart TB
 
 满足后：`完成测试`先写入并回读证据，再将【测试】`处理中→已完成`、需求`测试中→测试完成`，并输出发布候选交接。
 
-**唯一完整写入口**：`scripts/transit_test_lifecycle.py complete ... --evidence-manifest <证据清单.json>`（先`--dry-run`，API `transit` + 两侧回读）。
+**唯一完整写入口**：`scripts/yunxiao_cli_test_lifecycle.py complete ... --evidence-manifest <证据清单.json>`（先预检，确认后加`--apply`，官方CLI写入 + 两侧回读）。
 **禁止**浏览器点「已完成」。
 
 `scripts/close_test_task.py`已停用并始终拒绝写入，防止绕过部署、QA清单或逐Bug复测门禁。
