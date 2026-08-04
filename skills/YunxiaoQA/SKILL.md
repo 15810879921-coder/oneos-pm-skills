@@ -21,7 +21,7 @@ description: >-
 
 与 **YunxiaoPM（需求任务）**、开发交付 Skill 分工：本 Skill **只做测试侧**读写。
 
-闭环版本：`2.4.0`。
+闭环版本：`2.5.0`。
 
 ## Plan 模式门禁（强制 · 凡写云效）
 
@@ -67,6 +67,7 @@ description: >-
 | 挂载点选【测试】/需求 | [references/anchor-selection.md](references/anchor-selection.md) · `scripts/list_bug_anchors.py` |
 | 实写 API | [references/live-api.md](references/live-api.md)（01_ONEOS 已验证） |
 | 测试执行闭环 | [references/test-execution.md](references/test-execution.md) · `scripts/transit_test_lifecycle.py` |
+| TestHub计划/用例执行 | [references/yunxiao-cli-testhub.md](references/yunxiao-cli-testhub.md) · `scripts/yunxiao_cli_testhub.py` |
 | 列表/建缺/流转脚本 | [scripts/README.md](scripts/README.md) · `check_auth.py` / `list_bug_anchors.py` / `list_test_tasks.py` / `list_bugs.py` / `create_bug.py` / `transit_bug.py` / `close_test_task.py` |
 | 跨平台脚本启动 | [references/runtime-launcher.md](references/runtime-launcher.md) · `skill-run <script.py> [参数...]` |
 
@@ -83,11 +84,11 @@ description: >-
 历史事故：浏览器点状态菜单把 **ONEOS-343** 错关成 **ONEOS-309**。故：
 
 1. **禁止**用 `cursor-ide-browser` / DOM 点击 /「可交互节点」改云效状态、负责人、关联、迭代。
-2. **唯一写路径**：本 Skill `scripts/*.py`（Cookie/`refresh_cookies` / 页内 `fetch` 仅用于鉴权，不用于点列表）。
+2. **唯一写路径**：本 Skill `scripts/*.py`。TestHub 计划/用例/结果优先走官方阿里云 CLI；当前CLI与公开OpenAPI均缺少“规划已有用例”写能力时必须返回`CLI_CAPABILITY_GAP`并零写入。禁止浏览器写入或猜测接口。
 3. **编号硬门禁**：口令 `ONEOS-xx` → 脚本 `--sn` → `serialNumber ==` 精确匹配 → apply → **回读** `serialNumber|subject|from→to`；任一不对立刻停。
 4. **开始/记录/完成测试**：只用 `skill-run transit_test_lifecycle.py start|record|complete ... --dry-run` 后再 apply；`skill-run` 按 [references/runtime-launcher.md](references/runtime-launcher.md) 解析。脚本必须先验证`oneos.test-deployment/v1`提测部署区块，record/complete必须读取`oneos.qa-evidence/v1`证据清单并回读证据及两侧编号/状态。
 5. **旧闭环入口**：`close_test_task.py`已停用并固定拒绝写入；`闭环测试任务`兼容口令也必须转入`transit_test_lifecycle.py complete`完整门禁。
-6. Cookie/鉴权挂了：只许 `refresh_cookies.py` / `check_auth.py`，**禁止**改走浏览器点选「凑合关单」。
+6. Projex 旧脚本 Cookie/鉴权挂了：只许 `refresh_cookies.py` / `check_auth.py`；TestHub 只许检查 PAT/组织ID/CLI。两者均**禁止**改走浏览器点选「凑合关单」。
 
 ## 路由（按需完整阅读）
 

@@ -47,6 +47,8 @@ skill-run transit_test_lifecycle.py start --test-sn ONEOS-xx --req-sn ONEOS-yy
 
 只允许替换该受管区块，保留人工描述。计划、用例集合、执行和报告任一为空不得完成测试。
 
+计划用例执行必须先走[TestHub CLI适配](yunxiao-cli-testhub.md)。不能对尚未规划进计划的用例直接标PASS；适配器必须先规划、由官方CLI回读，再更新结果并回读计划进度。
+
 测试进行中可先独立记录并回读证据，不推进状态：
 
 ```powershell
