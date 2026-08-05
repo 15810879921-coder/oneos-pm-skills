@@ -7,6 +7,7 @@ import argparse
 import datetime as dt
 import hashlib
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -558,6 +559,200 @@ def cmd_apply(args: argparse.Namespace) -> int:
     return 0
 
 
+def description_text(item: dict[str, Any]) -> str:
+    return str(item.get("description") or "")
+
+
+def item_project_id(item: dict[str, Any]) -> str:
+    space = item.get("space") or {}
+    return str(space.get("id") if isinstance(space, dict) and space.get("id") else item.get("spaceIdentifier") or item.get("spaceId") or "")
+
+
+def snapshot_reverse(item: dict[str, Any]) -> dict[str, Any]:
+    value = snapshot_item(item) or {}
+    value["descriptionHash"] = hashlib.sha256(description_text(item).encode("utf-8")).hexdigest()
+    return value
+
+
+def require_relation(executable: str, source_id: str, target_id: str, relation_type: str, label: str) -> None:
+    if target_id not in relation_ids(executable, source_id, relation_type):
+        raise core.AdapterError(f"{label}正式关系缺失，拒绝执行。")
+
+
+def cancellation_marker(key: str) -> str:
+    return f"oneos.pm.cancellation/{key}"
+
+
+def reverse_statuses(executable: str, project_id: str) -> tuple[dict[str, str], dict[str, str]]:
+    req_type = exact_type(executable, project_id, "Req", "产品类需求")
+    task_type = exact_type(executable, project_id, "Task", "任务")
+    return (status_ids(executable, project_id, str(req_type["id"]), ["测试完成", "已取消", "待开发", "设计中"]),
+            status_ids(executable, project_id, str(task_type["id"]), ["待处理", "处理中", "已取消"]))
+
+
+def build_cancel_scope(executable: str, args: argparse.Namespace) -> dict[str, Any]:
+    project = get_project(executable, args.space_id)
+    if str(project.get("name") or "") != args.project_name:
+        raise core.AdapterError("项目名称与ID不一致。")
+    req, delivery, execution = (get_workitem(executable, value) for value in
+                                (args.requirement_id, args.delivery_id, args.execution_id))
+    protected = [get_workitem(executable, value) for value in args.protected_id]
+    if args.test_task_id:
+        protected.append(get_workitem(executable, args.test_task_id))
+    all_items = [req, delivery, execution, *protected]
+    if {item_project_id(item) for item in all_items} != {args.space_id}:
+        raise core.AdapterError("取消范围存在跨项目工作项。")
+    require_relation(executable, str(delivery["id"]), str(req["id"]), "ASSOCIATED", "交付→需求")
+    require_relation(executable, str(execution["id"]), str(req["id"]), "ASSOCIATED", "执行批次→需求")
+    require_relation(executable, str(execution["id"]), str(delivery["id"]), "ASSOCIATED", "执行批次→交付")
+    if args.test_task_id:
+        require_relation(executable, str(execution["id"]), str(args.test_task_id), "ASSOCIATED", "执行批次→测试")
+    if "oneos.release-production/v1" in description_text(execution) and "isRealProduction=false" not in description_text(execution):
+        raise core.AdapterError("执行批次存在真实生产证据；必须先由发布Skill完成受控回滚。")
+    marker = cancellation_marker(args.idempotency_key)
+    for label, item, active in (("需求", req, "测试完成"), ("交付", delivery, "处理中"), ("执行批次", execution, "待处理")):
+        if status_name(item) not in {active, "已取消"}:
+            raise core.AdapterError(f"{label}当前状态为{status_name(item)}，预期为{active}或已取消。")
+        if status_name(item) == "已取消" and marker not in description_text(item):
+            raise core.AdapterError(f"{label}已由其他流程取消，拒绝接管。")
+    req_statuses, task_statuses = reverse_statuses(executable, args.space_id)
+    return {"project": {"id": args.space_id, "name": args.project_name}, "marker": marker,
+            "reason": args.reason, "requirement": snapshot_reverse(req), "delivery": snapshot_reverse(delivery),
+            "execution": snapshot_reverse(execution), "protected": [snapshot_reverse(item) for item in protected],
+            "statusIds": {"requirement": req_statuses, "task": task_statuses},
+            "boundaries": {"isRealProduction": False, "notPerformed": ["删除代码分支", "停止或删除已完成测试流水线", "修改已完成开发任务", "修改已完成测试任务", "修改已关闭缺陷"]}}
+
+
+def cmd_preflight_cancel(args: argparse.Namespace) -> int:
+    executable = core.find_aliyun(); core.require_auth_env()
+    scope = build_cancel_scope(executable, args)
+    value = {"schema": SCHEMA, "command": "preflight-cancel-downstream", "createdAt": core.now_utc(),
+             "input": {"spaceId": args.space_id, "projectName": args.project_name, "requirementId": args.requirement_id,
+                       "deliveryId": args.delivery_id, "executionId": args.execution_id, "testTaskId": args.test_task_id,
+                       "protectedIds": args.protected_id, "reason": args.reason, "idempotencyKey": args.idempotency_key},
+             "liveScope": scope}
+    value["preflightHash"] = canonical_hash(value, {"preflightHash"})
+    output = Path(args.output) if args.output else core.output_dir() / "pm-cancel-preflight.json"
+    core.write_json(output, value); print(json.dumps({"ready": True, "preflightPath": str(output), "preflightHash": value["preflightHash"]}, ensure_ascii=False)); return 0
+
+
+def cmd_apply_cancel(args: argparse.Namespace) -> int:
+    executable = core.find_aliyun(); core.require_auth_env()
+    plan = json.loads(Path(args.preflight).read_text(encoding="utf-8"))
+    if plan.get("schema") != SCHEMA or plan.get("command") != "preflight-cancel-downstream" or plan.get("preflightHash") != canonical_hash(plan, {"preflightHash"}):
+        raise core.AdapterError("取消预检文件格式或哈希无效。")
+    source = plan["input"]
+    params = argparse.Namespace(space_id=source["spaceId"], project_name=source["projectName"], requirement_id=source["requirementId"], delivery_id=source["deliveryId"], execution_id=source["executionId"], test_task_id=source.get("testTaskId"), protected_id=source.get("protectedIds") or [], reason=source["reason"], idempotency_key=source["idempotencyKey"])
+    scope = build_cancel_scope(executable, params)
+    if canonical_hash(scope) != canonical_hash(plan.get("liveScope")):
+        raise core.AdapterError("取消预检后对象、状态、关系或生产边界发生变化，零写入。")
+    block = f"\n\n## 取消留痕（生命周期逆向冒烟）\n- 取消原因：{scope['reason']}\n- 生产边界：isRealProduction=false；未触发真实生产流水线或回滚。\n- 保留证据：开发、测试、缺陷、MR、测试流水线及工作项编号均不删除、不回写。\n<!-- {scope['marker']} -->"
+    targets = (("requirement", params.requirement_id, scope["statusIds"]["requirement"]["已取消"]), ("delivery", params.delivery_id, scope["statusIds"]["task"]["已取消"]), ("execution", params.execution_id, scope["statusIds"]["task"]["已取消"]))
+    operations = []
+    for label, item_id, status_id in targets:
+        item = get_workitem(executable, item_id)
+        if status_name(item) == "已取消":
+            operations.append({"target": label, "result": "idempotent"}); continue
+        updated = update_item(executable, item_id, {"status": status_id, "description": description_text(item).rstrip() + block, "formatType": item.get("formatType") or "MARKDOWN"})
+        if status_name(updated) != "已取消" or scope["marker"] not in description_text(updated):
+            raise core.AdapterError(f"{label}取消后状态或留痕回读不一致。")
+        operations.append({"target": label, "result": "cancelled", "after": snapshot_reverse(updated)})
+    protected = [snapshot_reverse(get_workitem(executable, item["id"])) for item in scope["protected"]]
+    if protected != scope["protected"]:
+        raise core.AdapterError("已完成对象发生漂移；停止并保留真实状态。")
+    receipt = {"schema": SCHEMA, "command": "apply-cancel-downstream", "createdAt": core.now_utc(), "preflightHash": plan["preflightHash"], "operations": operations, "protected": protected, "boundaries": scope["boundaries"]}
+    receipt["receiptHash"] = canonical_hash(receipt, {"receiptHash"})
+    output = Path(args.receipt) if args.receipt else core.output_dir() / "pm-cancel-receipt.json"
+    core.write_json(output, receipt); print(json.dumps({**receipt, "receiptPath": str(output)}, ensure_ascii=False)); return 0
+
+
+def planned_start(item: dict[str, Any]) -> str:
+    for field in item.get("customFieldValues") or []:
+        if isinstance(field, dict) and str(field.get("fieldId") or "") == "79":
+            values = field.get("values") or []
+            if values and isinstance(values[0], dict):
+                return str(values[0].get("identifier") or values[0].get("displayValue") or "")
+    return ""
+
+
+def requirement_priority_and_label(item: dict[str, Any]) -> tuple[str, str]:
+    priority = next((str((field.get("values") or [{}])[0].get("identifier") or "") for field in item.get("customFieldValues") or [] if isinstance(field, dict) and str(field.get("fieldId") or "") == "priority"), "")
+    labels = {str(value.get("id")) for value in item.get("labels") or [] if isinstance(value, dict) and value.get("id")}
+    if not priority or len(labels) != 1:
+        raise core.AdapterError("需求优先级或标签无法唯一回读，拒绝创建返工设计任务。")
+    return priority, next(iter(labels))
+
+
+def rollback_marker(key: str) -> str:
+    return f"oneos.pm.design-rollback/{key}"
+
+
+def build_rollback_scope(executable: str, args: argparse.Namespace) -> dict[str, Any]:
+    project = get_project(executable, args.space_id)
+    if str(project.get("name") or "") != args.project_name:
+        raise core.AdapterError("项目名称与ID不一致。")
+    req, delivery, old_design = (get_workitem(executable, value) for value in (args.requirement_id, args.delivery_id, args.old_design_id))
+    if {item_project_id(item) for item in (req, delivery, old_design)} != {args.space_id}:
+        raise core.AdapterError("设计回退范围存在跨项目工作项。")
+    require_relation(executable, str(delivery["id"]), str(req["id"]), "ASSOCIATED", "交付→需求")
+    require_relation(executable, str(old_design["id"]), str(delivery["id"]), "PARENT", "原设计→交付")
+    marker = rollback_marker(args.idempotency_key)
+    if status_name(old_design) != "已完成" or status_name(req) not in {"待开发", "设计中"}:
+        raise core.AdapterError("只有已完成的原设计和待开发/设计中的需求可执行返工回退。")
+    old_serial = serial(old_design)
+    occurrence = re.findall(r"(?m)^- 设计：([^\s]+)\s*$", description_text(req))
+    if occurrence != [old_serial] and marker not in description_text(req):
+        raise core.AdapterError("需求中的设计编号区块与原设计不一致。")
+    matches = managed_matches(executable, args.space_id, "Task", marker, "【设计】")
+    if len(matches) > 1:
+        raise core.AdapterError("同一回退幂等键对应多条新设计任务。")
+    new_design = matches[0] if matches else None
+    if new_design:
+        require_relation(executable, str(new_design["id"]), str(delivery["id"]), "PARENT", "新设计→交付")
+        if status_name(new_design) != "待处理":
+            raise core.AdapterError("已存在的新设计不在待处理，拒绝接续。")
+    req_statuses, _ = reverse_statuses(executable, args.space_id)
+    priority, label = requirement_priority_and_label(req)
+    return {"project": {"id": args.space_id, "name": args.project_name}, "marker": marker, "reason": args.reason,
+            "requirement": snapshot_reverse(req), "delivery": {**snapshot_reverse(delivery), "plannedStart": planned_start(delivery)},
+            "oldDesign": snapshot_reverse(old_design), "newDesign": snapshot_reverse(new_design) if new_design else None,
+            "requirementStatuses": req_statuses, "creation": {"owner": owner_id(old_design), "priority": priority, "label": label, "oldSerial": old_serial,
+            "taskTypeId": str(exact_type(executable, args.space_id, "Task", "任务")["id"])}}
+
+
+def cmd_preflight_rollback(args: argparse.Namespace) -> int:
+    executable = core.find_aliyun(); core.require_auth_env(); scope = build_rollback_scope(executable, args)
+    value = {"schema": SCHEMA, "command": "preflight-rollback-to-design", "createdAt": core.now_utc(), "input": {"spaceId": args.space_id, "projectName": args.project_name, "requirementId": args.requirement_id, "deliveryId": args.delivery_id, "oldDesignId": args.old_design_id, "reason": args.reason, "idempotencyKey": args.idempotency_key}, "liveScope": scope}
+    value["preflightHash"] = canonical_hash(value, {"preflightHash"})
+    output = Path(args.output) if args.output else core.output_dir() / "pm-design-rollback-preflight.json"
+    core.write_json(output, value); print(json.dumps({"ready": True, "preflightPath": str(output), "preflightHash": value["preflightHash"]}, ensure_ascii=False)); return 0
+
+
+def cmd_apply_rollback(args: argparse.Namespace) -> int:
+    executable = core.find_aliyun(); core.require_auth_env(); plan = json.loads(Path(args.preflight).read_text(encoding="utf-8"))
+    if plan.get("schema") != SCHEMA or plan.get("command") != "preflight-rollback-to-design" or plan.get("preflightHash") != canonical_hash(plan, {"preflightHash"}):
+        raise core.AdapterError("设计回退预检文件格式或哈希无效。")
+    source = plan["input"]; params = argparse.Namespace(space_id=source["spaceId"], project_name=source["projectName"], requirement_id=source["requirementId"], delivery_id=source["deliveryId"], old_design_id=source["oldDesignId"], reason=source["reason"], idempotency_key=source["idempotencyKey"])
+    scope = build_rollback_scope(executable, params)
+    if canonical_hash(scope) != canonical_hash(plan.get("liveScope")):
+        raise core.AdapterError("设计回退预检后对象、状态、关系、计划开始或编号发生变化，零写入。")
+    new_design = get_workitem(executable, scope["newDesign"]["id"]) if scope["newDesign"] else None
+    if not new_design:
+        new_design = create_item(executable, owner=scope["creation"]["owner"], project=params.space_id, subject=f"【设计】返工-{serial(get_workitem(executable, params.requirement_id))}", type_id=scope["creation"]["taskTypeId"], description=f"## 回退重做设计\n- 原设计：{scope['creation']['oldSerial']}（保持已完成）\n- 回退原因：{params.reason}\n<!-- {scope['marker']} -->", priority=scope["creation"]["priority"], label=scope["creation"]["label"], parent_id=params.delivery_id)
+    req = get_workitem(executable, params.requirement_id)
+    if status_name(req) == "待开发":
+        matches = list(re.finditer(r"(?m)^- 设计：([^\s]+)\s*$", description_text(req)))
+        if len(matches) != 1:
+            raise core.AdapterError("需求中的设计编号区块无法唯一确认。")
+        updated = description_text(req)[:matches[0].start(1)] + serial(new_design) + description_text(req)[matches[0].end(1):]
+        req = update_item(executable, params.requirement_id, {"status": scope["requirementStatuses"]["设计中"], "description": updated.rstrip() + f"\n\n## 变更纪要（回退重做）\n- 原设计：{scope['creation']['oldSerial']}（保持已完成）\n- 新设计：{serial(new_design)}（承接返工）\n- 原因：{params.reason}\n- 交付计划开始时间保持首次开工记录。\n<!-- {scope['marker']} -->", "formatType": req.get("formatType") or "MARKDOWN"})
+    delivery = get_workitem(executable, params.delivery_id); old_design = get_workitem(executable, params.old_design_id)
+    if status_name(req) != "设计中" or scope["marker"] not in description_text(req) or planned_start(delivery) != scope["delivery"]["plannedStart"] or status_name(old_design) != "已完成":
+        raise core.AdapterError("设计回退后的状态、留痕或计划开始回读不一致。")
+    receipt = {"schema": SCHEMA, "command": "apply-rollback-to-design", "createdAt": core.now_utc(), "preflightHash": plan["preflightHash"], "requirement": snapshot_reverse(req), "delivery": {**snapshot_reverse(delivery), "plannedStart": planned_start(delivery)}, "oldDesign": snapshot_reverse(old_design), "newDesign": snapshot_reverse(new_design)}
+    receipt["receiptHash"] = canonical_hash(receipt, {"receiptHash"}); output = Path(args.receipt) if args.receipt else core.output_dir() / "pm-design-rollback-receipt.json"; core.write_json(output, receipt); print(json.dumps({**receipt, "receiptPath": str(output)}, ensure_ascii=False)); return 0
+
+
 def parser() -> argparse.ArgumentParser:
     root = argparse.ArgumentParser(description=__doc__)
     sub = root.add_subparsers(dest="command", required=True)
@@ -577,6 +772,26 @@ def parser() -> argparse.ArgumentParser:
     apply_cmd.add_argument("--preflight", required=True)
     apply_cmd.add_argument("--receipt")
     apply_cmd.set_defaults(handler=cmd_apply)
+    cancel_preflight = sub.add_parser("preflight-cancel-downstream")
+    for name in ("space-id", "project-name", "requirement-id", "delivery-id", "execution-id", "reason", "idempotency-key"):
+        cancel_preflight.add_argument(f"--{name}", required=True)
+    cancel_preflight.add_argument("--test-task-id")
+    cancel_preflight.add_argument("--protected-id", action="append", default=[])
+    cancel_preflight.add_argument("--output")
+    cancel_preflight.set_defaults(handler=cmd_preflight_cancel)
+    cancel_apply = sub.add_parser("apply-cancel-downstream")
+    cancel_apply.add_argument("--preflight", required=True)
+    cancel_apply.add_argument("--receipt")
+    cancel_apply.set_defaults(handler=cmd_apply_cancel)
+    rollback_preflight = sub.add_parser("preflight-rollback-to-design")
+    for name in ("space-id", "project-name", "requirement-id", "delivery-id", "old-design-id", "reason", "idempotency-key"):
+        rollback_preflight.add_argument(f"--{name}", required=True)
+    rollback_preflight.add_argument("--output")
+    rollback_preflight.set_defaults(handler=cmd_preflight_rollback)
+    rollback_apply = sub.add_parser("apply-rollback-to-design")
+    rollback_apply.add_argument("--preflight", required=True)
+    rollback_apply.add_argument("--receipt")
+    rollback_apply.set_defaults(handler=cmd_apply_rollback)
     return root
 
 

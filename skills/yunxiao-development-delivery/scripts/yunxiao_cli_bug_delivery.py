@@ -647,8 +647,10 @@ def cmd_start_test(args: argparse.Namespace) -> int:
                 "flow-get-pipeline-run", "--pipeline-id", str(pipeline["pipelineId"]),
                 "--pipeline-run-id", candidate_id,
             ], timeout=120))
-            actual = collect_commit_ids({"sources": detail.get("sources") if isinstance(detail, dict) else None,
-                                         "globalParams": detail.get("globalParams") if isinstance(detail, dict) else None})
+            # Flow's top-level source can omit commit IDs for merge-request triggers.
+            # The authoritative target revision is then present in the structured
+            # job trigger payload, which is parsed by collect_pipeline_commit_ids.
+            actual = collect_pipeline_commit_ids(detail if isinstance(detail, dict) else {})
             if expected.issubset(actual):
                 matched_run_ids.append(candidate_id)
         if not matched_run_ids:

@@ -66,7 +66,7 @@ description: >-
 | 缺陷描述模板 / 定位矩阵 | 本 Skill [references/bug-template.md](references/bug-template.md) · [references/diagnosis.md](references/diagnosis.md) |
 | 挂载点选【测试】/需求 | [references/anchor-selection.md](references/anchor-selection.md) · `scripts/list_bug_anchors.py` |
 | 实写 API | [references/live-api.md](references/live-api.md)（01_ONEOS 已验证） |
-| 测试执行闭环 | [references/test-execution.md](references/test-execution.md) · `scripts/yunxiao_cli_test_lifecycle.py` |
+| 测试执行闭环 | [references/test-execution.md](references/test-execution.md) · `scripts/yunxiao_cli_test_lifecycle.py` · `scripts/yunxiao_cli_bug_retest.py` |
 | TestHub计划/用例执行 | [references/yunxiao-cli-testhub.md](references/yunxiao-cli-testhub.md) · `scripts/yunxiao_cli_testhub.py` |
 | 列表/建缺/流转脚本 | [scripts/README.md](scripts/README.md) · `check_auth.py` / `list_bug_anchors.py` / `list_test_tasks.py` / `list_bugs.py` / `create_bug.py` / `transit_bug.py` / `close_test_task.py` |
 | 跨平台脚本启动 | [references/runtime-launcher.md](references/runtime-launcher.md) · `skill-run <script.py> [参数...]` |
@@ -86,7 +86,7 @@ description: >-
 1. **禁止**用 `cursor-ide-browser` / DOM 点击 /「可交互节点」改云效状态、负责人、关联、迭代。
 2. **唯一常规写路径**：本 Skill `scripts/*.py`。TestHub 计划/用例/结果优先走官方阿里云 CLI；当前CLI与公开OpenAPI均缺少“规划已有用例”写能力时先返回`CLI_CAPABILITY_GAP`并零写入。只有用户在Plan中明确确认“指定测试计划+指定既有用例”的一次性页面补齐，才允许在隔离测试计划中执行该单一动作；随后必须立即回到CLI回读计划内用例并更新结果。该例外禁止改工作项状态、禁止猜测接口、禁止扩展到其他计划。
 3. **编号硬门禁**：口令 `ONEOS-xx` → 脚本 `--sn` → `serialNumber ==` 精确匹配 → apply → **回读** `serialNumber|subject|from→to`；任一不对立刻停。
-4. **开始/记录/完成测试**：只用 `skill-run yunxiao_cli_test_lifecycle.py start|record|complete ...`；该脚本通过官方阿里云 CLI 读取正式关系，record/complete继续校验部署证据、TestHub结果和关联Bug，先预检，再加`--apply`写证据与状态并回读。`skill-run` 按 [references/runtime-launcher.md](references/runtime-launcher.md) 解析。
+4. **开始/记录/完成测试**：只用 `skill-run yunxiao_cli_test_lifecycle.py start|record|complete ...`；逐Bug复测关闭只用 `skill-run yunxiao_cli_bug_retest.py ...`。两者均通过官方阿里云 CLI 读取正式关系、校验部署证据与TestHub结果，先预检，再加`--apply`写证据与状态并回读。`skill-run` 按 [references/runtime-launcher.md](references/runtime-launcher.md) 解析。
 5. **旧闭环入口**：`close_test_task.py`已停用并固定拒绝写入；`transit_test_lifecycle.py`保留为旧Cookie兼容实现但禁止用于新执行；`闭环测试任务`兼容口令必须转入`yunxiao_cli_test_lifecycle.py complete`完整门禁。
 6. Projex与TestHub新闭环只许PAT/组织ID/官方CLI。旧Cookie脚本只可用于历史诊断，**禁止**改走浏览器点选「凑合关单」。
 
