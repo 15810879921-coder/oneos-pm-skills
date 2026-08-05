@@ -203,16 +203,9 @@ def classify(data: dict[str, Any]) -> dict[str, Any]:
     iteration_id = str(data.get("iterationId") or "").strip()
     if not project_id or not iteration_id:
         raise ValueError("projectId和iterationId不能为空")
-    selected_raw = data.get("selectedRequirementIds")
     items_raw = data.get("iterationRequirements")
-    if not isinstance(selected_raw, list) or not selected_raw:
-        raise ValueError("selectedRequirementIds必须是非空数组")
     if not isinstance(items_raw, list):
         raise ValueError("iterationRequirements必须是数组")
-    selected = [str(value).strip() for value in selected_raw]
-    if any(not value for value in selected) or len(selected) != len(set(selected)):
-        raise ValueError("选入需求编号不能为空或重复")
-    selected_set = set(selected)
 
     items: dict[str, dict[str, Any]] = {}
     duplicate_ids: list[str] = []
@@ -225,6 +218,24 @@ def classify(data: dict[str, Any]) -> dict[str, Any]:
         if requirement_id in items:
             duplicate_ids.append(requirement_id)
         items[requirement_id] = raw
+
+    selected_raw = data.get("selectedRequirementIds")
+    selection_mode = "auto_by_iteration" if selected_raw is None else "explicit"
+    if selection_mode == "explicit":
+        if not isinstance(selected_raw, list) or not selected_raw:
+            raise ValueError("手工局部发布时selectedRequirementIds必须是非空数组")
+        selected = [str(value).strip() for value in selected_raw]
+        if any(not value for value in selected) or len(selected) != len(set(selected)):
+            raise ValueError("选入需求编号不能为空或重复")
+        selected_set = set(selected)
+    else:
+        # 日常入口只给迭代：自动选择已达到需求测试完成状态的项，
+        # 仍对这些候选执行完整证据校验；未达到门槛的项仅作为B类留在下一批。
+        selected_set = {
+            requirement_id for requirement_id, item in items.items()
+            if item.get("formallyDeferred") is not True
+            and item.get("requirementStatus") == "测试完成"
+        }
 
     groups: dict[str, list[dict[str, Any]]] = {key: [] for key in "ABCD"}
     for duplicate in sorted(set(duplicate_ids)):
@@ -255,10 +266,16 @@ def classify(data: dict[str, Any]) -> dict[str, Any]:
             continue
 
         if not selected_for_batch:
+            if deferred:
+                reason = str(item.get("deferredReason") or "已正式延期")
+            elif selection_mode == "auto_by_iteration":
+                reason = "当前未达到测试完成门槛，自动留待下一发布批次"
+            else:
+                reason = str(item.get("deferredReason") or "手工局部批次未选入")
             groups["B"].append(
                 {
                     "id": requirement_id,
-                    "reason": str(item.get("deferredReason") or "本批未选入"),
+                    "reason": reason,
                 }
             )
             continue
@@ -275,6 +292,8 @@ def classify(data: dict[str, Any]) -> dict[str, Any]:
         "blocking": blocking,
         "projectId": project_id,
         "iterationId": iteration_id,
+        "selectionMode": selection_mode,
+        "selectedRequirementIds": sorted(selected_set),
         "A_releaseScope": groups["A"],
         "B_deferredNonBlocking": groups["B"],
         "C_selectedIncomplete": groups["C"],

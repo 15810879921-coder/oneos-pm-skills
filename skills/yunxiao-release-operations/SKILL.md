@@ -33,7 +33,7 @@ Own these outcomes:
 
 1. Directly start one uniquely resolved test or production pipeline when the matching explicit execution command is given, monitor it to a terminal state, and collect failed-step logs when it fails.
 2. Record test deployment evidence without promoting release state.
-3. From one exact iteration and explicit requirement IDs, classify A/B/C/D scope, create or reuse the unique `【执行】` task, and freeze the selected release batch.
+3. From one exact iteration, automatically derive all test-complete release candidates, classify A/B/C/D scope, create or reuse the unique `【执行】` task, and freeze the derived release batch. Accept explicit requirement IDs only for an exceptional partial release.
 4. Resolve that execution task and iteration, derive their formal project and A-class requirement scope, and create or reuse one `【发版】` task for that exact anchored batch.
 5. Verify test completion, approval, scope, production pipeline, and rollback plan.
 6. Start the exact authorized production execution.
@@ -74,7 +74,7 @@ Every command that runs or monitors a pipeline must automatically collect and ou
 
 `查询发布：发版任务=ID` is always read-only and uses only one exact release-task ID to consolidate scope, state, execution, callback, failure, and auto-close diagnostics. Do not accept requirement IDs or pipeline execution IDs as query entry points.
 
-`组建发布批次：迭代=<名称>；需求=<ID,...>` authorizes creation or reuse of one exact `【执行】` task after the A/B/C/D classifier passes. It does not authorize production execution, release-state changes, or silently including every requirement in the iteration.
+`组建发布批次：迭代=<名称>` authorizes automatic discovery of that iteration's formal requirements. It selects every non-deferred requirement at `测试完成`, validates them through A/B/C/D, and creates or reuses one exact `【执行】` task only when A is non-empty and C/D are empty. `需求=<ID,...>` is optional and reserved for an explicit partial release. The command does not authorize production execution or release-state changes.
 
 ### Explicit simulated-production exception
 
@@ -96,7 +96,7 @@ All Yunxiao Projex, Flow, Codeup, and AppStack discovery, state reads, relations
 4. If it fails, identify the first failed stage, job, task, and step; retrieve the failed-step log plus enough adjacent context to diagnose it; redact credentials and return the evidence and diagnosis.
 5. If the log is unavailable, expired, truncated, or forbidden, report that exact limitation with the execution URL and do not invent a root cause.
 6. If the pipeline requires parameters without defaults, login/OTP, permission elevation, or an internal approval stage, stop at that required boundary and report it; never invent parameters or bypass approval.
-7. For `组建发布批次`, resolve the iteration uniquely, freeze its formal requirement snapshot and the explicit selected IDs, run `skill-run classify_release_scope.py ...` through [references/runtime-launcher.md](references/runtime-launcher.md), and require A non-empty with C/D empty. Create/reuse and read back the exact `【执行】` task as defined in [references/release-batch.md](references/release-batch.md).
+7. For `组建发布批次`, resolve the iteration uniquely, freeze every formal requirement in that iteration, automatically select non-deferred items at `测试完成` unless an exceptional explicit partial scope is supplied, run `skill-run classify_release_scope.py ...` through [references/runtime-launcher.md](references/runtime-launcher.md), and require A non-empty with C/D empty. Create/reuse and read back the exact `【执行】` task as defined in [references/release-batch.md](references/release-batch.md).
 8. For `准备发布`, accept only `执行任务ID=<ID>` and `迭代=<迭代名称>`. Resolve the execution task globally by exact ID, then resolve the named iteration inside that task's project. Zero or multiple task/iteration matches stop the command.
 9. Follow formal relations from the execution task and iteration to derive the project, frozen A-class requirement batch, test task/plan and completion evidence, production pipeline, owner, approver, window, rollback plan, and release scope. B-class deferred requirements remain recorded but excluded and non-blocking; any C/D item blocks. Never substitute the full iteration or manually supplied scope.
 10. For `执行发布`, read the real release-task state and persisted attempt ledger, then apply the state table in [references/controls.md](references/controls.md). With no prior attempt and a ready state, create attempt 1 immediately before the production submission; with a nonterminal attempt, resume it without creating another; with a terminal failed attempt, prohibit a new production execution and return the repair/`重新发布` path. Never choose an action from chat history alone.
@@ -124,7 +124,7 @@ All Yunxiao Projex, Flow, Codeup, and AppStack discovery, state reads, relations
 - Redact passwords, tokens, cookies, access keys, private keys, authorization headers, and secret variable values before returning or saving logs.
 - Distinguish an explicit log-confirmed cause from a likely inference and from a visible failure symptom.
 - Pipeline success alone does not prove the intended requirement batch was released or that production is healthy.
-- `组建发布批次` requires explicit selected requirement IDs. A selected incomplete item (C) or scope anomaly (D) blocks; an unselected/deferred iteration item (B) is recorded but does not block or enter this release.
+- `组建发布批次` defaults to automatic iteration scope: every non-deferred requirement at `测试完成` is selected and fully checked. A selected incomplete/evidence-defective item (C) or scope anomaly (D) blocks; formally deferred or not-yet-test-complete iteration items are B, recorded but not released. `需求=` is only an explicit partial-release override.
 - Every selected requirement must carry a QA evidence iteration and successful test-deployment iteration exactly equal to the command's resolved iteration; an absent or mismatched upstream iteration is C/D and cannot be supplied manually downstream.
 - `准备发布` requires exactly one execution task created from a valid batch and one iteration in the same project. Missing, cross-project, cross-iteration, title-only, or ambiguous relations block all writes.
 - `查询发布` requires exactly one release-task ID. Requirement IDs and pipeline execution IDs may appear only in returned evidence, never as alternative query parameters.
