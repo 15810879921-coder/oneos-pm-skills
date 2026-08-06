@@ -17,6 +17,7 @@ from zoneinfo import ZoneInfo
 
 SCHEMA = "oneos.yunxiao-qa-bug-retest-cli/v1"
 RETEST_SCHEMA = "oneos.bug-retest/v1"
+SKIP_PIPELINE_ENDS = {"小程序"}
 START = "<!-- YUNXIAOQA_BUG_RETEST_EVIDENCE_START -->"
 END = "<!-- YUNXIAOQA_BUG_RETEST_EVIDENCE_END -->"
 
@@ -99,13 +100,23 @@ def replace_block(content: str, payload: dict[str, Any]) -> str:
 
 def read_deployment(path: Path, bug_serial: str) -> dict[str, str]:
     value = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(value, dict) or str(value.get("environment")) != "test" or str(value.get("status")) != "成功":
+    if not isinstance(value, dict):
+        raise core.AdapterError("test部署证据必须是JSON对象。")
+    skipped = str(value.get("testPipeline") or "").lower() == "skipped"
+    if skipped:
+        if str(value.get("deliveryEnd") or "") not in SKIP_PIPELINE_ENDS:
+            raise core.AdapterError("只有小程序交付允许跳过test流水线。")
+    elif str(value.get("environment")) != "test" or str(value.get("status")) != "成功":
         raise core.AdapterError("test部署证据环境或状态不符合关闭门禁。")
     if bug_serial not in {str(item) for item in value.get("includedBugSerials") or []}:
         raise core.AdapterError("test部署证据未覆盖该Bug。")
-    version = str(value.get("deployedVersion") or "")
+    version = str(value.get("deployedVersion") or value.get("testedVersion") or "")
     execution_id = str(value.get("executionId") or value.get("pipelineRunId") or "")
-    if not version or not execution_id:
+    if not version:
+        raise core.AdapterError("test部署证据缺少复测版本。")
+    if skipped:
+        return {"version": version, "executionId": execution_id or "skipped"}
+    if not execution_id:
         raise core.AdapterError("test部署证据缺少版本或执行ID。")
     return {"version": version, "executionId": execution_id}
 

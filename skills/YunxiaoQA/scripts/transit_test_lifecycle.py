@@ -45,6 +45,7 @@ DEPLOY_START = "<!-- ONEOS_TEST_DEPLOYMENT_EVIDENCE_START -->"
 DEPLOY_END = "<!-- ONEOS_TEST_DEPLOYMENT_EVIDENCE_END -->"
 QA_SCHEMA = "oneos.qa-evidence/v1"
 DEPLOY_SCHEMA = "oneos.test-deployment/v1"
+SKIP_PIPELINE_ENDS = {"小程序"}
 BUG_RETEST_START = "<!-- YUNXIAOQA_BUG_RETEST_EVIDENCE_START -->"
 BUG_RETEST_END = "<!-- YUNXIAOQA_BUG_RETEST_EVIDENCE_END -->"
 BUG_RETEST_SCHEMA = "oneos.bug-retest/v1"
@@ -169,7 +170,9 @@ def transition_plan(
     }
 
 
-def collect_bugs(s, test_id: str, deployed_version: str) -> list[dict[str, Any]]:
+def collect_bugs(
+    s, test_id: str, deployed_version: str, *, match_version: bool = True
+) -> list[dict[str, Any]]:
     seen: set[str] = set()
     bugs: list[dict[str, Any]] = []
     for getter, forward in (
@@ -204,7 +207,11 @@ def collect_bugs(s, test_id: str, deployed_version: str) -> list[dict[str, Any]]
                         retest.get("schemaVersion") == BUG_RETEST_SCHEMA
                         and str(retest.get("result") or "").lower() == "passed"
                         and str(retest.get("environment") or "").lower() == "test"
-                        and retest_version == str(deployed_version)
+                        and (
+                            retest_version == str(deployed_version)
+                            if match_version
+                            else True
+                        )
                         and all(
                             valid_ref(retest.get(field))
                             for field in (
@@ -274,10 +281,15 @@ def valid_ref(value: object) -> bool:
     )
 
 
+def is_skip_deployment(value: dict[str, Any]) -> bool:
+    return str(value.get("testPipeline") or "").lower() == "skipped"
+
+
 def test_deployment_evidence(
     test: dict[str, Any], req_meta: dict[str, Any], test_meta: dict[str, Any], space: str
 ) -> dict[str, Any]:
     data = parse_json_block(document_content(test), DEPLOY_START, DEPLOY_END)
+    skipped = is_skip_deployment(data)
     required = {
         "schemaVersion",
         "projectId",
@@ -285,14 +297,15 @@ def test_deployment_evidence(
         "iterationName",
         "requirementId",
         "testTaskId",
-        "executionId",
-        "environment",
         "status",
-        "deployedVersion",
-        "evidenceUrl",
         "completedAt",
         "idempotencyKey",
     }
+    required |= (
+        {"deliveryEnd", "testPipeline", "reason"}
+        if skipped
+        else {"executionId", "environment", "deployedVersion", "evidenceUrl"}
+    )
     missing = sorted(required - set(data))
     if missing:
         raise RuntimeError(f"test部署证据缺字段：{missing}")
@@ -310,21 +323,37 @@ def test_deployment_evidence(
         str(test_meta.get("serialNumber") or ""),
     }:
         raise RuntimeError("test部署证据测试任务编号不一致")
-    if str(data["environment"]).lower() != "test" or str(data["status"]).lower() not in {
-        "成功",
-        "success",
-        "succeeded",
-    }:
-        raise RuntimeError("正常需求提测前必须有成功的test环境部署")
-    for field in (
-        "iterationId",
-        "iterationName",
-        "executionId",
-        "deployedVersion",
-        "evidenceUrl",
-        "completedAt",
-        "idempotencyKey",
-    ):
+    if skipped:
+        if str(data["deliveryEnd"]) not in SKIP_PIPELINE_ENDS:
+            raise RuntimeError("只有小程序交付允许跳过test流水线")
+        if str(data["status"]).lower() not in {"skipped", "跳过", "已跳过"}:
+            raise RuntimeError("跳过区块status必须标记为skipped")
+        fields = (
+            "iterationId",
+            "iterationName",
+            "reason",
+            "completedAt",
+            "idempotencyKey",
+        )
+    else:
+        if str(data["environment"]).lower() != "test" or str(
+            data["status"]
+        ).lower() not in {
+            "成功",
+            "success",
+            "succeeded",
+        }:
+            raise RuntimeError("正常需求提测前必须有成功的test环境部署")
+        fields = (
+            "iterationId",
+            "iterationName",
+            "executionId",
+            "deployedVersion",
+            "evidenceUrl",
+            "completedAt",
+            "idempotencyKey",
+        )
+    for field in fields:
         if not valid_ref(data[field]):
             raise RuntimeError(f"test部署证据字段无效：{field}")
     return data
@@ -379,9 +408,17 @@ def load_evidence_manifest(
     deployed = data.get("testDeployment")
     if not isinstance(deployed, dict):
         raise RuntimeError("测试证据清单testDeployment必须是对象")
-    for field in ("executionId", "deployedVersion", "evidenceUrl"):
-        if str(deployed.get(field) or "") != str(deployment[field]):
-            raise RuntimeError(f"测试证据清单与提测部署字段不一致：{field}")
+    if is_skip_deployment(deployment):
+        if not is_skip_deployment(deployed) or str(
+            deployed.get("deliveryEnd") or ""
+        ) != str(deployment["deliveryEnd"]):
+            raise RuntimeError(
+                "小程序跳过test流水线时，清单testDeployment必须写deliveryEnd与testPipeline=skipped"
+            )
+    else:
+        for field in ("executionId", "deployedVersion", "evidenceUrl"):
+            if str(deployed.get(field) or "") != str(deployment[field]):
+                raise RuntimeError(f"测试证据清单与提测部署字段不一致：{field}")
     plan = data.get("testPlan")
     run = data.get("caseRun")
     report = data.get("report")
@@ -525,7 +562,10 @@ def main() -> None:
                 )
             approvals = parse_approvals(args.risk_approval)
             bugs = collect_bugs(
-                s, str(test_meta["id"]), str(deployment["deployedVersion"])
+                s,
+                str(test_meta["id"]),
+                str(deployment.get("deployedVersion") or ""),
+                match_version=not is_skip_deployment(deployment),
             )
             key_source = "|".join(
                 [
@@ -614,7 +654,10 @@ def main() -> None:
                 )
             approvals = parse_approvals(args.risk_approval)
             bugs = collect_bugs(
-                s, test_plan["id"], str(deployment["deployedVersion"])
+                s,
+                test_plan["id"],
+                str(deployment.get("deployedVersion") or ""),
+                match_version=not is_skip_deployment(deployment),
             )
             active = [
                 bug

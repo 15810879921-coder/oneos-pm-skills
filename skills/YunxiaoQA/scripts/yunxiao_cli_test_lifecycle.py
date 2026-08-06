@@ -20,6 +20,7 @@ from yunxiao_cli_testhub import normalize_status, read_plan_case
 SCHEMA = "oneos.yunxiao-qa-lifecycle-cli/v1"
 QA_SCHEMA = "oneos.qa-evidence/v1"
 DEPLOY_SCHEMA = "oneos.test-deployment/v1"
+SKIP_PIPELINE_ENDS = {"小程序"}
 QA_START = "<!-- YUNXIAOQA_TEST_EVIDENCE_START -->"
 QA_END = "<!-- YUNXIAOQA_TEST_EVIDENCE_END -->"
 DEPLOY_START = "<!-- ONEOS_TEST_DEPLOYMENT_EVIDENCE_START -->"
@@ -122,13 +123,19 @@ def valid_ref(value: object) -> bool:
         and "<" not in text and ">" not in text
 
 
+def is_skip_deployment(value: dict[str, Any]) -> bool:
+    return str(value.get("testPipeline") or "").lower() == "skipped"
+
+
 def validate_deployment_payload(value: dict[str, Any], test: dict[str, Any],
                                 req: dict[str, Any], project_id: str) -> dict[str, Any]:
+    skipped = is_skip_deployment(value)
     required = {
         "schemaVersion", "projectId", "iterationId", "iterationName",
-        "requirementId", "testTaskId", "executionId", "environment",
-        "status", "deployedVersion", "evidenceUrl", "completedAt",
-        "idempotencyKey",
+        "requirementId", "testTaskId", "status", "completedAt", "idempotencyKey",
+    }
+    required |= {"deliveryEnd", "testPipeline", "reason"} if skipped else {
+        "executionId", "environment", "deployedVersion", "evidenceUrl",
     }
     missing = sorted(required - set(value))
     if missing:
@@ -145,11 +152,20 @@ def validate_deployment_payload(value: dict[str, Any], test: dict[str, Any],
         str(test.get("id") or ""), str(test.get("serialNumber") or "")
     }:
         raise core.AdapterError("test部署证据测试任务不一致。")
-    if str(value["environment"]).lower() != "test" or \
-            str(value["status"]).lower() not in {"success", "succeeded", "成功"}:
-        raise core.AdapterError("test环境部署尚未成功。")
-    for field in ("iterationId", "iterationName", "executionId", "deployedVersion",
-                  "evidenceUrl", "completedAt", "idempotencyKey"):
+    if skipped:
+        if str(value["deliveryEnd"]) not in SKIP_PIPELINE_ENDS:
+            raise core.AdapterError("只有小程序交付允许跳过test流水线。")
+        if str(value["status"]).lower() not in {"skipped", "跳过", "已跳过"}:
+            raise core.AdapterError("跳过区块status必须标记为skipped。")
+        fields = ("iterationId", "iterationName", "reason", "completedAt",
+                  "idempotencyKey")
+    else:
+        if str(value["environment"]).lower() != "test" or \
+                str(value["status"]).lower() not in {"success", "succeeded", "成功"}:
+            raise core.AdapterError("test环境部署尚未成功。")
+        fields = ("iterationId", "iterationName", "executionId", "deployedVersion",
+                  "evidenceUrl", "completedAt", "idempotencyKey")
+    for field in fields:
         if not valid_ref(value[field]):
             raise core.AdapterError(f"test部署证据字段无效：{field}")
     return value
@@ -192,9 +208,16 @@ def load_manifest(path: str, *, test: dict[str, Any], req: dict[str, Any],
     deployed = value.get("testDeployment")
     if not isinstance(deployed, dict):
         raise core.AdapterError("testDeployment必须是对象。")
-    for field in ("executionId", "deployedVersion", "evidenceUrl"):
-        if str(deployed.get(field) or "") != str(deployment[field]):
-            raise core.AdapterError(f"测试证据与部署证据不一致：{field}")
+    if is_skip_deployment(deployment):
+        if not is_skip_deployment(deployed) or \
+                str(deployed.get("deliveryEnd") or "") != str(deployment["deliveryEnd"]):
+            raise core.AdapterError(
+                "小程序跳过test流水线时，testDeployment必须写deliveryEnd与testPipeline=skipped。"
+            )
+    else:
+        for field in ("executionId", "deployedVersion", "evidenceUrl"):
+            if str(deployed.get(field) or "") != str(deployment[field]):
+                raise core.AdapterError(f"测试证据与部署证据不一致：{field}")
     plan = value.get("testPlan")
     run = value.get("caseRun")
     report = value.get("report")
@@ -259,7 +282,8 @@ def validate_testhub(executable: str, evidence: dict[str, Any],
     return {"progress": progress, "matched": matched}
 
 
-def bug_retest(bug: dict[str, Any], deployed_version: str) -> tuple[bool, str, str]:
+def bug_retest(bug: dict[str, Any], deployed_version: str, *,
+               match_version: bool = True) -> tuple[bool, str, str]:
     if status_name(bug) != "已关闭":
         return False, "", ""
     try:
@@ -272,7 +296,8 @@ def bug_retest(bug: dict[str, Any], deployed_version: str) -> tuple[bool, str, s
     valid = value.get("schemaVersion") == BUG_RETEST_SCHEMA and \
         str(value.get("result") or "").lower() == "passed" and \
         str(value.get("environment") or "").lower() == "test" and \
-        version == deployed_version and all(valid_ref(value.get(field)) for field in (
+        (version == deployed_version if match_version else True) and \
+        all(valid_ref(value.get(field)) for field in (
             "caseId", "testExecutionId", "evidence", "deployedVersion",
             "verifiedBy", "verifiedAt", "idempotencyKey",
         ))
@@ -280,14 +305,16 @@ def bug_retest(bug: dict[str, Any], deployed_version: str) -> tuple[bool, str, s
 
 
 def collect_bugs(executable: str, project_id: str, test_id: str,
-                 deployed_version: str) -> list[dict[str, Any]]:
+                 deployed_version: str, *,
+                 match_version: bool = True) -> list[dict[str, Any]]:
     bugs: list[dict[str, Any]] = []
     for row in search_workitems(executable, project_id, "Bug"):
         bug_id = str(row.get("id") or "")
         if not bug_id or test_id not in relation_ids(executable, bug_id, "ASSOCIATED"):
             continue
         bug = get_workitem(executable, bug_id)
-        valid, version, key = bug_retest(bug, deployed_version)
+        valid, version, key = bug_retest(bug, deployed_version,
+                                         match_version=match_version)
         bugs.append({
             **item_snapshot(bug),
             "retestEvidenceValid": valid,
@@ -456,7 +483,8 @@ def run(args: argparse.Namespace) -> int:
     )
     approvals = parse_approvals(args.risk_approval)
     bugs = collect_bugs(executable, args.space_id, str(test["id"]),
-                        str(deployment["deployedVersion"]))
+                        str(deployment.get("deployedVersion") or ""),
+                        match_version=not is_skip_deployment(deployment))
     if args.command == "complete":
         active = [bug for bug in bugs if bug["status"] not in {"已关闭", "暂不修复"}]
         missing = [bug for bug in bugs if bug["status"] == "暂不修复"

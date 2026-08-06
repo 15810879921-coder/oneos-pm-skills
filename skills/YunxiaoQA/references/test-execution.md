@@ -14,6 +14,22 @@
 
 任何一侧状态或正式关系不符时零写入。不得用“测试任务已完成”推断需求已自动进入测试完成；必须回读需求真实状态。
 
+## 交付端分流（Web / 小程序）
+
+开始测试前先读【测试】中开发写入的`oneos.test-deployment/v1`，按其`deliveryEnd`分流：
+
+| 交付端 | test 部署证据 | QA 侧要求 |
+| --- | --- | --- |
+| `Web`（`PC`视为`Web`） | 环境=`test`、终态成功、含执行ID与部署版本 | 原门禁不变 |
+| `小程序` | `deliveryEnd=小程序`、`testPipeline=skipped`、`status=skipped`、含`reason` | 跳过test流水线与自动化测试证据；仍要求测试计划、用例执行、报告和逐Bug复测证据 |
+
+小程序端说明：
+
+- 小程序无法执行云效test流水线与自动化测试，缺流水线属预期，不算证据缺失，也不得伪造执行ID、部署版本或流水线URL。
+- 小程序的用例执行由测试人员在小程序测试版本上手工完成；`caseRun`计数与TestHub回读门禁不放宽。
+- 复测版本用小程序测试版本标识（如体验版版本号），由开发或测试提供；不得留空。
+- 只有`deliveryEnd=小程序`可跳过；其他端写`testPipeline=skipped`一律阻塞。
+
 ## 开始测试
 
 ```text
@@ -46,6 +62,12 @@ skill-run yunxiao_cli_test_lifecycle.py start `
 ## 测试执行证据（YunxiaoQA）
 
 {"schemaVersion":"oneos.qa-evidence/v1","sourceVerified":true,"projectId":"...","iterationId":"...","iterationName":"...","requirementId":"...","testTaskId":"...","testPlan":{"id":"...","url":"..."},"caseRun":{"id":"...","url":"...","status":"completed","total":10,"passed":10,"failed":0,"blocked":0,"unexecuted":0},"caseCounts":{"total":10,"passed":10,"failed":0,"blocked":0,"unexecuted":0},"report":{"id":"...","url":"..."},"testDeployment":{"executionId":"...","deployedVersion":"...","evidenceUrl":"..."},"bugSnapshot":[],"bugSnapshotSha256":"...","riskApprovals":{},"manifestSha256":"...","idempotencyKey":"qa-..."}
+```
+
+小程序端清单的`testDeployment`改写跳过口径，其余字段不变：
+
+```json
+"testDeployment":{"deliveryEnd":"小程序","testPipeline":"skipped","testedVersion":"<小程序测试版本>"}
 ```
 
 只允许替换该受管区块，保留人工描述。计划、用例集合、执行和报告任一为空不得完成测试。
@@ -87,7 +109,7 @@ skill-run yunxiao_cli_test_lifecycle.py complete `
 预检成功后加`--apply`。脚本必须满足：
 
 - 【测试】=`处理中`、需求=`测试中`。
-- 测试任务含开发侧写入并回读的`oneos.test-deployment/v1`，环境=`test`且部署成功，版本、项目、迭代、需求和测试任务一致。
+- 测试任务含开发侧写入并回读的`oneos.test-deployment/v1`；**Web**要求环境=`test`且部署成功，版本、项目、迭代、需求和测试任务一致；**小程序**要求`deliveryEnd=小程序`、`testPipeline=skipped`、`status=skipped`且含`reason`，项目、迭代、需求、测试任务一致。
 - 用例未执行/失败/阻塞均为0。
 - 每条已关闭Bug有自己的`oneos.bug-retest/v1`复测通过证据；其他缺陷仅允许有批准证据的`暂不修复`。
 - 完成时由脚本从测试任务正式关系实时生成完整`bugSnapshot`及SHA-256；发布侧必须重新读取全部关联Bug并与该快照一致，不能用手填活动Bug数量代替。
@@ -107,7 +129,8 @@ skill-run yunxiao_cli_test_lifecycle.py complete `
 交付任务：
 测试任务/状态：<TEST-ID>/已完成
 测试计划/用例/执行/报告：
-测试流水线执行ID：
+交付端：Web|小程序
+测试流水线执行ID：（小程序写 skipped）
 缺陷：已关闭=<IDs>；暂不修复及批准=<ID:证据>
 完成时间：
 幂等键：
