@@ -17,7 +17,7 @@
     "customCode": null,
     "spaceType": "Project",
     "organizationIdentifier": "697c54a19df7fdfa65466405",
-    "default_sprint_name_prefix": "统一运营管理平台PC端",
+    "default_sprint_name_prefix": "统一运营管理平台Web端",
     "list_api": "GET /projex/api/workspace/project/search/list",
     "last_selected": {
       "name": "01_ONEOS",
