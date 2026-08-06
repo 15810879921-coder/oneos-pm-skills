@@ -275,12 +275,54 @@ def transit(
         raise RuntimeError(f"{serial(item)}状态流转失败")
 
 
+def is_delivery(item: dict[str, Any]) -> bool:
+    return str(item.get("subject") or "").startswith("【交付】")
+
+
+def delivery_end_label(item: dict[str, Any]) -> str:
+    subject = str(item.get("subject") or "")
+    if "【小程序】" in subject or subject.startswith("【交付】【小程序】"):
+        return "小程序"
+    if "【Web】" in subject or "【PC】" in subject or subject.startswith("【交付】【Web】"):
+        return "Web"
+    tags = item.get("labels") or item.get("tag") or item.get("tags") or []
+    names: list[str] = []
+    if isinstance(tags, list):
+        for tag in tags:
+            if isinstance(tag, dict):
+                names.append(str(tag.get("name") or tag.get("displayName") or ""))
+            else:
+                names.append(str(tag))
+    elif isinstance(tags, str):
+        names.append(tags)
+    joined = " ".join(names)
+    if "小程序" in joined:
+        return "小程序"
+    if "Web" in joined or "PC" in joined:
+        return "Web"
+    return "未知"
+
+
+def requirement_deliveries(
+    session: requests.Session, requirement: dict[str, Any]
+) -> list[dict[str, Any]]:
+    return [
+        item
+        for item in associated_full(session, str(requirement["identifier"]))
+        if is_delivery(item)
+    ]
+
+
 def acceptance_block(
     args,
     key: str,
     scope: list[str],
     production_execution_id: str,
     standalone_completed_bugs: list[str],
+    *,
+    accepted_deliveries: list[str],
+    deferred_requirements: list[str],
+    pending_deliveries: list[dict[str, str]],
 ) -> str:
     when = datetime.now(ZoneInfo("Asia/Shanghai")).isoformat(timespec="seconds")
     conclusion = "通过" if args.action == "pass" else "不通过"
@@ -294,6 +336,10 @@ def acceptance_block(
         "evidence": args.evidence,
         "reason": reason,
         "acceptedScope": scope,
+        "acceptedDeliveries": accepted_deliveries,
+        "deferredRequirements": deferred_requirements,
+        "pendingDeliveries": pending_deliveries,
+        "partialAcceptance": bool(deferred_requirements or pending_deliveries),
         "standaloneCompletedBugs": standalone_completed_bugs,
         "recordedAt": when,
         "idempotencyKey": key,
@@ -361,9 +407,12 @@ def main() -> None:
 
         release_related = associated_full(session, args.release_id)
         requirements = [item for item in release_related if is_requirement(item)]
+        release_deliveries = [item for item in release_related if is_delivery(item)]
         standalone_bugs = [item for item in release_related if is_bug(item)]
         if not requirements:
             raise RuntimeError("发版任务未正式关联产品需求")
+        if not release_deliveries:
+            raise RuntimeError("发版任务未正式关联源【交付】")
         actual_scope = sorted(serial(item) for item in requirements)
         expected_scope = sorted(str(value) for value in prod["scope"])
         if actual_scope != expected_scope:
@@ -380,26 +429,88 @@ def main() -> None:
                     f"期望{sorted(allowed_requirement_states)}"
                 )
 
+        # 本批交付：发版任务正式关联的端侧【交付】；每条需求在本批恰好对应一条
         deliveries: list[dict[str, Any]] = []
-        for requirement in requirements:
-            candidates = [
+        req_by_id = {str(item["identifier"]): item for item in requirements}
+        delivery_to_req: dict[str, dict[str, Any]] = {}
+        for delivery in release_deliveries:
+            linked_reqs = [
                 item
-                for item in associated_full(session, str(requirement["identifier"]))
-                if str(item.get("subject") or "").startswith("【交付】")
+                for item in associated_full(session, str(delivery["identifier"]))
+                if is_requirement(item)
+                and str(item["identifier"]) in req_by_id
             ]
-            if len(candidates) != 1:
+            if len(linked_reqs) != 1:
                 raise RuntimeError(
-                    f"需求{serial(requirement)}唯一交付命中数={len(candidates)}"
+                    f"交付{serial(delivery)}与本批需求正式关联数={len(linked_reqs)}，期望恰好1"
                 )
+            delivery_to_req[str(delivery["identifier"])] = linked_reqs[0]
             allowed_delivery_states = (
                 {"处理中", "已完成"} if args.action == "pass" else {"处理中"}
             )
-            if status(candidates[0])[0] not in allowed_delivery_states:
+            if status(delivery)[0] not in allowed_delivery_states:
                 raise RuntimeError(
-                    f"交付{serial(candidates[0])}状态={status(candidates[0])[0]}，"
+                    f"交付{serial(delivery)}状态={status(delivery)[0]}，"
                     f"期望{sorted(allowed_delivery_states)}"
                 )
-            deliveries.append(candidates[0])
+            deliveries.append(delivery)
+
+        covered_req_ids = {str(req["identifier"]) for req in delivery_to_req.values()}
+        missing_req = [
+            serial(item)
+            for item in requirements
+            if str(item["identifier"]) not in covered_req_ids
+        ]
+        if missing_req:
+            raise RuntimeError(f"本批发版未覆盖源交付的需求：{missing_req}")
+        if len(deliveries) != len(requirements):
+            raise RuntimeError(
+                f"本批需求数={len(requirements)}与源交付数={len(deliveries)}不一致"
+            )
+
+        # 双端：查出每条需求的全部端侧交付，判断本批验收后是否仍有未完成端
+        pending_by_req: dict[str, list[dict[str, str]]] = {}
+        for requirement in requirements:
+            all_ends = requirement_deliveries(session, requirement)
+            if not all_ends:
+                raise RuntimeError(f"需求{serial(requirement)}缺少【交付】关联")
+            batch_delivery_ids = {
+                str(delivery["identifier"])
+                for delivery in deliveries
+                if str(delivery_to_req[str(delivery["identifier"])]["identifier"])
+                == str(requirement["identifier"])
+            }
+            pending: list[dict[str, str]] = []
+            for end_delivery in all_ends:
+                end_id = str(end_delivery["identifier"])
+                end_status = status(end_delivery)[0]
+                # 本批将关闭的交付视为即将完成；其余端仍非已完成则挂起需求整单关闭
+                will_complete = end_id in batch_delivery_ids or end_status == "已完成"
+                if not will_complete:
+                    pending.append(
+                        {
+                            "requirement": serial(requirement),
+                            "delivery": serial(end_delivery),
+                            "end": delivery_end_label(end_delivery),
+                            "status": end_status,
+                        }
+                    )
+            if pending:
+                pending_by_req[str(requirement["identifier"])] = pending
+
+        deferred_requirements = [
+            serial(item)
+            for item in requirements
+            if str(item["identifier"]) in pending_by_req
+        ]
+        pending_deliveries = [
+            row for rows in pending_by_req.values() for row in rows
+        ]
+        closeable_requirements = [
+            item
+            for item in requirements
+            if str(item["identifier"]) not in pending_by_req
+        ]
 
         for bug in standalone_bugs:
             if not is_completed_bug(bug):
@@ -408,9 +519,7 @@ def main() -> None:
                 raise RuntimeError(f"无交付Bug{serial(bug)}缺少独立复测证据")
             bug_relations = associated_full(session, str(bug["identifier"]))
             linked_deliveries = [
-                item
-                for item in bug_relations
-                if str(item.get("subject") or "").startswith("【交付】")
+                item for item in bug_relations if is_delivery(item)
             ]
             if linked_deliveries:
                 raise RuntimeError(
@@ -428,8 +537,18 @@ def main() -> None:
                     f"{serial(item)}已完成但缺少本次验收幂等证据，拒绝接续"
                 )
 
+        # 整批发版已完成且本批交付已完成；需求允许因双端部分验收仍为发布完成
         if release_status == "已完成" and all(
-            status(item)[0] == "已完成" for item in [*requirements, *deliveries]
+            status(item)[0] == "已完成" for item in deliveries
+        ) and all(
+            status(item)[0] in {"已完成", "发布完成"} for item in requirements
+        ) and all(
+            (
+                status(item)[0] == "已完成"
+                if str(item["identifier"]) not in pending_by_req
+                else status(item)[0] == "发布完成"
+            )
+            for item in requirements
         ):
             print(
                 json.dumps(
@@ -439,6 +558,13 @@ def main() -> None:
                         "releaseTask": args.release_sn,
                         "requirements": actual_scope,
                         "deliveries": [serial(item) for item in deliveries],
+                        "closedRequirements": [
+                            serial(item) for item in closeable_requirements
+                            if status(item)[0] == "已完成"
+                        ],
+                        "deferredRequirements": deferred_requirements,
+                        "pendingDeliveries": pending_deliveries,
+                        "partialAcceptance": bool(deferred_requirements),
                         "standaloneCompletedBugs": [
                             serial(item) for item in standalone_bugs
                         ],
@@ -456,9 +582,14 @@ def main() -> None:
             actual_scope,
             str(prod["executionId"]),
             [serial(item) for item in standalone_bugs],
+            accepted_deliveries=[serial(item) for item in deliveries],
+            deferred_requirements=deferred_requirements,
+            pending_deliveries=pending_deliveries,
         )
         requirement_transitions = [
-            serial(item) for item in requirements if status(item)[0] != "已完成"
+            serial(item)
+            for item in closeable_requirements
+            if status(item)[0] != "已完成"
         ]
         delivery_transitions = [
             serial(item) for item in deliveries if status(item)[0] != "已完成"
@@ -469,6 +600,10 @@ def main() -> None:
             "releaseTask": args.release_sn,
             "requirements": actual_scope,
             "deliveries": [serial(item) for item in deliveries],
+            "closedRequirements": [serial(item) for item in closeable_requirements],
+            "deferredRequirements": deferred_requirements,
+            "pendingDeliveries": pending_deliveries,
+            "partialAcceptance": bool(deferred_requirements),
             "standaloneCompletedBugs": [serial(item) for item in standalone_bugs],
             "conclusion": "通过" if args.action == "pass" else "不通过",
             "idempotencyKey": key,
@@ -478,6 +613,12 @@ def main() -> None:
                     "deliveries": delivery_transitions,
                     "releaseTask": (
                         args.release_sn if release_status != "已完成" else None
+                    ),
+                    "note": (
+                        "双端需求一端先验收：仅关闭本批源交付与发版任务；"
+                        "另一端交付未完成前需求保持发布完成"
+                        if deferred_requirements
+                        else "本批需求全部端侧交付已齐，需求可关闭为已完成"
                     ),
                 }
                 if args.action == "pass"
@@ -504,26 +645,42 @@ def main() -> None:
                 raise RuntimeError(f"{serial(item)}验收证据回读失败")
 
         if args.action == "pass":
-            for item in requirements:
+            for item in deliveries:
                 if status(get_item(session, str(item["identifier"])))[0] != "已完成":
                     transit(session, get_item(session, str(item["identifier"])), "已完成")
-            for item in deliveries:
+            for item in closeable_requirements:
                 if status(get_item(session, str(item["identifier"])))[0] != "已完成":
                     transit(session, get_item(session, str(item["identifier"])), "已完成")
             current_release = get_item(session, str(release["identifier"]))
             if status(current_release)[0] != "已完成":
                 transit(session, current_release, "已完成")
+            must_done = [*deliveries, *closeable_requirements, release]
             readback = [
-                get_item(session, str(item["identifier"]))
-                for item in [*requirements, *deliveries, *standalone_bugs, release]
+                get_item(session, str(item["identifier"])) for item in must_done
             ]
             wrong = [
                 {"serialNumber": serial(item), "status": status(item)[0]}
                 for item in readback
-                if status(item)[0] != "已完成" and not is_completed_bug(item)
+                if status(item)[0] != "已完成"
             ]
             if wrong:
                 raise RuntimeError(f"状态回读失败：{wrong}")
+            # 部分验收：延期需求必须仍为发布完成，不得被误关
+            for item in requirements:
+                if str(item["identifier"]) in pending_by_req:
+                    live = get_item(session, str(item["identifier"]))
+                    if status(live)[0] == "已完成":
+                        raise RuntimeError(
+                            f"双端部分验收误关闭需求{serial(live)}；另一端交付尚未完成"
+                        )
+                    if status(live)[0] != "发布完成":
+                        raise RuntimeError(
+                            f"部分验收后需求{serial(live)}状态={status(live)[0]}，期望发布完成"
+                        )
+            plan["dryRun"] = False
+            plan["partialAcceptance"] = bool(deferred_requirements)
+            print(json.dumps(plan, ensure_ascii=False, indent=2))
+            return
         else:
             current_release = get_item(session, str(release["identifier"]))
             state_result: dict[str, Any] = {

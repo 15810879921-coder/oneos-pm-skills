@@ -27,4 +27,4 @@ AutoRDO：…（粘贴聊天/附录音）→ 再记录需求
 
 后续推进口令**优先显式带任务编号**；未带则读「工作项编号（系统）」；仍无则询问；**禁止按标题补全**。
 
-开发前回报止于交棒；生产发布完成后，本Skill按[release-acceptance.md](release-acceptance.md)执行产品验收闭环。
+开发前回报止于交棒；生产发布完成后，本Skill按[release-acceptance.md](release-acceptance.md)执行产品验收闭环。`共用服务`双端允许一端先验收、另一端后验收。
