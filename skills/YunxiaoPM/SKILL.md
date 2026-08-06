@@ -122,7 +122,7 @@ description: >-
 快轨待开发：ONEOS-xx
 编号直推：分析任务=ONEOS-b / 设计任务=ONEOS-c / 交付任务=ONEOS-a
 回退设计：需求=ONEOS-xx；交付=TASK-xx；原设计=TASK-xx；原因=…
-创建迭代：交付端=Web|小程序；版本类型=主|副|子；交付任务=ONEOS-a,ONEOS-b,…；名称前缀=…
+创建迭代：交付端=Web|小程序|共用服务；版本类型=主|副|子；交付任务=ONEOS-a,ONEOS-b,…；[名称前缀=…]
 关闭迭代：迭代ID=…
 取消需求：需求=ONEOS-xx；交付=TASK-xx；执行批次=TASK-xx；原因=…
 拉取待验收需求：发版任务=TASK-900
@@ -133,6 +133,7 @@ description: >-
 类型写入标题时只用 **【新增】** 或 **【优化】**。
 
 **交付端 → 交付条数：** `Web`/`小程序` → `开始分析`/`快轨待开发` 建 1 条【交付】；`共用服务` → 建 Web+小程序 共 2 条（均挂同一需求）。详见 [settled-rules.md](references/settled-rules.md)。  
+**创建迭代：** `Web`/`小程序` → 1 个端侧迭代；`共用服务` → 默认同时创建 Web + 小程序两个迭代并按端侧标签拆挂交付。详见 [sprint.md](references/sprint.md)。
 **端侧标签：** 每条【交付】必打 `Web` 或 `小程序`（与模块标签并存），避免单端交付在列表中混淆。
 
 ## 本 Skill 的两个边界
