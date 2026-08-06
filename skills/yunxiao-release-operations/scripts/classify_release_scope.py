@@ -189,12 +189,12 @@ def structured_evidence_gaps(item: dict[str, Any]) -> list[str]:
 
 
 def qa_gaps(item: dict[str, Any]) -> list[str]:
+    """Keep only the release-readiness states; QA artifacts are recorded, not gates."""
     gaps: list[str] = []
     if item.get("requirementStatus") != "测试完成":
         gaps.append("需求状态不是测试完成")
     if item.get("testTaskStatus") != "已完成":
         gaps.append("测试任务不是已完成")
-    gaps.extend(structured_evidence_gaps(item))
     return gaps
 
 
@@ -247,13 +247,19 @@ def classify(data: dict[str, Any]) -> dict[str, Any]:
 
     for requirement_id, item in items.items():
         reasons: list[str] = []
-        formal = item.get("formallyInIteration") is True
+        formal_direct = item.get("formallyInIteration") is True
+        formal_via_delivery = item.get("formallyInIterationViaDelivery") is True
+        formal = formal_direct or formal_via_delivery
+        scoped_iteration_id = str(
+            item.get("sourceDeliveryIterationId") if formal_via_delivery
+            else item.get("iterationId") or ""
+        )
         if str(item.get("projectId") or "") != project_id:
             reasons.append("跨项目")
-        if str(item.get("iterationId") or "") != iteration_id:
+        if scoped_iteration_id != iteration_id:
             reasons.append("跨迭代")
         if not formal:
-            reasons.append("缺正式迭代关系")
+            reasons.append("缺迭代交付到需求的正式关联")
         if item.get("relationConflict") is True:
             reasons.append("正式关系冲突")
 
