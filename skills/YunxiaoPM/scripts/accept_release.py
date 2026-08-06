@@ -320,6 +320,7 @@ def acceptance_block(
     production_execution_id: str,
     standalone_completed_bugs: list[str],
     *,
+    release_end: str,
     accepted_deliveries: list[str],
     deferred_requirements: list[str],
     pending_deliveries: list[dict[str, str]],
@@ -331,6 +332,8 @@ def acceptance_block(
         "schemaVersion": "oneos.product-acceptance/v1",
         "releaseTaskId": args.release_sn,
         "productionExecutionId": production_execution_id,
+        "releaseEnd": release_end,
+        "productionGateSkipped": release_end == "小程序",
         "conclusion": conclusion,
         "acceptor": args.acceptor,
         "evidence": args.evidence,
@@ -379,32 +382,6 @@ def main() -> None:
             raise RuntimeError(
                 f"发版任务状态={release_status}，期望{sorted(allowed_release_states)}"
             )
-        prod = production_evidence(release)
-        if (
-            prod["schemaVersion"] != "oneos.release-production/v1"
-            or prod["releaseTaskId"] != args.release_sn
-            or prod["environment"] != "prod"
-            or prod["pipelineStatus"] not in {"成功", "success", "SUCCESS"}
-            or prod["callbackVerified"] is not True
-            or prod["verificationStatus"] not in {"通过", "passed", "PASSED"}
-            or not str(prod["executionId"]).strip()
-            or not str(prod["immutableAnchor"]).strip()
-            or not str(prod["verificationPlanId"]).strip()
-            or not list(prod["verificationEvidence"] or [])
-            or not str(prod["observationCompletedAt"]).strip()
-            or not str(prod["idempotencyKey"]).strip()
-        ):
-            raise RuntimeError("生产证据环境、状态、验签或锚点门禁失败")
-        key_source = "|".join(
-            [
-                args.release_id,
-                str(prod["executionId"]),
-                args.action,
-                args.evidence.strip(),
-            ]
-        )
-        key = "accept-" + hashlib.sha256(key_source.encode("utf-8")).hexdigest()[:20]
-
         release_related = associated_full(session, args.release_id)
         requirements = [item for item in release_related if is_requirement(item)]
         release_deliveries = [item for item in release_related if is_delivery(item)]
@@ -413,12 +390,52 @@ def main() -> None:
             raise RuntimeError("发版任务未正式关联产品需求")
         if not release_deliveries:
             raise RuntimeError("发版任务未正式关联源【交付】")
+        release_ends = {delivery_end_label(item) for item in release_deliveries}
+        if release_ends == {"未知"} or "未知" in release_ends:
+            raise RuntimeError("发版任务源【交付】缺少可识别的Web/小程序端侧标签")
+        if len(release_ends) != 1:
+            raise RuntimeError(f"发版任务混入多端源【交付】：{sorted(release_ends)}")
+        release_end = next(iter(release_ends))
         actual_scope = sorted(serial(item) for item in requirements)
-        expected_scope = sorted(str(value) for value in prod["scope"])
-        if actual_scope != expected_scope:
-            raise RuntimeError(
-                f"生产scope与正式需求关系不一致：{expected_scope} != {actual_scope}"
-            )
+
+        if release_end == "Web":
+            prod = production_evidence(release)
+            if (
+                prod["schemaVersion"] != "oneos.release-production/v1"
+                or prod["releaseTaskId"] != args.release_sn
+                or prod["environment"] != "prod"
+                or prod["pipelineStatus"] not in {"成功", "success", "SUCCESS"}
+                or prod["callbackVerified"] is not True
+                or prod["verificationStatus"] not in {"通过", "passed", "PASSED"}
+                or not str(prod["executionId"]).strip()
+                or not str(prod["immutableAnchor"]).strip()
+                or not str(prod["verificationPlanId"]).strip()
+                or not list(prod["verificationEvidence"] or [])
+                or not str(prod["observationCompletedAt"]).strip()
+                or not str(prod["idempotencyKey"]).strip()
+            ):
+                raise RuntimeError("Web生产证据环境、状态、验签或锚点门禁失败")
+            expected_scope = sorted(str(value) for value in prod["scope"])
+            if actual_scope != expected_scope:
+                raise RuntimeError(
+                    f"生产scope与正式需求关系不一致：{expected_scope} != {actual_scope}"
+                )
+            production_execution_id = str(prod["executionId"])
+        else:
+            # 小程序由发布Skill以 miniprogram_skip_pipeline 直接进入发布完成；
+            # 不要求或伪造Web生产流水线、prod环境、验签、生产验证和观察窗口证据。
+            production_execution_id = "miniprogram_skip_pipeline"
+
+        key_source = "|".join(
+            [
+                args.release_id,
+                release_end,
+                production_execution_id,
+                args.action,
+                args.evidence.strip(),
+            ]
+        )
+        key = "accept-" + hashlib.sha256(key_source.encode("utf-8")).hexdigest()[:20]
         allowed_requirement_states = (
             {"发布完成", "已完成"} if args.action == "pass" else {"发布完成"}
         )
@@ -580,8 +597,9 @@ def main() -> None:
             args,
             key,
             actual_scope,
-            str(prod["executionId"]),
+            production_execution_id,
             [serial(item) for item in standalone_bugs],
+            release_end=release_end,
             accepted_deliveries=[serial(item) for item in deliveries],
             deferred_requirements=deferred_requirements,
             pending_deliveries=pending_deliveries,
@@ -598,6 +616,8 @@ def main() -> None:
             "ok": True,
             "dryRun": args.dry_run,
             "releaseTask": args.release_sn,
+            "releaseEnd": release_end,
+            "productionGateSkipped": release_end == "小程序",
             "requirements": actual_scope,
             "deliveries": [serial(item) for item in deliveries],
             "closedRequirements": [serial(item) for item in closeable_requirements],
