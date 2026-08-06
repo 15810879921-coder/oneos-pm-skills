@@ -168,6 +168,16 @@ def is_requirement(item: dict[str, Any]) -> bool:
     return category in {"req", "requirement"} or "需求" in type_text
 
 
+def is_bug(item: dict[str, Any]) -> bool:
+    category = str(item.get("category") or item.get("categoryIdentifier") or "").lower()
+    type_text = json.dumps(item.get("workitemType") or {}, ensure_ascii=False)
+    return category in {"bug", "defect"} or "缺陷" in type_text or "Bug" in type_text
+
+
+def is_completed_bug(item: dict[str, Any]) -> bool:
+    return status(item)[0] in {"已完成", "已关闭"}
+
+
 def production_evidence(item: dict[str, Any]) -> dict[str, Any]:
     content = document(item)
     start = content.find(PROD_START)
@@ -266,7 +276,11 @@ def transit(
 
 
 def acceptance_block(
-    args, key: str, scope: list[str], production_execution_id: str
+    args,
+    key: str,
+    scope: list[str],
+    production_execution_id: str,
+    standalone_completed_bugs: list[str],
 ) -> str:
     when = datetime.now(ZoneInfo("Asia/Shanghai")).isoformat(timespec="seconds")
     conclusion = "通过" if args.action == "pass" else "不通过"
@@ -280,6 +294,7 @@ def acceptance_block(
         "evidence": args.evidence,
         "reason": reason,
         "acceptedScope": scope,
+        "standaloneCompletedBugs": standalone_completed_bugs,
         "recordedAt": when,
         "idempotencyKey": key,
     }
@@ -344,10 +359,9 @@ def main() -> None:
         )
         key = "accept-" + hashlib.sha256(key_source.encode("utf-8")).hexdigest()[:20]
 
-        requirements = [
-            item for item in associated_full(session, args.release_id)
-            if is_requirement(item)
-        ]
+        release_related = associated_full(session, args.release_id)
+        requirements = [item for item in release_related if is_requirement(item)]
+        standalone_bugs = [item for item in release_related if is_bug(item)]
         if not requirements:
             raise RuntimeError("发版任务未正式关联产品需求")
         actual_scope = sorted(serial(item) for item in requirements)
@@ -387,10 +401,26 @@ def main() -> None:
                 )
             deliveries.append(candidates[0])
 
+        for bug in standalone_bugs:
+            if not is_completed_bug(bug):
+                raise RuntimeError(f"无交付Bug{serial(bug)}未处于已完成/已关闭状态")
+            if "oneos.bug-retest/v1" not in document(bug):
+                raise RuntimeError(f"无交付Bug{serial(bug)}缺少独立复测证据")
+            bug_relations = associated_full(session, str(bug["identifier"]))
+            linked_deliveries = [
+                item
+                for item in bug_relations
+                if str(item.get("subject") or "").startswith("【交付】")
+            ]
+            if linked_deliveries:
+                raise RuntimeError(
+                    f"Bug{serial(bug)}已关联交付，不应作为无交付Bug进入发版任务"
+                )
+
         completed_objects = [
             item
-            for item in [release, *requirements, *deliveries]
-            if status(item)[0] == "已完成"
+            for item in [release, *requirements, *deliveries, *standalone_bugs]
+            if status(item)[0] == "已完成" or is_completed_bug(item)
         ]
         for item in completed_objects:
             if key not in document(item):
@@ -409,6 +439,9 @@ def main() -> None:
                         "releaseTask": args.release_sn,
                         "requirements": actual_scope,
                         "deliveries": [serial(item) for item in deliveries],
+                        "standaloneCompletedBugs": [
+                            serial(item) for item in standalone_bugs
+                        ],
                         "idempotencyKey": key,
                     },
                     ensure_ascii=False,
@@ -417,7 +450,13 @@ def main() -> None:
             )
             return
 
-        block = acceptance_block(args, key, actual_scope, str(prod["executionId"]))
+        block = acceptance_block(
+            args,
+            key,
+            actual_scope,
+            str(prod["executionId"]),
+            [serial(item) for item in standalone_bugs],
+        )
         requirement_transitions = [
             serial(item) for item in requirements if status(item)[0] != "已完成"
         ]
@@ -430,6 +469,7 @@ def main() -> None:
             "releaseTask": args.release_sn,
             "requirements": actual_scope,
             "deliveries": [serial(item) for item in deliveries],
+            "standaloneCompletedBugs": [serial(item) for item in standalone_bugs],
             "conclusion": "通过" if args.action == "pass" else "不通过",
             "idempotencyKey": key,
             "wouldTransit": (
@@ -450,7 +490,7 @@ def main() -> None:
 
         targets_by_id = {
             str(item["identifier"]): item
-            for item in [release, *requirements, *deliveries]
+            for item in [release, *requirements, *deliveries, *standalone_bugs]
         }
         targets = list(targets_by_id.values())
         for item in targets:
@@ -475,12 +515,12 @@ def main() -> None:
                 transit(session, current_release, "已完成")
             readback = [
                 get_item(session, str(item["identifier"]))
-                for item in [*requirements, *deliveries, release]
+                for item in [*requirements, *deliveries, *standalone_bugs, release]
             ]
             wrong = [
                 {"serialNumber": serial(item), "status": status(item)[0]}
                 for item in readback
-                if status(item)[0] != "已完成"
+                if status(item)[0] != "已完成" and not is_completed_bug(item)
             ]
             if wrong:
                 raise RuntimeError(f"状态回读失败：{wrong}")
