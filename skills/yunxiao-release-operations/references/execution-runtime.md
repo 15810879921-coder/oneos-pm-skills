@@ -18,7 +18,7 @@
 
 ## 流水线与发布执行
 
-- 启动前使用 `flow-list-pipelines`/`flow-get-pipeline` 或对应 AppStack 读取命令唯一解析名称、环境、仓库、分支、参数和触发模式。
+- 启动前使用 `flow-list-pipelines`/`flow-get-pipeline` 或对应 AppStack 读取命令解析名称、原始环境、仓库、分支、参数和触发模式；先排除禁用、归档及名称带`-old/_old/-legacy/_legacy/旧/停用/废弃/归档`的退役定义，再对活动候选做唯一性判断。Flow原始`envName=日常环境`不单独否定由名称、代码源/分支和部署目标共同确认的生产逻辑环境。
 - 启动使用白名单 `flow-create-pipeline-run` 或精确 AppStack 研发阶段执行命令，并立即保存新执行 ID。
 - 通过 `flow-get-pipeline-run`、任务/步骤/日志读取命令或对应 AppStack 命令定向轮询；间隔不超过 60 秒并同步进度。
 - 失败时读取第一个失败阶段、任务、步骤和脱敏日志。日志不可读时返回真实权限或过期边界。
