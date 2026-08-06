@@ -53,7 +53,7 @@
 | **预计工时** | 字段 `101586` **禁止**直接 PATCH；用 `POST …/time/estimate`（`spentTime`）登记；删多余用 `DELETE …/time/estimate/{workitemId}/{estimateId}` |
 | **实际工时** | `POST …/workitem/time`，body **`actualTime`**（非 spentTime）+ `gmtStart`/`gmtEnd`（epoch ms 字符串）；快轨待开发需求默认 **2** |
 | **描述更新** | `PATCH …/workitem/{id}/document`，`{"content","formatType":"RICHTEXT"}` |
-| **快轨标签** | 【交付】【设计】建单后 `PATCH propertyKey=tag`，`propertyValue` 与需求 tagId 一致（多标签逗号拼接） |
+| **快轨标签** | 【交付】【设计】建单后 `PATCH propertyKey=tag`：`需求模块标签` + **端侧标签**（`PC` 或 `小程序`）；多标签逗号拼接。禁止只复制需求标签而漏打端标签 |
 
 ## 与描述双段的关系
 
