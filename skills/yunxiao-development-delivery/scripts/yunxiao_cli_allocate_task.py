@@ -24,6 +24,9 @@ HTML_BLOCK_RE = re.compile(r"(?is)<h2>下一阶段</h2>.*?(?=<h2>|\Z)")
 MARKDOWN_PLAN_RE = re.compile(
     r"(?ms)^## 技术实施方案\s*\n<!-- ONEOS_DEVELOPMENT_TECHNICAL_PLAN_START(?: sha256=[a-f0-9]{64})? -->.*?<!-- ONEOS_DEVELOPMENT_TECHNICAL_PLAN_END -->\s*"
 )
+EXECUTION_COMMAND_RE = re.compile(
+    r"(?m)^\s*(?:开始开发|开发任务|提交代码|完成开发|开始修复bug|完成修复bug|修复bug|实现所有负责人是我的开发任务|实现我的全部开发任务|开发我负责的所有开发任务|修复负责人是我的所有Bug|修复我负责的全部Bug|处理所有分配给我的Bug)"
+)
 HTML_PLAN_RE = re.compile(
     r"(?is)<h2>技术实施方案</h2><!-- ONEOS_DEVELOPMENT_TECHNICAL_PLAN_START(?: sha256=[a-f0-9]{64})? -->.*?<!-- ONEOS_DEVELOPMENT_TECHNICAL_PLAN_END -->"
 )
@@ -193,7 +196,7 @@ def load_technical_plan(path: str, requirement: dict[str, Any]) -> dict[str, str
     content = source.read_text(encoding="utf-8").strip()
     if len(content) < 160:
         raise core.AdapterError("技术方案内容过短，不能替代可执行方案。")
-    if re.search(r"(?<!\w)\$[A-Za-z][A-Za-z0-9_-]*\b", content) or "/go " in content:
+    if re.search(r"(?<!\w)\$[A-Za-z][A-Za-z0-9_-]*\b", content) or EXECUTION_COMMAND_RE.search(content):
         raise core.AdapterError("技术方案不得包含下一步Skill或执行口令。")
     missing = [name for name in PLAN_SECTIONS if name not in content]
     if missing:
@@ -533,7 +536,7 @@ def build_requirement_analysis(executable: str, task_serial: str,
         "analysisInstruction": {
             "requiredSections": list(PLAN_SECTIONS),
             "mustBindRequirementSerial": item_serial(requirement),
-            "forbidden": ["/skill", "/go", "未验证的具体文件路径", "未验证的接口字段"],
+            "forbidden": ["Skill选择器", "执行口令", "未验证的具体文件路径", "未验证的接口字段"],
         },
     }
 
