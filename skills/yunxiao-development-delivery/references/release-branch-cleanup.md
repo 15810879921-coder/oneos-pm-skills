@@ -3,7 +3,7 @@
 ## 命令与边界
 
 ```text
-/skill yunxiao-development-delivery
+$yunxiao-development-delivery
 清理分支：发版任务=TASK-900
 ```
 

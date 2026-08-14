@@ -13,7 +13,7 @@ description: >-
 
 # 需求任务（YunxiaoPM）
 
-产品部云效自动化。正式 Skill 名 **`YunxiaoPM`**，选择器 **`/skill YunxiaoPM`**；对外中文名 **需求任务**。
+产品部云效自动化。正式 Skill 名 **`YunxiaoPM`**，选择器 **`$YunxiaoPM`**；对外中文名 **需求任务**。
 
 **自洽成篇**；**禁止** fork / include / 「对齐」已下架的旧 lifecycle。  
 产品经理会话**不要**同时挂载旧 lifecycle Skill。
@@ -81,7 +81,7 @@ description: >-
 - 上游/下游只传正式 Skill 名、需求/交付/开发/测试/发版任务编号、当前状态、`ASSOCIATED`/`TASK_SUB` 等正式关系，以及必要的附件、流水线、MR、版本或幂等证据标识。
 - 禁止定位、读取、复制或要求用户提供其他 Skill 的安装目录；不同客户端之间不得通过物理文件路径共享常量、规则或运行时文件。
 - 本 Skill 只读取自身包内资源；缺少人员、状态或项目常量时应实时查询云效，缺少交接编号时要求上游补齐，禁止跨 Skill 文件系统回退。
-- 下一跳只输出正式选择器：开发用 `/skill yunxiao-development-delivery`，测试用 `/skill YunxiaoQA`，发布用 `/skill yunxiao-release-operations`。
+- 下一跳只输出正式选择器：开发用 `$yunxiao-development-delivery`，测试用 `$YunxiaoQA`，发布用 `$yunxiao-release-operations`。
 
 ## 路由（按需阅读）
 

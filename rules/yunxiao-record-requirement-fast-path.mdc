@@ -8,7 +8,7 @@ alwaysApply: true
 
 产品侧凡「记录需求 / 推进至 / 交棒 / 创建迭代」等**会改云效**的操作：
 
-0. **只使用 `$YunxiaoPM`**（正式选择器 `/skill YunxiaoPM`；入库前 `$AutoRDO`、设计完成 `$oneos-autoprd`）。
+0. **只使用 `$YunxiaoPM`**（正式选择器 `$YunxiaoPM`；入库前 `$AutoRDO`、设计完成 `$oneos-autoprd`）。
    旧包 `yunxiao-requirement-lifecycle` **已下架**，禁止加载；勿按旧同名阶段任务规则建单。
 1. **强制先切 Cursor Plan 模式**（`SwitchMode` → `plan`）：对齐需求/任务**编号**、推进目标、交付树策略等；用户确认后再一口气 apply。
 2. 标题规范：`【新增】…` / `【优化】…`（详见 YunxiaoPM / 口令面）。

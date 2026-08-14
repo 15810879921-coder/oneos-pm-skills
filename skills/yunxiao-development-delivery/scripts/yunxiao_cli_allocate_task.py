@@ -193,7 +193,7 @@ def load_technical_plan(path: str, requirement: dict[str, Any]) -> dict[str, str
     content = source.read_text(encoding="utf-8").strip()
     if len(content) < 160:
         raise core.AdapterError("技术方案内容过短，不能替代可执行方案。")
-    if "/skill " in content or "/go " in content:
+    if re.search(r"(?<!\w)\$[A-Za-z][A-Za-z0-9_-]*\b", content) or "/go " in content:
         raise core.AdapterError("技术方案不得包含下一步Skill或执行口令。")
     missing = [name for name in PLAN_SECTIONS if name not in content]
     if missing:

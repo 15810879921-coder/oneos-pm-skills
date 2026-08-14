@@ -54,6 +54,6 @@ YUNXIAO_RELEASE_BATCH_END -->
 口令始终是：
 
 ```text
-/skill yunxiao-release-operations
+$yunxiao-release-operations
 准备发布：迭代=<精确名称>
 ```

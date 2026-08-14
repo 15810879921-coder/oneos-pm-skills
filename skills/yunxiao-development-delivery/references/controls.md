@@ -99,7 +99,7 @@ YunxiaoPM：需求=待开发 + 【交付】任务=待处理 + 负责人何斐
 `开发任务`完成后写入：
 
 ```text
-/skill yunxiao-development-delivery
+$yunxiao-development-delivery
 /go 完成开发:任务=<开发任务ID>
 ```
 
@@ -130,12 +130,12 @@ YunxiaoPM：需求=待开发 + 【交付】任务=待处理 + 负责人何斐
 4. 开发任务口令只有两个格式：
 
 ```text
-/skill yunxiao-development-delivery
+$yunxiao-development-delivery
 /go 开发任务:任务=<开发任务编号>
 ```
 
 ```text
-/skill yunxiao-development-delivery
+$yunxiao-development-delivery
 /go 开发任务:任务=<开发任务编号> 输出执行方案
 ```
 
@@ -188,7 +188,7 @@ YunxiaoPM：需求=待开发 + 【交付】任务=待处理 + 负责人何斐
 - 规范入口只有：
 
 ```text
-/skill yunxiao-development-delivery
+$yunxiao-development-delivery
 修复bug:<BUG-ID>
 ```
 
@@ -207,7 +207,7 @@ YunxiaoPM：需求=待开发 + 【交付】任务=待处理 + 负责人何斐
 批量入口：
 
 ```text
-/skill yunxiao-development-delivery
+$yunxiao-development-delivery
 /go 修复负责人是我的所有Bug
 ```
 
@@ -218,7 +218,7 @@ YunxiaoPM：需求=待开发 + 【交付】任务=待处理 + 负责人何斐
 规范入口：
 
 ```text
-/skill yunxiao-development-delivery
+$yunxiao-development-delivery
 清理分支：发版任务=TASK-900
 ```
 
@@ -360,6 +360,6 @@ YunxiaoPM：需求=待开发 + 【交付】任务=待处理 + 负责人何斐
 必须提供：项目/迭代、需求状态=`待测试`、交付状态=`处理中`、全部开发任务、每条任务实际工时记录ID、工作日期、精确开始/完成时间、Codex统计分钟数、实际工时、适用仓库、MR与目标分支、交付版本证据（普通模式含合并证据；隔离快速模式含开放MR和远端源提交）、实际执行操作、最终逐文件代码变更、唯一测试任务、测试任务`TASK_SUB→交付`证据、测试任务`ASSOCIATED→需求`证据、测试主管负责人、测试建议、临时需求变更点、描述回读证据、`开发完成→待测试`证据、端侧标签、（Web）test部署执行ID或（小程序）`testPipeline=skipped`、测试范围、已知风险，以及下一条：
 
 ```text
-/skill YunxiaoQA
+$YunxiaoQA
 开始测试：测试任务=<测试任务编号>；需求=<需求编号>
 ```

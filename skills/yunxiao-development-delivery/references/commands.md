@@ -67,14 +67,14 @@
 直接执行：
 
 ```text
-/skill yunxiao-development-delivery
+$yunxiao-development-delivery
 /go 开发任务:任务=ONEOS-789
 ```
 
 先输出可执行方案、讨论确认后再执行：
 
 ```text
-/skill yunxiao-development-delivery
+$yunxiao-development-delivery
 /go 开发任务:任务=ONEOS-789 输出执行方案
 ```
 
@@ -131,7 +131,7 @@
 
 ```text
 ## 下一阶段
-/skill yunxiao-development-delivery
+$yunxiao-development-delivery
 /go 完成开发:任务=<开发任务编号>
 ```
 
@@ -198,14 +198,14 @@
 产品交棒未完成时使用：
 
 ```text
-/skill YunxiaoPM
+$YunxiaoPM
 交棒开发：ONEOSP-123；交付任务=ONEOS-456
 ```
 
 ## 完成开发
 
 ```text
-/skill yunxiao-development-delivery
+$yunxiao-development-delivery
 /go 完成开发:任务=ONEOS-789
 ```
 
@@ -249,7 +249,7 @@
 
 ```text
 ## 下一阶段
-/skill YunxiaoQA
+$YunxiaoQA
 开始测试：测试任务=<测试任务编号>；需求=<需求编号>
 ```
 
@@ -258,7 +258,7 @@
 ## 修复单个Bug
 
 ```text
-/skill yunxiao-development-delivery
+$yunxiao-development-delivery
 修复bug:BUG-123
 ```
 
@@ -289,19 +289,19 @@
 标准命令：
 
 ```text
-/skill yunxiao-development-delivery
+$yunxiao-development-delivery
 /go 修复负责人是我的所有Bug
 ```
 
 以下语义相同的表达进入同一批量处理器：
 
 ```text
-/skill yunxiao-development-delivery
+$yunxiao-development-delivery
 /go 修复我负责的全部Bug
 ```
 
 ```text
-/skill yunxiao-development-delivery
+$yunxiao-development-delivery
 /go 处理所有分配给我的Bug
 ```
 
@@ -325,7 +325,7 @@
 ## 清理发版分支
 
 ```text
-/skill yunxiao-development-delivery
+$yunxiao-development-delivery
 清理分支：发版任务=TASK-900
 ```
 
@@ -391,14 +391,14 @@
 ## 测试交接口令
 
 ```text
-/skill YunxiaoQA
+$YunxiaoQA
 开始测试：测试任务=ONEOSP-123；需求=<需求编号>
 ```
 
 Bug修复交接由单Bug命令自动生成：
 
 ```text
-/skill YunxiaoQA
+$YunxiaoQA
 拉取待验缺陷：状态=已修复；缺陷=BUG-123
 ```
 
@@ -407,7 +407,7 @@ Bug修复交接由单Bug命令自动生成：
 ## 处理发布回流
 
 ```text
-/skill yunxiao-development-delivery
+$yunxiao-development-delivery
 处理发布回流：发版任务=TASK-900
 ```
 

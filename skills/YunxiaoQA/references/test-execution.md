@@ -33,7 +33,7 @@
 ## 开始测试
 
 ```text
-/skill YunxiaoQA
+$YunxiaoQA
 开始测试：测试任务=ONEOS-xx；[需求=ONEOS-yy]
 ```
 
@@ -90,7 +90,7 @@ skill-run yunxiao_cli_test_lifecycle.py record `
 ## 完成测试
 
 ```text
-/skill YunxiaoQA
+$YunxiaoQA
 完成测试：测试任务=ONEOS-xx；需求=ONEOS-yy；证据清单=.\evidence\ONEOS-xx.qa.json；暂不修复批准=BUG-ID=批准人|证据
 ```
 
@@ -136,7 +136,7 @@ skill-run yunxiao_cli_test_lifecycle.py complete `
 幂等键：
 允许的下一动作：组建发布批次
 建议下一口令：
-/skill yunxiao-release-operations
+$yunxiao-release-operations
 组建发布批次：迭代=<名称>；需求=<REQ-ID,...>
 ```
 

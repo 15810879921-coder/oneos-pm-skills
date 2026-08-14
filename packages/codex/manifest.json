@@ -1,38 +1,38 @@
-﻿[
-    {
-        "client":  "codex",
-        "skill":  "AutoRDO",
-        "archive":  "AutoRDO.zip",
-        "sha256":  "8d78008129e0efb28f5b222546751ea8bcfa783b3dc85bf7ecc44586f4ccb82a"
-    },
-    {
-        "client":  "codex",
-        "skill":  "oneos-autoprd",
-        "archive":  "oneos-autoprd.zip",
-        "sha256":  "9d1b1ca06334edc37b968ef2967db87381cbfb59911bb2768d294ae04cbd277b"
-    },
-    {
-        "client":  "codex",
-        "skill":  "YunxiaoPM",
-        "archive":  "YunxiaoPM.zip",
-        "sha256":  "c8dc4fb4b0f852cbaef09b12944ed823e6f545c8600368f07c34333480fa5662"
-    },
-    {
-        "client":  "codex",
-        "skill":  "yunxiao-development-delivery",
-        "archive":  "yunxiao-development-delivery.zip",
-        "sha256":  "b82be87c32184a759fb986287655470d55cc9cc649de966c2a00de10b650a22b"
-    },
-    {
-        "client":  "codex",
-        "skill":  "YunxiaoQA",
-        "archive":  "YunxiaoQA.zip",
-        "sha256":  "81bafbf177303aab7b53240acd55baa805ebaa61b56c3e2ab25d65055d15f396"
-    },
-    {
-        "client":  "codex",
-        "skill":  "yunxiao-release-operations",
-        "archive":  "yunxiao-release-operations.zip",
-        "sha256":  "c66da2d2e91f9d137a8e5db44ed6b49b03a960e30b24101f9b5e98fb275e9e89"
-    }
+[
+  {
+    "client": "codex",
+    "skill": "AutoRDO",
+    "archive": "AutoRDO.zip",
+    "sha256": "f467a5b848e28ec83d29b32b8d55620b32b4a494a66b03fd32bd8278955bc2fa"
+  },
+  {
+    "client": "codex",
+    "skill": "oneos-autoprd",
+    "archive": "oneos-autoprd.zip",
+    "sha256": "6f81e1f3af63ce1a0a43c17eec79ef4ba2e003723a75c7f8e0044ddd33de6f68"
+  },
+  {
+    "client": "codex",
+    "skill": "YunxiaoPM",
+    "archive": "YunxiaoPM.zip",
+    "sha256": "d3bf41906fa5d1b8599d878c1777037c6a40bfd2430897023338cbd185984000"
+  },
+  {
+    "client": "codex",
+    "skill": "yunxiao-development-delivery",
+    "archive": "yunxiao-development-delivery.zip",
+    "sha256": "065552c7069e3f0ad982e377f5463dfc2e71c5b6b357833aabd4c2b711c4f8dc"
+  },
+  {
+    "client": "codex",
+    "skill": "YunxiaoQA",
+    "archive": "YunxiaoQA.zip",
+    "sha256": "6bb20365665fffbb4b20c28267c22dc9f582d67af720a41d8b100f7cc5f330a4"
+  },
+  {
+    "client": "codex",
+    "skill": "yunxiao-release-operations",
+    "archive": "yunxiao-release-operations.zip",
+    "sha256": "d985d7c071a4bd6b5f70467352cfd4750b2ce5168c8e7f1700b2a70fcece1b23"
+  }
 ]

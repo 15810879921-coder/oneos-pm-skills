@@ -95,7 +95,7 @@
 规范入口：
 
 ```text
-/skill yunxiao-release-operations
+$yunxiao-release-operations
 准备发布：迭代=<精确名称>
 ```
 
@@ -113,7 +113,7 @@
 规范入口：
 
 ```text
-/skill yunxiao-release-operations
+$yunxiao-release-operations
 准备发布：迭代=统一运营管理平台V1.3
 ```
 
@@ -241,7 +241,7 @@
 规范入口：
 
 ```text
-/skill yunxiao-release-operations
+$yunxiao-release-operations
 执行回滚：发版任务=TASK-900 原因=<问题现象> 证据=<ID或URL>
 ```
 
@@ -272,7 +272,7 @@
 规范入口：
 
 ```text
-/skill yunxiao-release-operations
+$yunxiao-release-operations
 重新发布：发版任务=TASK-900 回归证据=<ID或URL>
 ```
 
@@ -373,4 +373,4 @@
 
 ## 8. 运维交付给产品
 
-必须提供：项目/迭代、A类本批需求、B类延期需求、C/D为空证据、发版任务顶层回读、正式关系、范围哈希、生产流水线、逻辑环境、执行ID、开始/完成时间、发布范围、终态成功和幂等回读。生产版本锚点、回调校验、生产检查、观察窗口和回滚状态有则提供，缺失时明确写`未获取/未使用/未自动验证/未配置`。下一口令为`/skill YunxiaoPM`加`验收通过：发版任务=<ID>；验收人=<人>；证据=<ID或URL>`。
+必须提供：项目/迭代、A类本批需求、B类延期需求、C/D为空证据、发版任务顶层回读、正式关系、范围哈希、生产流水线、逻辑环境、执行ID、开始/完成时间、发布范围、终态成功和幂等回读。生产版本锚点、回调校验、生产检查、观察窗口和回滚状态有则提供，缺失时明确写`未获取/未使用/未自动验证/未配置`。下一口令为`$YunxiaoPM`加`验收通过：发版任务=<ID>；验收人=<人>；证据=<ID或URL>`。

@@ -36,7 +36,7 @@
 对每个任务构造并执行：
 
 ```text
-/skill yunxiao-development-delivery
+$yunxiao-development-delivery
 /go 开发任务:任务=<开发任务编号>
 ```
 
@@ -52,7 +52,7 @@
 每个任务都保留材料清晰度、代码和开发侧验证门禁；工作项类型、关系、对话仓库地址、固定分支名和自动化规则状态按单任务新版规则不作为门禁。正式测试资产与Bug复测不属于本批开发节点。单任务`开发任务`通过后，结果中必须带下一阶段：
 
 ```text
-/skill yunxiao-development-delivery
+$yunxiao-development-delivery
 /go 完成开发:任务=<开发任务编号>
 ```
 
@@ -64,7 +64,7 @@
 
 每个任务在独立Git worktree或等价隔离工作区中实现，目录和分支绑定任务编号。不得在含另一任务未提交改动的工作区切换分支或混写代码。
 
-若无法安全建立或复用隔离工作区，把该任务记为阻塞并继续。批量`/go`仍不授权提交、推送、创建MR、合并或部署，批次结束时保留每个任务的工作区路径以及带`/skill yunxiao-development-delivery`的`/go 完成开发`口令。
+若无法安全建立或复用隔离工作区，把该任务记为阻塞并继续。批量`/go`仍不授权提交、推送、创建MR、合并或部署，批次结束时保留每个任务的工作区路径以及带`$yunxiao-development-delivery`的`/go 完成开发`口令。
 
 ## 5. 失败隔离与继续
 
@@ -120,17 +120,17 @@
 标准入口及语义相同的入口：
 
 ```text
-/skill yunxiao-development-delivery
+$yunxiao-development-delivery
 /go 修复负责人是我的所有Bug
 ```
 
 ```text
-/skill yunxiao-development-delivery
+$yunxiao-development-delivery
 /go 修复我负责的全部Bug
 ```
 
 ```text
-/skill yunxiao-development-delivery
+$yunxiao-development-delivery
 /go 处理所有分配给我的Bug
 ```
 

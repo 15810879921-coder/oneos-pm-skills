@@ -3,7 +3,7 @@
 ## 统一入口
 
 ```text
-/skill YunxiaoQA
+$YunxiaoQA
 接收发布回流：发版任务=TASK-900；触发=发布失败|产品验收失败；证据=ID或URL
 ```
 
@@ -14,14 +14,14 @@
 3. 每个Bug仍由当前测试用户担任验证者，负责人按代码归属解析；输出逐Bug开发口令：
 
 ```text
-/skill yunxiao-development-delivery
+$yunxiao-development-delivery
 修复bug:<BUG-ID>
 ```
 
 ## 修复后验证
 
 ```text
-/skill YunxiaoQA
+$YunxiaoQA
 验证发布回流：发版任务=TASK-900；缺陷=ONEOS-a,ONEOS-b；回归证据清单=<JSON文件>
 ```
 
@@ -36,7 +36,7 @@
 通过后在原测试任务写入`oneos.release-repair-qa/v1`区块并回读，输出：
 
 ```text
-/skill yunxiao-release-operations
+$yunxiao-release-operations
 重新发布：发版任务=TASK-900；回归证据=<证据ID或URL>
 ```
 

@@ -3,7 +3,7 @@
 ## 入口
 
 ```text
-/skill yunxiao-release-operations
+$yunxiao-release-operations
 准备发布：迭代=<精确名称>
 ```
 
@@ -46,7 +46,7 @@ skill-run classify_release_scope.py --input scope.json
 10. 返回`发版任务ID`，下一条固定为：
 
 ```text
-/skill yunxiao-release-operations
+$yunxiao-release-operations
 执行发布：发版任务=<发版任务ID>
 ```
 

@@ -7,7 +7,7 @@
 每次先显式启用：
 
 ```text
-/skill yunxiao-release-operations
+$yunxiao-release-operations
 ```
 
 下一行输入业务口令。字段之间使用空格，不需要分号。
@@ -23,7 +23,7 @@
 ## 1. 准备发布
 
 ```text
-/skill yunxiao-release-operations
+$yunxiao-release-operations
 准备发布：迭代=统一运营管理平台V1.3
 ```
 
@@ -47,14 +47,14 @@
 下一条：
 
 ```text
-/skill yunxiao-release-operations
+$yunxiao-release-operations
 执行发布：发版任务=<发版任务ID>
 ```
 
 ## 2. 执行测试流水线
 
 ```text
-/skill yunxiao-release-operations
+$yunxiao-release-operations
 执行测试流水线：流水线=流水线名称
 ```
 
@@ -69,7 +69,7 @@
 ## 3. 执行生产流水线
 
 ```text
-/skill yunxiao-release-operations
+$yunxiao-release-operations
 执行生产流水线：流水线=流水线名称
 ```
 
@@ -84,7 +84,7 @@
 ## 4. 执行发布
 
 ```text
-/skill yunxiao-release-operations
+$yunxiao-release-operations
 执行发布：发版任务=TASK-900
 ```
 
@@ -103,7 +103,7 @@
 2. 写入并回读一次受管发布尝试：`attemptType=miniprogram_skip_pipeline`，`productionExecutionId=null`，`status=成功`；备注「小程序跳过流水线，默认发布完成」。
 3. 发版任务、本批需求 → `发布完成`。
 4. 不做生产验证、不触发自动回滚。
-5. 输出 `/skill YunxiaoPM` 产品验收交接（与 Web 成功后的后续相同）。
+5. 输出 `$YunxiaoPM` 产品验收交接（与 Web 成功后的后续相同）。
 6. 重复执行同一发版任务且已`发布完成`时幂等返回，不重复改状态。
 
 ### Web（原逻辑，不变）
@@ -170,7 +170,7 @@
 ## 5. 执行回滚
 
 ```text
-/skill yunxiao-release-operations
+$yunxiao-release-operations
 执行回滚：发版任务=TASK-900 原因=核心业务验证失败 证据=https://example.com/incident
 ```
 
@@ -196,7 +196,7 @@
 ## 6. 重新发布
 
 ```text
-/skill yunxiao-release-operations
+$yunxiao-release-operations
 重新发布：发版任务=TASK-900 回归证据=<ID或URL>
 ```
 
@@ -207,7 +207,7 @@
 ## 7. 查询发布
 
 ```text
-/skill yunxiao-release-operations
+$yunxiao-release-operations
 查询发布：发版任务=TASK-900
 ```
 
@@ -227,7 +227,7 @@
 不计入本Skill七条命令。只有`执行发布`或`重新发布`在生产流水线成功且环境、范围回读一致并进入`发布完成`后输出：
 
 ```text
-/skill YunxiaoPM
+$YunxiaoPM
 验收通过：发版任务=TASK-900；验收人=王经理；证据=https://example.com/acceptance
 ```
 

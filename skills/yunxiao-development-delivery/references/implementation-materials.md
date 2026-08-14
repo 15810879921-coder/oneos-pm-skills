@@ -5,14 +5,14 @@
 开发人员使用一个持续目标完成需求实现，不拆第二个业务节点。直接执行入口：
 
 ```text
-/skill yunxiao-development-delivery
+$yunxiao-development-delivery
 /go 开发任务:任务=ONEOS-789
 ```
 
 需要先审查执行方案时使用：
 
 ```text
-/skill yunxiao-development-delivery
+$yunxiao-development-delivery
 /go 开发任务:任务=ONEOS-789 输出执行方案
 ```
 
@@ -193,7 +193,7 @@
 完成后必须写入带Skill选择器的下一条口令：
 
 ```text
-/skill yunxiao-development-delivery
+$yunxiao-development-delivery
 /go 完成开发:任务=ONEOS-789
 ```
 
@@ -219,6 +219,6 @@
 16. 输出：
 
 ```text
-/skill YunxiaoQA
+$YunxiaoQA
 开始测试：测试任务=<测试任务编号>；需求=<需求编号>
 ```

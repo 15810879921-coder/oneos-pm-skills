@@ -74,7 +74,7 @@ Bug负责人/状态：
 所有建议下一口令必须显式包含：
 
 ```text
-/skill <目标Skill名称>
+$<目标Skill名称>
 ```
 
 ### YunxiaoPM接入最小契约

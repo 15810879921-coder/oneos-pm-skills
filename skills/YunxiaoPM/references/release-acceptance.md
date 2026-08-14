@@ -3,13 +3,13 @@
 ## 口令
 
 ```text
-/skill YunxiaoPM
+$YunxiaoPM
 拉取待验收需求：发版任务=TASK-900
 
-/skill YunxiaoPM
+$YunxiaoPM
 验收通过：发版任务=TASK-900；验收人=王经理；证据=ACCEPTANCE-ID或URL
 
-/skill YunxiaoPM
+$YunxiaoPM
 验收不通过：发版任务=TASK-900；验收人=王经理；原因=...；证据=ID或URL
 ```
 
@@ -54,7 +54,7 @@ skill-run accept_release.py fail `
 无论状态迁移是否受项目流程支持，下一步都固定输出：
 
 ```text
-/skill YunxiaoQA
+$YunxiaoQA
 接收发布回流：发版任务=TASK-900；触发=产品验收失败；证据=ID或URL
 ```
 

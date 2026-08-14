@@ -53,7 +53,7 @@ Do not execute test cases, edit application code, or close a requirement after r
 
 - Accept and emit only formal Skill names, exact requirement/test/release/execution task IDs, live states, formal relations, frozen batch scope, and necessary pipeline, deployment, verification, rollback, evidence, or idempotency identifiers.
 - Never discover, read, copy, or require another Skill's installation directory. Resolve missing facts from the explicit handoff IDs and live Yunxiao services; keep all bundled rules local to this Skill.
-- Test intake uses `/skill YunxiaoQA`, development return uses `/skill yunxiao-development-delivery`, and production-acceptance handoff uses `/skill YunxiaoPM`. Never emit a legacy alias or filesystem path as a command.
+- Test intake uses `$YunxiaoQA`, development return uses `$yunxiao-development-delivery`, and production-acceptance handoff uses `$YunxiaoPM`. Never emit a legacy alias or filesystem path as a command.
 
 ## Classify authority
 
@@ -113,7 +113,7 @@ All Yunxiao Projex, Flow, Codeup, and AppStack discovery, state reads, relations
 20. On rollback success, preserve production, verification, incident, and rollback evidence; record before/after versions; keep the release task in the real failed state; and hand defect repair/re-release disposition to product and development ownership.
 21. On rollback failure, preserve logs and partial state and prohibit automatic retry until an authorized recovery plan exists.
 22. If the task is already release-complete and there is no explicit `执行回滚`, do not rerun production; only reconcile status and evidence, then idempotently re-emit any missing product handoff.
-23. After a stable rollback or evidenced product-acceptance failure, emit `/skill YunxiaoQA` plus `接收发布回流：发版任务=<ID>；触发=<发布失败|产品验收失败>；证据=<ID或URL>`.
+23. After a stable rollback or evidenced product-acceptance failure, emit `$YunxiaoQA` plus `接收发布回流：发版任务=<ID>；触发=<发布失败|产品验收失败>；证据=<ID或URL>`.
 24. On `重新发布`, verify the failure evidence, unchanged scope, affected Bugs closed, current regression evidence, and explicit authorization; increment the attempt number, create a new release-attempt ID/idempotency key linked to the previous terminal attempt, start one new execution per required component, preserve every previous attempt, record available production checks, and emit a fresh product-acceptance handoff after technical success.
 
 ## Non-negotiable gates

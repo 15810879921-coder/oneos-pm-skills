@@ -17,7 +17,7 @@ description: >-
 
 > **客户端**：同一业务规则支持 Codex 与 Cursor；安装器负责选择客户端目录，生命周期交接不得依赖安装路径。
 
-测试人员云效自动化。正式 Skill 名 **`YunxiaoQA`**，选择器 **`/skill YunxiaoQA`**；对外中文名 **测试任务**。本 Skill **自洽成篇**；**禁止** fork / include / 「对齐」`yunxiao-requirement-lifecycle`。
+测试人员云效自动化。正式 Skill 名 **`YunxiaoQA`**，选择器 **`$YunxiaoQA`**；对外中文名 **测试任务**。本 Skill **自洽成篇**；**禁止** fork / include / 「对齐」`yunxiao-requirement-lifecycle`。
 
 与 **YunxiaoPM（需求任务）**、开发交付 Skill 分工：本 Skill **只做测试侧**读写。
 
@@ -78,7 +78,7 @@ description: >-
 
 - 只接收/输出正式 Skill 名、需求/交付/开发/测试/发版任务编号、当前状态、正式 `ASSOCIATED`/`TASK_SUB` 关系，以及测试计划、用例、缺陷、流水线、报告和幂等证据标识。
 - 禁止定位、读取、复制或要求用户提供其他 Skill 的安装目录。本 Skill 只读取自身包内资源；缺少人员、项目或状态信息时按交接编号实时查询云效。
-- 上游开发正式名为 `yunxiao-development-delivery`，下游发布正式名为 `yunxiao-release-operations`，产品回退正式名为 `YunxiaoPM`；选择器必须使用 `/skill <正式名称>`。
+- 上游开发正式名为 `yunxiao-development-delivery`，下游发布正式名为 `yunxiao-release-operations`，产品回退正式名为 `YunxiaoPM`；选择器必须使用 `$<正式名称>`。
 
 ## 写操作铁律（防编号误判 · 强制）
 
@@ -166,7 +166,7 @@ description: >-
 - 本 Skill明确拥有且只拥有需求测试阶段`待测试→测试中→测试完成`。
 
 缺陷回流交接：「开发侧请用开发 Skill 拉待确认/再次打开缺陷并标已修复|暂不修复。」
-测试完成交接：「发布侧请用`/skill yunxiao-release-operations`组建发布批次。」
+测试完成交接：「发布侧请用`$yunxiao-release-operations`组建发布批次。」
 
 发布或产品验收失败后的正式回流按[release-repair-loop.md](references/release-repair-loop.md)执行；不得直接重跑生产或直接再次验收。
 
