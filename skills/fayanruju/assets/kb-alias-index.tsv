@@ -1,0 +1,61 @@
+id	name	line	confidence	aliases
+customer-management	客户管理	lease	architecture	customer-management|客户准入|客户管理|客户
+customer-engagement	客户对接过程管理	lease	architecture	customer-engagement|客户对接过程管理|客户对接|对接认领
+contract-template-management	标准合同模板	lease	architecture	contract-template-management|标准合同模板|合同模板
+lease-business-ledger	租赁业务台账	lease	architecture	lease-business-ledger|租赁业务台账
+lease-contract-management	租赁合同	lease	confirmed	lease-contract-management|租赁合同怎么用|合同怎么建|租赁合同|E签宝|建合同|签合同|非标
+vehicle-pickup-receivable	提车应收款	lease	architecture	vehicle-pickup-receivable|提车应收款|怎么提车|提车应收|提车
+vehicle-return-settlement	还车应结款	lease	confirmed	vehicle-return-settlement|还车应结款|还车应结|还车结算|会签|还车
+h2-station-dashboard	加氢站大屏	energy	legacy	h2-station-dashboard|加氢站大屏
+ledger-h2-procurement-summary	氢费采购端汇总报表	energy	legacy	ledger-h2-procurement-summary|氢费采购端汇总报表
+oneos-h5-h2-order	加氢订单（H5）	energy	architecture	oneos-h5-h2-order|加氢订单（H5）|加氢怎么录|加氢订单|补录加氢
+oneos-web-h2-station-site	加氢站管理	energy	architecture	oneos-web-h2-station-site|加氢站管理
+payment-records	收款记录 / 氢费账户	energy	architecture	payment-records|收款记录 / 氢费账户
+supplier-management	供应商管理	energy	architecture	supplier-management|供应商管理
+vehicle-h2-fee-ledger	车辆氢费明细	energy	architecture	vehicle-h2-fee-ledger|车辆氢费明细
+biz-vehicle-cost	车辆成本维护	ops	legacy	biz-vehicle-cost|车辆成本维护
+insurance-procurement	保险采购	ops	confirmed	insurance-procurement|保险采购
+ledger-insurance-allocation	保险分摊明细	ops	legacy	ledger-insurance-allocation|保险分摊明细
+oneos-v2-h5-vehicle-fault-handling	故障处置（H5）	ops	confirmed	oneos-v2-h5-vehicle-fault-handling|故障处置（H5）
+oneos-web-ops	车辆运维综合	ops	architecture	oneos-web-ops|车辆运维综合
+ops-aftermarket-device	后装设备	ops	legacy	ops-aftermarket-device|后装设备
+ops-certificates	证照管理	ops	legacy	ops-certificates|证照管理
+ops-license-plate	上牌管理	ops	legacy	ops-license-plate|上牌管理
+ops-parking-lot	停车场管理	ops	legacy	ops-parking-lot|停车场管理
+ops-parts-warehouse	备件库存 / 仓库管理	ops	legacy	ops-parts-warehouse|备件库存 / 仓库管理
+ops-vehicle-annual-review	年审管理	ops	legacy	ops-vehicle-annual-review|年审管理
+ops-vehicle-delivery	交车管理	ops	legacy	ops-vehicle-delivery|交车管理
+ops-vehicle-model	型号参数	ops	legacy	ops-vehicle-model|型号参数
+ops-vehicle-prepare	备车管理	ops	legacy	ops-vehicle-prepare|备车管理
+ops-vehicle-relocation	异动管理	ops	legacy	ops-vehicle-relocation|异动管理
+ops-vehicle-replace	替换车管理	ops	legacy	ops-vehicle-replace|替换车管理
+ops-vehicle-return	还车管理	ops	legacy	ops-vehicle-return|还车管理
+ops-vehicle-transfer	调拨管理	ops	legacy	ops-vehicle-transfer|调拨管理
+procurement-third-party-exit	三方退租车管理	ops	legacy	procurement-third-party-exit|三方退租车管理
+vehicle-fault-handling	故障处置（PC）	ops	confirmed	vehicle-fault-handling|故障处置（PC）|故障处置|报修|故障
+vehicle-inspection	验车入库	ops	confirmed	vehicle-inspection|验车入库
+vehicle-maintenance-ledger	车辆维修明细	ops	architecture	vehicle-maintenance-ledger|车辆维修明细
+vehicle-management	车辆资产	ops	confirmed	vehicle-management|车辆资产
+vehicle-purchase-contract	车辆采购合同	ops	confirmed	vehicle-purchase-contract|车辆采购合同
+safety-management	安全管理（综合）	safety	building	safety-management|安全管理（综合）
+safety-training-scan	安全培训扫码	safety	legacy	safety-training-scan|安全培训扫码
+biz-etc-management	ETC 管理	logistics	legacy	biz-etc-management|ETC 管理
+self-operated-business-ledger	物流业务明细 / 项目盈亏	logistics	architecture	self-operated-business-ledger|物流业务明细 / 项目盈亏
+self-operated-contract	物流合同	logistics	architecture	self-operated-contract|物流合同
+self-operated-dispatch-task	调度任务	logistics	architecture	self-operated-dispatch-task|调度任务
+biz-finance-integration	业财一体化全链条	foundation	architecture	biz-finance-integration|业财一体化全链条|资金闭环|业财|核销|门禁
+meeting-20260803-lines-ai-finance	五大条线改造与业财AI会议沉淀	foundation	architecture	meeting-20260803-lines-ai-finance|五大条线会议|业财AI会议|条线改造会议|20260803会议
+analytics-business-ledgers	数据分析 / 业务台账报表	foundation	legacy	analytics-business-ledgers|数据分析 / 业务台账报表
+business-dept-ledger	项目盈亏情况	foundation	architecture	business-dept-ledger|项目盈亏情况
+oneos-h5-vehicle-assets	车辆资产 H5	foundation	confirmed	oneos-h5-vehicle-assets|车辆资产 H5
+vehicle-status-handbook	车辆状态说明（五维）	foundation	legacy	vehicle-status-handbook|车辆状态说明（五维）
+help-center	帮助中心	platform	legacy	help-center|帮助中心|操作说明|说明书|帮助
+message-center	消息中心	platform	confirmed	message-center|消息中心|站内信|消息
+oneos-miniprogram	ONE-OS 小程序	platform	building	oneos-miniprogram|ONE-OS 小程序
+oneos-mobile-app	ONE-OS 移动端运管	platform	legacy	oneos-mobile-app|ONE-OS 移动端运管
+oneos-web-approval	审批中心	platform	confirmed	oneos-web-approval|审批中心|待我审批|审批
+oneos-web-crm-erp-sandbox	ONEOS-web CRM/ERP 试验	platform	building	oneos-web-crm-erp-sandbox|ONEOS-web CRM/ERP 试验
+oneos-web-workbench-new	全新工作台	platform	confirmed	oneos-web-workbench-new|全新工作台|待办工作台|工作台|督办
+task-work-order	任务工单	platform	confirmed	task-work-order|任务工单|建工单|催办|工单
+version-roadmap	版本完成情况与未来规划	platform	legacy	version-roadmap|版本完成情况与未来规划
+xiaolingling-delivery	小羚羚 · 交车	external	legacy	xiaolingling-delivery|小羚羚 · 交车

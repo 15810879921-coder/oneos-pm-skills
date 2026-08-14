@@ -15,6 +15,8 @@ OneOS 产品团队自用的 AI Agent Skills 合集，支持 `npx skills` 一键�
 | `oneos-autoprd`（展示名 OneOS-AutoPRD） | 整模块 AutoPRD + 标注目录；**需求定稿**写功能变更；云效描述「需求说明/更新内容」 | 见下方 |
 | `AutoRDO` | 清洗为标题+描述；自动识别类型/优先级/标签/提交部门/提交人；多行拆多条；有待确认则强制 Plan | 见下方 |
 | `AutoVUL` | 按云效迭代名生成 PC 版本更新日志 | 见下方 |
+| **`yanchufasui`**（言出法随） | 王冕驱动产品分身：落需求 / 改原型；写云效先确认 | 见下方「王冕驱动双 skill」 |
+| **`fayanruju`**（法眼如炬） | 口径裁决；完整 KB 在 oneos-v2 工作区 | 见下方「王冕驱动双 skill」 |
 
 > **已下架：** `yunxiao-requirement-lifecycle`（旧全生命周期 Skill）已从本仓库删除。产品侧云效**只**用 `YunxiaoPM`；`oneos-autoprd` **只**写 PRD/标注/描述，**不**建同名阶段任务。本机若仍有旧包请卸载：  
 > `npx skills remove yunxiao-requirement-lifecycle -g -y -a cursor -a codex`
@@ -64,6 +66,34 @@ npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-autoprd -a cursor
 
 ```bash
 npx skills update YunxiaoPM AutoRDO oneos-autoprd -g -y
+```
+
+### 王冕驱动双 skill（言出法随 + 法眼如炬）
+
+与 YunxiaoPM 同一套 `npx skills`。同事安装页：https://15810879921-coder.github.io/oneos-pm-skills/
+
+```bash
+npx skills add 15810879921-coder/oneos-pm-skills --skill yanchufasui -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill fayanruju -a cursor -a codex -g -y
+```
+
+更新：
+
+```bash
+npx skills update yanchufasui fayanruju -g -y
+```
+
+装完请 **新开 Chat**。完整知识库与改原型请打开 **oneos-v2** 工作区。本机若已把 `~/.cursor/skills/yanchufasui` 软链到 oneos-v2，不要用 `-g` 覆盖。
+
+丢进 AI：
+
+```text
+请帮我全局安装王冕驱动双 skill 到 Cursor + Codex：
+
+npx skills add 15810879921-coder/oneos-pm-skills --skill yanchufasui -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill fayanruju -a cursor -a codex -g -y
+
+装完请新开 Chat。口令：言出法随 / $yanchufasui ；法眼如炬 / $fayanruju
 ```
 
 ### 丢进 AI 代装（复制整段）
@@ -387,7 +417,9 @@ oneos-pm-skills/
     ├── yunxiao-development-delivery/
     ├── oneos-autoprd/
     ├── AutoVUL/
-    └── AutoRDO/
+    ├── AutoRDO/
+    ├── yanchufasui/
+    └── fayanruju/
 ```
 
 ---

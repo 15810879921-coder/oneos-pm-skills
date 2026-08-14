@@ -349,15 +349,16 @@ npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-autoprd -a cursor
 
     <section class="batch" data-batch>
       <h2>王冕驱动双 skill</h2>
-      <p>言出法随 + 法眼如炬；推荐官方脚本一次装齐（含旧名兼容 stub）；也可分别安装。同事文档：<a href="https://github.com/15810879921-coder/wangmian-skills/blob/main/%E5%90%8C%E4%BA%8B%E4%BD%BF%E7%94%A8%E8%AF%B4%E6%98%8E.md" target="_blank" rel="noopener">使用说明</a> · <a href="https://github.com/15810879921-coder/wangmian-skills/blob/main/%E6%9B%B4%E6%96%B0%E6%97%A5%E5%BF%97.md" target="_blank" rel="noopener">更新日志</a>。</p>
+      <p>言出法随 + 法眼如炬，与 YunxiaoPM 同一套 <code>npx skills</code>。完整知识库在 oneos-v2 工作区；装完请新开 Chat。</p>
       <div class="batch-actions">
-        <button type="button" class="btn btn-primary" data-copy="twin-install">复制一键安装脚本</button>
+        <button type="button" class="btn btn-primary" data-copy="twin-install">复制一键安装</button>
         <button type="button" class="btn btn-secondary" data-copy="twin-update">复制一键更新</button>
         <button type="button" class="btn btn-ghost" data-copy="twin-ai">复制发给 AI</button>
       </div>
       <div class="cmd-block">
-        <span class="cmd-label">一键安装脚本</span>
-        <pre id="twin-install">curl -fsSL https://raw.githubusercontent.com/15810879921-coder/wangmian-skills/main/install.sh | bash</pre>
+        <span class="cmd-label">一键安装</span>
+        <pre id="twin-install">npx skills add 15810879921-coder/oneos-pm-skills --skill yanchufasui -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill fayanruju -a cursor -a codex -g -y</pre>
       </div>
     </section>
 
@@ -370,6 +371,7 @@ npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-autoprd -a cursor
         <li>云效相关 skill：浏览器先登录 https://devops.aliyun.com 。</li>
         <li>旧 lifecycle 若本机还在，先卸载：npx skills remove yunxiao-requirement-lifecycle -g -y -a cursor -a codex</li>
         <li>装完后建议新开 Chat / 重启 Codex 再喊口令。</li>
+        <li>言出法随 / 法眼如炬：同事用 npx；完整知识库在 oneos-v2。本机若已软链到 oneos-v2，不要用 -g 覆盖。</li>
       </ol>
       <div class="batch-actions" style="margin-top:12px">
         <button type="button" class="btn btn-secondary" data-copy="remove-lifecycle">复制卸载旧 lifecycle</button>
@@ -385,12 +387,15 @@ npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-autoprd -a cursor
 装完后确认口令可用：记录需求 / AutoRDO / oneos-autoprd。
 使用云效前请先登录 https://devops.aliyun.com 。</pre>
       <pre id="twin-update" hidden>npx skills update yanchufasui fayanruju -g -y</pre>
-      <pre id="twin-ai" hidden>请执行王冕驱动双 skill 一键安装：
-curl -fsSL https://raw.githubusercontent.com/15810879921-coder/wangmian-skills/main/install.sh | bash
+      <pre id="twin-ai" hidden>请帮我全局安装王冕驱动双 skill 到 Cursor + Codex：
+
+npx skills add 15810879921-coder/oneos-pm-skills --skill yanchufasui -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill fayanruju -a cursor -a codex -g -y
+
 装完请新开 Chat。
-主唤名：言出法随 / $yanchufasui ；法眼如炬 / $fayanruju
+口令：言出法随 / $yanchufasui ；法眼如炬 / $fayanruju
 签名：王冕驱动 · 言出法随 / 王冕驱动 · 法眼如炬
-旧口令 wangmian-twin / wangmian-brain 仍兼容。</pre>
+改原型请打开 oneos-v2 工作区。</pre>
     </section>
   </div>
 
@@ -470,22 +475,22 @@ curl -fsSL https://raw.githubusercontent.com/15810879921-coder/wangmian-skills/m
         name: "言出法随（yanchufasui）",
         role: "分身",
         purpose: "王冕驱动的产品分身：按本尊习惯落需求、改原型 UI/UX；内嵌调法眼如炬；写云效前会先确认。",
-        repo: "https://github.com/15810879921-coder/wangmian-skills",
+        repo: "https://github.com/15810879921-coder/oneos-pm-skills",
         tips: "口令：言出法随 / $yanchufasui / /yanchufasui｜签名：王冕驱动 · 言出法随｜旧口令王冕分身 / $wangmian-twin 兼容",
-        install: "npx skills add 15810879921-coder/wangmian-skills --skill yanchufasui -a cursor -a codex -g -y",
+        install: "npx skills add 15810879921-coder/oneos-pm-skills --skill yanchufasui -a cursor -a codex -g -y",
         update: "npx skills update yanchufasui -g -y",
-        ai: "请帮我全局安装言出法随（yanchufasui）到 Cursor + Codex：\nnpx skills add 15810879921-coder/wangmian-skills --skill yanchufasui -a cursor -a codex -g -y\n装完新开 Chat。口令：言出法随 / $yanchufasui。签名：王冕驱动 · 言出法随。"
+        ai: "请帮我全局安装言出法随（yanchufasui）到 Cursor + Codex：\nnpx skills add 15810879921-coder/oneos-pm-skills --skill yanchufasui -a cursor -a codex -g -y\n装完新开 Chat。口令：言出法随 / $yanchufasui。签名：王冕驱动 · 言出法随。"
       },
       {
         id: "fayanruju",
         name: "法眼如炬（fayanruju）",
         role: "分身",
         purpose: "王冕驱动的口径裁决：按 OneOS 知识库窄检索、冲突裁决与置信度；只答规则/能不能做，不改原型。",
-        repo: "https://github.com/15810879921-coder/wangmian-skills",
+        repo: "https://github.com/15810879921-coder/oneos-pm-skills",
         tips: "口令：法眼如炬 / $fayanruju / /fayanruju｜签名：王冕驱动 · 法眼如炬｜旧口令分身大脑 / $wangmian-brain 兼容",
-        install: "npx skills add 15810879921-coder/wangmian-skills --skill fayanruju -a cursor -a codex -g -y",
+        install: "npx skills add 15810879921-coder/oneos-pm-skills --skill fayanruju -a cursor -a codex -g -y",
         update: "npx skills update fayanruju -g -y",
-        ai: "请帮我全局安装法眼如炬（fayanruju）到 Cursor + Codex：\nnpx skills add 15810879921-coder/wangmian-skills --skill fayanruju -a cursor -a codex -g -y\n装完新开 Chat。口令：法眼如炬 / $fayanruju。签名：王冕驱动 · 法眼如炬。"
+        ai: "请帮我全局安装法眼如炬（fayanruju）到 Cursor + Codex：\nnpx skills add 15810879921-coder/oneos-pm-skills --skill fayanruju -a cursor -a codex -g -y\n装完新开 Chat。口令：法眼如炬 / $fayanruju。签名：王冕驱动 · 法眼如炬。改原型请打开 oneos-v2。"
       }
     ];
 
