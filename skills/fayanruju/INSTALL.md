@@ -7,12 +7,13 @@
 ```bash
 npx skills add 15810879921-coder/oneos-pm-skills --skill fayanruju -a cursor -a codex -g -y
 npx skills add 15810879921-coder/oneos-pm-skills --skill yanchufasui -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill mingjingzhishui -a cursor -a codex -g -y
 ```
 
 更新：
 
 ```bash
-npx skills update fayanruju yanchufasui -g -y
+npx skills update fayanruju yanchufasui mingjingzhishui -g -y
 ```
 
 完整 KB 在 oneos-v2 `src/resources/oneos-knowledge-base/`。请在 **oneos-v2 工作区**里用法眼。
