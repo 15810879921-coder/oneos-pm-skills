@@ -2,6 +2,284 @@
 
 原名 wangmian-twin；自 v1.4.0 起正式更名。
 
+## v1.5.1 — 2026-08-16
+
+### 禁页头模块标题 + 标题下描述（DESIGN §2.4.0 升格）
+
+- 本尊拍板：业务页顶栏模块标题与标题下描述**全部去除不保留**
+- `DESIGN.md` §2.4.0 / `V2LedgerChrome` / `MigrateLedgerHub` / `oneos-ds-page-chrome.css` 同步
+- Rules：`oneos-v2-copy-no-overexplain` · `oneos-v2-prototype-visual-align`；habits §3.0 条 7 / §3.0.4；eval **20**
+- 详情/表单仍守 §4.8 业务页名（禁页名下描述）；口令门 / 汇报叙事 / Showcase 豁免口径写进 §2.4.0
+
+## v1.5.0 — 2026-08-16
+
+### 三方联动可组装 · 交棒认 mj-receipt（配对明镜 v1.0.10）
+
+- `handoff-to-dev`：模板增「视觉锚点」选填；§3 认偏差回写模板 + `mj-receipt`
+- boot：口令速查指针 → 明镜 `twin-linkage` §0b
+- 工程阻塞代挂触发词对齐 Vite 红屏 / `:5666`（仍禁无包改真码）
+
+## v1.4.99 — 2026-08-15
+
+### 产线握手恢复 · live DESC 通关（evo-yc-field-sidefx-desc）
+
+- `prod-ro-probe.sh ping` 绿（MySQL 8.0.27）；出口当时 `45.196.236.77`
+- 落盘：`ry-workflow` 62 表 + 全表 DESC；租赁/工单主表 live DESC
+- `fed-modules-index` / README / habits 同步；任务 blocked→**done**
+- 本机种子卡仅对照，不以之冒充产线
+
+## v1.4.98 — 2026-08-15
+
+### AI-PM 八维 · 双→三 Skill 协同指挥
+
+- 展示名「双 Skill 协同指挥」→「**三 Skill 协同指挥**」（言出产品刀 · 法眼定口径 · 明镜真仓）
+- ideal 同步；`id` 仍 `twin_orchestration`（历史快照兼容）
+- habits §2.2 八维文案同步
+
+## v1.4.97 — 2026-08-15
+
+### 原型→现网像素对表门禁（evo-yc-proto-prod-visual-parity）
+
+- 根因：工作台接入只做 IA 骨架，快捷折叠/自定义/预警行样式未复原；误把「禁拷 React」当成「禁拷视觉」
+- habits **§3.0.8** + Rule `oneos-prototype-prod-visual-parity.mdc`
+- 交棒禁止笼统「对等不像素抄」；须逐控件对表清单
+
+## v1.4.96 — 2026-08-15
+
+### 跨入口 B1 存量对齐（evo-yc-secondary-b1-align）
+
+- 销 `DEF-PLT-SECONDARY-B1-ALIGN`：公共 `src/common/b1-cross-nav.ts`（`openB1Prototype` / `B1_TARGET`）
+- 车辆档案履约/保险：Toast「即将跳转」→ 独立原型真链
+- H5 工作台：待办按审核/交车/年审链对应独立 H5；去掉 Toast 装跳
+- legacy：`oneos-web-business` 客户/供应商/ETC；旧 `LeaseContractManagement.jsx` 交还车/应收结
+- Web 工作台 `oneos-web-workbench-new` 本已 href，保持 B1
+
+## v1.4.95 — 2026-08-15
+
+### 二次态必做满（evo-yc-secondary-panel · 本尊拍板）
+
+- habits **§3.0.7**：模块内 list/detail/edit 强制 PRD 二次页清单 + 状态机 + 标注状态节点 + 必点清单；禁 Toast 冒充内页
+- Rule `one-prototype-one-sidebar` 硬澄清：**同页 ≠ 可不做内页**
+- eval **38**；交棒 `handoff-to-dev` 增「同页二次态」节
+- **轨道 B**：明镜 **v1.0.9** 拍默认 **B1**（独立原型目录链跳）；存量整改已由 **v1.4.96** 销账
+
+## v1.4.94 — 2026-08-15
+
+### 法眼第二轮 KB↔AutoPRD 对表（evo-fy-kb-round2）
+
+- 报告 `fayanruju/references/kb-drift-2026-08-15-round2.md`；KB 回写氢费核对≠对账 / 工单 1.5.0 / 工作台 foundations 总闸
+- 作战室销账 + `nextAutoSyncGoal` → 第三轮（消息中心·故障处置·加氢 H5）；≠ 写云效 / 合 Master
+
+## v1.4.93 — 2026-08-15
+
+### 本机灌 ln_asset_management 结构旁证（evo-mj-asset-schema-fill）
+
+- `~/oneos-prod/scripts/seed-local-asset-schema.py`：实体粗 DDL + 仓内 SQL → 本机 **157 表**；主链优先 8/8
+- 双轨 `localAssetSchema=ready`；`module-asset-local-schema.md`；≠ 产线 live DESC
+- 下一关：法眼 KB 第二轮对表；≠ 写库 / 合 Master
+
+## v1.4.92 — 2026-08-15
+
+### 作战室 · 资产 DESC 产线只读握手旁证（evo-dual-track-asset-desc-handshake）
+
+- `refresh-dual-track-auto` → `assetDescHandshake`；双轨页专卡
+- 再核：TCP 通 · greeting 超时 · ERROR 2013；dump/模块卡表级旁证；禁装 live 假绿
+- 下一关：本机灌 ln_asset_management 结构旁证；≠ 写库 / 合 Master
+
+## v1.4.91 — 2026-08-15
+
+### 作战室 · 缺口↔云效只读对表（evo-warroom-defect-yx-align）
+
+- `warRoomDefectYunxiaoAlign` 纯计算旁证 + 大盘 AlignStrip（命中/未命中/样本差）
+- 禁自动改 defects；样本非全量诚实；下一关：资产 DESC 产线只读握手；≠ 写云效
+
+## v1.4.90 — 2026-08-15
+
+### 作战室 · 自进化链收口盘点（evo-warroom-auto-sync-closeout）
+
+- `warRoomAutoSyncChain` 五环清单 + 大盘 `WarRoomAutoSyncCloseoutStrip`（可复制）
+- 4 通关 / 双轨半通诚实；下一关：缺口 ↔ 云效打开项只读对表；≠ 写云效 / 合 Master
+
+## v1.4.89 — 2026-08-15
+
+### 作战室 · 双轨/AI 评分页角标跳转解释（evo-warroom-dual-ai-scope-jump）
+
+- 共享 `ScopeExplainChip`；双轨 / AI-PM / AI 开发评分页均可点「解释 ›」→ 本页溯源条展开+焦点
+- 下一关：自进化链收口盘点；≠ 写云效
+
+## v1.4.88 — 2026-08-15
+
+### 作战室 · Skill 页角标跳转解释（evo-warroom-skill-scope-jump）
+
+- SkillFixRecordPage 角标「解释 ›」→ 本页溯源条展开 + skill_fix_log 焦点
+- 下一关：双轨/评分页角标同跳；≠ 写云效
+
+## v1.4.87 — 2026-08-15
+
+### 作战室 · KPI 角标跳转口径解释（evo-warroom-kpi-scope-jump）
+
+- HeroKpi ScopeTag「解释 ›」→ 溯源条展开 + 焦点高亮；补完成度/覆盖率 Q&A
+- 下一关：Skill 页角标同跳；≠ 写云效
+
+## v1.4.86 — 2026-08-15
+
+### 作战室 · 三口径一键解释（evo-warroom-triad-explain）
+
+- `WAR_ROOM_TRIAD_EXPLAIN` + 溯源条展开误读/正解/Q&A + 复制全文
+- 下一关：KPI 角标点开跳转解释；≠ 写云效
+
+## v1.4.85 — 2026-08-15
+
+### 作战室 · 新鲜度黄/红督促动作（evo-warroom-freshness-urge）
+
+- `WarRoomFreshnessUrgeBar`：人工 + 事实条 + 双轨三路最差档；复制刷新口令；策略常显
+- 下一关：驾驶舱三口径冲突一键解释；≠ 写云效 / 合 Master
+
+## v1.4.84 — 2026-08-15
+
+### 明镜技术顾问旁路代挂（配对明镜 v1.0.5）
+
+- 本尊：产品经理；工程题须自动有「明镜建议」，无需再喊 `/明镜止水`
+- boot：工程阻塞同轮挂建议段；升档表加明镜 §0c / twin-linkage §2b
+- 硬闸：顾问旁路 ≠ 无交棒改真码
+
+## v1.4.84 — 2026-08-15
+
+### 作战室 · 资产表结构有限字典探针（evo-dual-track-asset-schema-probe）
+
+- `asset-api`：Controller + 模块 dirs + fed 字典卡/表清单；产线 DESC BLOCKED 诚实；mock≠表
+- 下一关：外部事实条新鲜度告警动作；≠ 合 Master
+
+## v1.4.83 — 2026-08-15
+
+### 作战室 · 组织/权限对照探针（evo-dual-track-org-role-probe）
+
+- `org`：钉钉审计 JSON + 原型通讯录 vs ruoyi-system User/Role/Dept + Web 页；人事主同步诚实 MISS
+- 下一关：资产 API 表结构有限字典探针；≠ 合 Master
+
+## v1.4.82 — 2026-08-15
+
+### 作战室 · 工作台待办规则对照探针（evo-dual-track-workbench-todo-probe）
+
+- `workbench-todo`：董事长 116 闸 + §0.4 催办白名单 vs 现网 todoRemind / admin 催办 GAP
+- 下一关：组织/权限角色对照探针；≠ 合 Master
+
+## v1.4.81 — 2026-08-15
+
+### 作战室 · 台账密度 + 审核链探针加深（evo-dual-track-probe-deepen）
+
+- 契约新增 `ledger-density`；`approval` 验 Gate / V2ApprovalProgress / WarmFlow API / popover
+- P1/P3 波次证据同步；下一关：工作台待办规则对照探针；≠ 合 Master
+
+## v1.4.80 — 2026-08-15
+
+### 作战室 · 交棒回执刷波次半自动（evo-dual-track-handoff-waves）
+
+- `refresh-dual-track-auto` 扫 `handoff-mj-*`；回执通过→波次建议 done；禁 Skill 模板误匹配
+- 双轨页展示交棒证据；`nextAutoSyncGoal` → 加深 FS/现网探针；≠ 合 Master
+
+## v1.4.79 — 2026-08-15
+
+### 扩喂租赁/工单/氢能模块字典（evo-yc-field-sidefx-expand）
+
+- `~/oneos-prod/docs/external-facts/`：`fed-modules-index.md` + `module-lease-contract.md` + `module-work-order-ops.md` + `module-hydrogen-energy.md`
+- 从既有 asset dump 拆出可答主链表（含 `task_work_order`）；产线 TCP 通但握手 2013 → **未**装 live DESC 假绿
+- `ry-workflow` 仍标未喂；下一关 `evo-yc-field-sidefx-desc`
+- 能力评分 8.6→8.7；habits 已喂清单同步
+
+### 字段 DESC 关 · 产线握手 blocked（同日）
+
+- 再核：TCP 通、MySQL 问候包超时 → `ERROR 2013`；任务 **blocked**（不装通关）
+- 旁路：本机 `ry-workflow` 13 表 DESC → `module-workflow-local-schema.md`（标明 ≠ 产线 live）
+- 请本尊解白名单 / VPN / 跳板后喊「握手好了」再补产线 live DESC
+
+## v1.4.78 — 2026-08-15
+
+### 字段/表结构副作用：planned → 有限模块可答（evo-yc-field-sidefx）
+
+- 证据：`~/oneos-prod/docs/external-facts/` 已喂 `ln_asset_management` / `ln_energy_v2` / `ry-cloud` 表清单 + 匹配报告（配对 v1.4.75 MySQL RO）
+- 能力表：`planned` → **ready（有限模块可答）**；进化任务 done；新增扩喂任务 `evo-yc-field-sidefx-expand`
+- 硬闸不变：未喂模块仍禁字段级假裁；**禁止**冒充全库 ready
+- habits §2 升档注记；eval **33** 升档自检；作战室评分 8.5→8.6
+
+## v1.4.77 — 2026-08-15
+
+### 交棒波次边界 + P0 证据包（evo-yc-handoff-wave-id）
+
+- `handoff-to-dev`：§1b 波次禁并刀；§2b P0 证据包；模板强制波次 ID + 通关证据清单
+- 本尊「都要」：P0 勾齐 + E1–E3；配对法眼 dual-track-p0 · 明镜 VPN 闸
+
+## v1.4.76 — 2026-08-15
+
+### 外部事实条 · 测试计划 + 流水线部署旁证
+
+- `war-room:refresh-facts` 接 test-hub 计划进度 + flow 最近部署（web/asset/energy/system/gateway × test/prod）
+- `DEF-PLT-WARROOM-03` resolved；进化任务 `evo-warroom-test-deploy-facts` done
+- 旁证 ≠ 正式 `oneos.qa-evidence` 清单哈希；仍禁写云效
+
+### 双轨契约 / 仓栈只读自动回写
+
+- `refresh-dual-track-auto` → `dualTrackAutoFacts.ts`；串进 `war-room:refresh-facts`
+- 契约状态 + 仓栈 HEAD 本机探针；`DEF-PLT-DUAL-01` / `evo-dual-track-contract-auto` done
+- 波次仍人工；≠ 无人值守合 Master
+
+### 双轨波次半自动建议
+
+- 同脚本增 P0–P7 证据启发（齐/半/缺 + done/doing/todo/locked）
+- 双轨页对照「半自动 vs 人工态」；`evo-dual-track-wave-auto` done
+- ≠ 合 Master；交棒回执刷波次仍可下一关
+
+### 外部事实条 · 产线 Codeup 合入摘要
+
+- 本尊拍板 A+B：`war-room:refresh-facts` 接 `~/oneos-prod` 浅克隆只读（`ln-cloud` + `ln-asset-management` + `ln-energy-v2`）
+- 事实条 UI 展示合入；进化任务 `evo-warroom-codeup-facts` done
+- habits §2.4 同步；仍禁写云效
+
+## v1.4.75 — 2026-08-14
+
+### 产线 MySQL 只读外部事实 cold-up
+
+- 本尊提供远程库后：本机探针 `~/oneos-prod/scripts/prod-ro-probe.sh` + 协议/匹配报告 `docs/external-facts/`
+- 密钥仅 `~/oneos-prod/.secrets/`（不进 oneos-v2）；硬闸禁写产线
+- boot §4/§5 升档；作战室能力表 + 进化任务 `evo-prod-mysql-ro-coldup` done；配对法眼 v1.3.12
+
+## v1.4.74 — 2026-08-14
+
+### 交棒明镜止水（AI 开发分身）
+
+- 新建 [`handoff-to-dev.md`](handoff-to-dev.md)：C 轨双轨交棒包模板；与 `.cursor/skills/mingjingzhishui/` 配对
+- 分家：正式原型+真码归明镜；言出法随窄例外纯文案/样式；未唤明镜仍可按旧习惯改原型
+- boot §4/§5 升档；habits **§5.0**；能力表挂交棒一行；eval **37**
+
+## v1.4.73 — 2026-08-14
+
+### 云效拉取 · 甘特计划起止强制对表
+
+- 根因：ONEOS-537 等云效「计划开始/计划完成」已改，甘特仍旧日期 + 14 天硬裁切静默吃掉 08/27
+- habits PM Mode + `pm.md` **§9.6**：拉云效必须核对 79/80；有更新同轮写 `ganttDeliveryTree`；空完成日不脑补；轴可拉伸；seed 甘特优先于 localStorage
+- 原型：`pm-weekly-sync-board` 同步 537→08/10–08/27、545/546→08/11–08/18；存储键 v24；eval **36**
+
+## v1.4.72 — 2026-08-14
+
+### 法眼「给分身边界」× 收口三行对齐（evo-cross-handoff）
+
+- 新建 [`handoff-closeout.md`](handoff-closeout.md)：交棒码 W/S/C/B + 收口③强制消费
+- habits §2.1 收口三行改为对齐模板；法眼 v1.3.10 答复包短格式同步
+- 减少漏回写作战室 / AI-PM 评分 / 双 Skill 能力 / Bad Case；eval **35**
+
+## v1.4.71 — 2026-08-14
+
+### 按双 Skill 优化建议强化（本尊拍板）
+
+- **研发 onboarding（evo-yc-rd-onboarding · C+边界）**：新建 [`rd-onboarding.md`](rd-onboarding.md)；`audience-role` / `boot` §5–§6 默认挂分诊+一任务一支；闲聊不挂、只要结论一句指针、用法/合支/首次确认挂 §0–§2；eval **32**
+- **字段副作用协议（evo-yc-field-sidefx · 2A）**：habits 升「有限可答」闸——模块级可答、无字典禁字段级假裁决、喂字典后升档；能力仍 ⏳；eval **33**
+- **周五 5 黄金例套 A（evo-yc-eval-auto）**：`eval-cases` §0.1 固定 **1·19·31·30·23** + 复现清单；habits §2.1 周五强制；eval **34**
+- **Master 桥（evo-yc-dev-master-bridge）**：本尊豁免本轮（交开发 Skill 侧整理）
+
+## v1.4.70 — 2026-08-14
+
+- **决策层汇报 · 禁部门内部管理要求**：`进度看得见、延期说得清`、**`任务按周拆解、过程留痕`**（及同义）、**整节「协同机制」**（跟踪粒度/信息同步/零散待办）属部门内部结论/要求，只留对内；向董事长汇报不得提及；对外只写业务结论与事项；habits §2 · Rule `pdf-report-plain-language` §F · eval **30**；作战室能力表已挂。
+
 ## v1.4.69 — 2026-08-14
 
 - **作战室外部事实条**：`war-room:refresh-facts` 只读云效 + 本仓 Git → `warRoomExternalFacts` + 大盘条；Codeup 产线另开 DEF-PLT-WARROOM-03；habits §2.4。

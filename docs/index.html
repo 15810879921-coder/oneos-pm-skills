@@ -348,8 +348,8 @@ npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-autoprd -a cursor
     </section>
 
     <section class="batch" data-batch>
-      <h2>王冕驱动双 skill</h2>
-      <p>言出法随 + 法眼如炬，与 YunxiaoPM 同一套 <code>npx skills</code>。完整知识库在 oneos-v2 工作区；装完请新开 Chat。</p>
+      <h2>王冕驱动三 skill</h2>
+      <p>言出法随 + 法眼如炬 + 明镜止水，与 YunxiaoPM 同一套 <code>npx skills</code>。完整知识库在 oneos-v2 工作区；真仓本机根 <code>~/oneos-prod</code>；装完请新开 Chat。</p>
       <div class="batch-actions">
         <button type="button" class="btn btn-primary" data-copy="twin-install">复制一键安装</button>
         <button type="button" class="btn btn-secondary" data-copy="twin-update">复制一键更新</button>
@@ -358,7 +358,8 @@ npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-autoprd -a cursor
       <div class="cmd-block">
         <span class="cmd-label">一键安装</span>
         <pre id="twin-install">npx skills add 15810879921-coder/oneos-pm-skills --skill yanchufasui -a cursor -a codex -g -y
-npx skills add 15810879921-coder/oneos-pm-skills --skill fayanruju -a cursor -a codex -g -y</pre>
+npx skills add 15810879921-coder/oneos-pm-skills --skill fayanruju -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill mingjingzhishui -a cursor -a codex -g -y</pre>
       </div>
     </section>
 
@@ -371,7 +372,7 @@ npx skills add 15810879921-coder/oneos-pm-skills --skill fayanruju -a cursor -a 
         <li>云效相关 skill：浏览器先登录 https://devops.aliyun.com 。</li>
         <li>旧 lifecycle 若本机还在，先卸载：npx skills remove yunxiao-requirement-lifecycle -g -y -a cursor -a codex</li>
         <li>装完后建议新开 Chat / 重启 Codex 再喊口令。</li>
-        <li>言出法随 / 法眼如炬：同事用 npx；完整知识库在 oneos-v2。本机若已软链到 oneos-v2，不要用 -g 覆盖。</li>
+        <li>言出法随 / 法眼如炬 / 明镜止水：同事用 npx；完整知识库与改原型在 oneos-v2；真仓在本机 oneos-prod。本机若已软链到 oneos-v2，不要用 -g 覆盖。</li>
       </ol>
       <div class="batch-actions" style="margin-top:12px">
         <button type="button" class="btn btn-secondary" data-copy="remove-lifecycle">复制卸载旧 lifecycle</button>
@@ -386,16 +387,17 @@ npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-autoprd -a cursor
 
 装完后确认口令可用：记录需求 / AutoRDO / oneos-autoprd。
 使用云效前请先登录 https://devops.aliyun.com 。</pre>
-      <pre id="twin-update" hidden>npx skills update yanchufasui fayanruju -g -y</pre>
-      <pre id="twin-ai" hidden>请帮我全局安装王冕驱动双 skill 到 Cursor + Codex：
+      <pre id="twin-update" hidden>npx skills update yanchufasui fayanruju mingjingzhishui -g -y</pre>
+      <pre id="twin-ai" hidden>请帮我全局安装王冕驱动三 skill 到 Cursor + Codex：
 
 npx skills add 15810879921-coder/oneos-pm-skills --skill yanchufasui -a cursor -a codex -g -y
 npx skills add 15810879921-coder/oneos-pm-skills --skill fayanruju -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill mingjingzhishui -a cursor -a codex -g -y
 
 装完请新开 Chat。
-口令：言出法随 / $yanchufasui ；法眼如炬 / $fayanruju
-签名：王冕驱动 · 言出法随 / 王冕驱动 · 法眼如炬
-改原型请打开 oneos-v2 工作区。</pre>
+口令：言出法随 / $yanchufasui ；法眼如炬 / $fayanruju ；明镜止水 / $mingjingzhishui
+签名：王冕驱动 · 言出法随 / 法眼如炬 / 明镜止水
+改原型请打开 oneos-v2；真仓本机根 ~/oneos-prod。</pre>
     </section>
   </div>
 
@@ -491,6 +493,17 @@ npx skills add 15810879921-coder/oneos-pm-skills --skill fayanruju -a cursor -a 
         install: "npx skills add 15810879921-coder/oneos-pm-skills --skill fayanruju -a cursor -a codex -g -y",
         update: "npx skills update fayanruju -g -y",
         ai: "请帮我全局安装法眼如炬（fayanruju）到 Cursor + Codex：\nnpx skills add 15810879921-coder/oneos-pm-skills --skill fayanruju -a cursor -a codex -g -y\n装完新开 Chat。口令：法眼如炬 / $fayanruju。签名：王冕驱动 · 法眼如炬。改原型请打开 oneos-v2。"
+      },
+      {
+        id: "mingjingzhishui",
+        name: "明镜止水（mingjingzhishui）",
+        role: "分身",
+        purpose: "王冕驱动的 AI 开发分身：只吃言出法随交棒包；双轨本机模拟（oneos-v2 可点 → 点头后 ~/oneos-prod 真仓可跑）；禁脑补产品决策。",
+        repo: "https://github.com/15810879921-coder/oneos-pm-skills",
+        tips: "口令：明镜止水 / $mingjingzhishui / /mingjingzhishui｜签名：王冕驱动 · 明镜止水｜改码须交棒；工程阻塞可自动给「明镜建议」",
+        install: "npx skills add 15810879921-coder/oneos-pm-skills --skill mingjingzhishui -a cursor -a codex -g -y",
+        update: "npx skills update mingjingzhishui -g -y",
+        ai: "请帮我全局安装明镜止水（mingjingzhishui）到 Cursor + Codex：\nnpx skills add 15810879921-coder/oneos-pm-skills --skill mingjingzhishui -a cursor -a codex -g -y\n装完新开 Chat。口令：明镜止水 / $mingjingzhishui。签名：王冕驱动 · 明镜止水。须交棒包才改码；真仓本机根 ~/oneos-prod。"
       }
     ];
 

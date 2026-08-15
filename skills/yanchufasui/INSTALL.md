@@ -7,12 +7,13 @@
 ```bash
 npx skills add 15810879921-coder/oneos-pm-skills --skill yanchufasui -a cursor -a codex -g -y
 npx skills add 15810879921-coder/oneos-pm-skills --skill fayanruju -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill mingjingzhishui -a cursor -a codex -g -y
 ```
 
 更新：
 
 ```bash
-npx skills update yanchufasui fayanruju -g -y
+npx skills update yanchufasui fayanruju mingjingzhishui -g -y
 ```
 
 装完 **新开 Chat**。完整知识库仍在 **oneos-v2**；改原型请打开该工作区。

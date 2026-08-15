@@ -1,1 +1,867 @@
-{"v":"1.1.0","n":60,"l0":[{"k":["车牌","车牌号"],"a":"车牌形如浙A88888F，禁止中间·"},{"k":["氢费核对","核对和对账","核对不等于对账","核对≠对账"],"a":"氢费：核对 ≠ 对账（V2 现行）"},{"k":["五条线方法论","采集证据闭环财务","数字信任"],"a":"五条线统一：数据采集→证据链→系统闭环→财务联动；详见 meeting-20260803-lines-ai-finance"},{"k":["物流立项风险","立项不可信"],"a":"物流最大风险：立项人工估算不可信则后链失败；MVP仍先合同→交车→出账→证据"}],"m":[{"id":"customer-management","n":"客户管理","l":"lease","c":"architecture","a":["customer-management","客户准入","客户管理","客户"]},{"id":"customer-engagement","n":"客户对接过程管理","l":"lease","c":"architecture","a":["customer-engagement","客户对接过程管理","客户对接","对接认领"]},{"id":"contract-template-management","n":"标准合同模板","l":"lease","c":"architecture","a":["contract-template-management","标准合同模板","合同模板"]},{"id":"lease-business-ledger","n":"租赁业务台账","l":"lease","c":"architecture","a":["lease-business-ledger","租赁业务台账"]},{"id":"lease-contract-management","n":"租赁合同","l":"lease","c":"confirmed","a":["lease-contract-management","租赁合同怎么用","合同怎么建","租赁合同","E签宝","建合同","签合同","非标"]},{"id":"vehicle-pickup-receivable","n":"提车应收款","l":"lease","c":"architecture","a":["vehicle-pickup-receivable","提车应收款","怎么提车","提车应收","提车"]},{"id":"vehicle-return-settlement","n":"还车应结款","l":"lease","c":"confirmed","a":["vehicle-return-settlement","还车应结款","还车应结","还车结算","会签","还车"]},{"id":"h2-station-dashboard","n":"加氢站大屏","l":"energy","c":"legacy","a":["h2-station-dashboard","加氢站大屏"]},{"id":"ledger-h2-procurement-summary","n":"氢费采购端汇总报表","l":"energy","c":"legacy","a":["ledger-h2-procurement-summary","氢费采购端汇总报表"]},{"id":"oneos-h5-h2-order","n":"加氢订单（H5）","l":"energy","c":"architecture","a":["oneos-h5-h2-order","加氢订单（H5）","加氢怎么录","加氢订单","补录加氢"]},{"id":"oneos-web-h2-station-site","n":"加氢站管理","l":"energy","c":"architecture","a":["oneos-web-h2-station-site","加氢站管理"]},{"id":"payment-records","n":"收款记录 / 氢费账户","l":"energy","c":"architecture","a":["payment-records","收款记录 / 氢费账户"]},{"id":"supplier-management","n":"供应商管理","l":"energy","c":"architecture","a":["supplier-management","供应商管理"]},{"id":"vehicle-h2-fee-ledger","n":"车辆氢费明细","l":"energy","c":"architecture","a":["vehicle-h2-fee-ledger","车辆氢费明细"]},{"id":"biz-vehicle-cost","n":"车辆成本维护","l":"ops","c":"legacy","a":["biz-vehicle-cost","车辆成本维护"]},{"id":"insurance-procurement","n":"保险采购","l":"ops","c":"confirmed","a":["insurance-procurement","保险采购"]},{"id":"ledger-insurance-allocation","n":"保险分摊明细","l":"ops","c":"legacy","a":["ledger-insurance-allocation","保险分摊明细"]},{"id":"oneos-v2-h5-vehicle-fault-handling","n":"故障处置（H5）","l":"ops","c":"confirmed","a":["oneos-v2-h5-vehicle-fault-handling","故障处置（H5）"]},{"id":"oneos-web-ops","n":"车辆运维综合","l":"ops","c":"architecture","a":["oneos-web-ops","车辆运维综合"]},{"id":"ops-aftermarket-device","n":"后装设备","l":"ops","c":"legacy","a":["ops-aftermarket-device","后装设备"]},{"id":"ops-certificates","n":"证照管理","l":"ops","c":"legacy","a":["ops-certificates","证照管理"]},{"id":"ops-license-plate","n":"上牌管理","l":"ops","c":"legacy","a":["ops-license-plate","上牌管理"]},{"id":"ops-parking-lot","n":"停车场管理","l":"ops","c":"legacy","a":["ops-parking-lot","停车场管理"]},{"id":"ops-parts-warehouse","n":"备件库存 / 仓库管理","l":"ops","c":"legacy","a":["ops-parts-warehouse","备件库存 / 仓库管理"]},{"id":"ops-vehicle-annual-review","n":"年审管理","l":"ops","c":"legacy","a":["ops-vehicle-annual-review","年审管理"]},{"id":"ops-vehicle-delivery","n":"交车管理","l":"ops","c":"legacy","a":["ops-vehicle-delivery","交车管理"]},{"id":"ops-vehicle-model","n":"型号参数","l":"ops","c":"legacy","a":["ops-vehicle-model","型号参数"]},{"id":"ops-vehicle-prepare","n":"备车管理","l":"ops","c":"legacy","a":["ops-vehicle-prepare","备车管理"]},{"id":"ops-vehicle-relocation","n":"异动管理","l":"ops","c":"legacy","a":["ops-vehicle-relocation","异动管理"]},{"id":"ops-vehicle-replace","n":"替换车管理","l":"ops","c":"legacy","a":["ops-vehicle-replace","替换车管理"]},{"id":"ops-vehicle-return","n":"还车管理","l":"ops","c":"legacy","a":["ops-vehicle-return","还车管理"]},{"id":"ops-vehicle-transfer","n":"调拨管理","l":"ops","c":"legacy","a":["ops-vehicle-transfer","调拨管理"]},{"id":"procurement-third-party-exit","n":"三方退租车管理","l":"ops","c":"legacy","a":["procurement-third-party-exit","三方退租车管理"]},{"id":"vehicle-fault-handling","n":"故障处置（PC）","l":"ops","c":"confirmed","a":["vehicle-fault-handling","故障处置（PC）","故障处置","报修","故障"]},{"id":"vehicle-inspection","n":"验车入库","l":"ops","c":"confirmed","a":["vehicle-inspection","验车入库"]},{"id":"vehicle-maintenance-ledger","n":"车辆维修明细","l":"ops","c":"architecture","a":["vehicle-maintenance-ledger","车辆维修明细"]},{"id":"vehicle-management","n":"车辆资产","l":"ops","c":"confirmed","a":["vehicle-management","车辆资产"]},{"id":"vehicle-purchase-contract","n":"车辆采购合同","l":"ops","c":"confirmed","a":["vehicle-purchase-contract","车辆采购合同"]},{"id":"safety-management","n":"安全管理（综合）","l":"safety","c":"building","a":["safety-management","安全管理（综合）"]},{"id":"safety-training-scan","n":"安全培训扫码","l":"safety","c":"legacy","a":["safety-training-scan","安全培训扫码"]},{"id":"biz-etc-management","n":"ETC 管理","l":"logistics","c":"legacy","a":["biz-etc-management","ETC 管理"]},{"id":"self-operated-business-ledger","n":"物流业务明细 / 项目盈亏","l":"logistics","c":"architecture","a":["self-operated-business-ledger","物流业务明细 / 项目盈亏"]},{"id":"self-operated-contract","n":"物流合同","l":"logistics","c":"architecture","a":["self-operated-contract","物流合同"]},{"id":"self-operated-dispatch-task","n":"调度任务","l":"logistics","c":"architecture","a":["self-operated-dispatch-task","调度任务"]},{"id":"biz-finance-integration","n":"业财一体化全链条","l":"foundation","c":"architecture","a":["biz-finance-integration","业财一体化全链条","资金闭环","业财","核销","门禁"]},{"id":"meeting-20260803-lines-ai-finance","n":"五大条线改造与业财AI会议沉淀","l":"foundation","c":"architecture","a":["meeting-20260803-lines-ai-finance","五大条线会议","业财AI会议","条线改造会议","20260803会议"]},{"id":"analytics-business-ledgers","n":"数据分析 / 业务台账报表","l":"foundation","c":"legacy","a":["analytics-business-ledgers","数据分析 / 业务台账报表"]},{"id":"business-dept-ledger","n":"项目盈亏情况","l":"foundation","c":"architecture","a":["business-dept-ledger","项目盈亏情况"]},{"id":"oneos-h5-vehicle-assets","n":"车辆资产 H5","l":"foundation","c":"confirmed","a":["oneos-h5-vehicle-assets","车辆资产 H5"]},{"id":"vehicle-status-handbook","n":"车辆状态说明（五维）","l":"foundation","c":"legacy","a":["vehicle-status-handbook","车辆状态说明（五维）"]},{"id":"help-center","n":"帮助中心","l":"platform","c":"legacy","a":["help-center","帮助中心","操作说明","说明书","帮助"]},{"id":"message-center","n":"消息中心","l":"platform","c":"confirmed","a":["message-center","消息中心","站内信","消息"]},{"id":"oneos-miniprogram","n":"ONE-OS 小程序","l":"platform","c":"building","a":["oneos-miniprogram","ONE-OS 小程序"]},{"id":"oneos-mobile-app","n":"ONE-OS 移动端运管","l":"platform","c":"legacy","a":["oneos-mobile-app","ONE-OS 移动端运管"]},{"id":"oneos-web-approval","n":"审批中心","l":"platform","c":"confirmed","a":["oneos-web-approval","审批中心","待我审批","审批"]},{"id":"oneos-web-crm-erp-sandbox","n":"ONEOS-web CRM/ERP 试验","l":"platform","c":"building","a":["oneos-web-crm-erp-sandbox","ONEOS-web CRM/ERP 试验"]},{"id":"oneos-web-workbench-new","n":"全新工作台","l":"platform","c":"confirmed","a":["oneos-web-workbench-new","全新工作台","待办工作台","工作台","督办"]},{"id":"task-work-order","n":"任务工单","l":"platform","c":"confirmed","a":["task-work-order","任务工单","建工单","催办","工单"]},{"id":"version-roadmap","n":"版本完成情况与未来规划","l":"platform","c":"legacy","a":["version-roadmap","版本完成情况与未来规划"]},{"id":"xiaolingling-delivery","n":"小羚羚 · 交车","l":"external","c":"legacy","a":["xiaolingling-delivery","小羚羚 · 交车"]}]}
+{
+  "version": 1,
+  "moduleCount": 71,
+  "modules": [
+    {
+      "id": "customer-management",
+      "name": "客户管理",
+      "line": "lease",
+      "confidence": "architecture",
+      "aliases": [
+        "customer-management",
+        "客户准入",
+        "客户管理",
+        "客户"
+      ]
+    },
+    {
+      "id": "customer-engagement",
+      "name": "客户对接过程管理",
+      "line": "lease",
+      "confidence": "architecture",
+      "aliases": [
+        "customer-engagement",
+        "客户对接过程管理",
+        "客户对接",
+        "对接认领"
+      ]
+    },
+    {
+      "id": "contract-template-management",
+      "name": "标准合同模板",
+      "line": "lease",
+      "confidence": "architecture",
+      "aliases": [
+        "contract-template-management",
+        "标准合同模板",
+        "合同模板"
+      ]
+    },
+    {
+      "id": "lease-business-ledger",
+      "name": "租赁业务台账",
+      "line": "lease",
+      "confidence": "architecture",
+      "aliases": [
+        "lease-business-ledger",
+        "租赁业务台账"
+      ]
+    },
+    {
+      "id": "receivable-dunning",
+      "name": "应收催款（催款函）",
+      "line": "lease",
+      "confidence": "building",
+      "aliases": [
+        "receivable-dunning",
+        "应收催款",
+        "催款函",
+        "催款单",
+        "用印催款"
+      ]
+    },
+    {
+      "id": "lease-contract-management",
+      "name": "租赁合同",
+      "line": "lease",
+      "confidence": "confirmed",
+      "aliases": [
+        "lease-contract-management",
+        "租赁合同怎么用",
+        "合同怎么建",
+        "租赁合同",
+        "E签宝",
+        "建合同",
+        "签合同",
+        "非标",
+        "v2.5.8f",
+        "租赁主链"
+      ]
+    },
+    {
+      "id": "vehicle-pickup-receivable",
+      "name": "提车应收款",
+      "line": "lease",
+      "confidence": "architecture",
+      "aliases": [
+        "vehicle-pickup-receivable",
+        "提车应收款",
+        "怎么提车",
+        "提车应收",
+        "提车"
+      ]
+    },
+    {
+      "id": "vehicle-return-settlement",
+      "name": "还车应结款",
+      "line": "lease",
+      "confidence": "confirmed",
+      "aliases": [
+        "vehicle-return-settlement",
+        "还车应结款",
+        "还车应结",
+        "还车结算",
+        "会签",
+        "还车"
+      ]
+    },
+    {
+      "id": "h2-station-dashboard",
+      "name": "加氢站大屏",
+      "line": "energy",
+      "confidence": "legacy",
+      "aliases": [
+        "h2-station-dashboard",
+        "加氢站大屏"
+      ]
+    },
+    {
+      "id": "ledger-h2-procurement-summary",
+      "name": "氢费采购端汇总报表",
+      "line": "energy",
+      "confidence": "legacy",
+      "aliases": [
+        "ledger-h2-procurement-summary",
+        "氢费采购端汇总报表"
+      ]
+    },
+    {
+      "id": "oneos-h5-h2-order",
+      "name": "加氢订单（H5）",
+      "line": "energy",
+      "confidence": "architecture",
+      "aliases": [
+        "oneos-h5-h2-order",
+        "加氢订单（H5）",
+        "加氢怎么录",
+        "加氢订单",
+        "补录加氢"
+      ]
+    },
+    {
+      "id": "oneos-web-h2-station-site",
+      "name": "加氢站管理",
+      "line": "energy",
+      "confidence": "architecture",
+      "aliases": [
+        "oneos-web-h2-station-site",
+        "加氢站管理"
+      ]
+    },
+    {
+      "id": "payment-records",
+      "name": "收款记录 / 氢费账户",
+      "line": "energy",
+      "confidence": "architecture",
+      "aliases": [
+        "payment-records",
+        "收款记录 / 氢费账户"
+      ]
+    },
+    {
+      "id": "supplier-management",
+      "name": "供应商管理",
+      "line": "energy",
+      "confidence": "architecture",
+      "aliases": [
+        "supplier-management",
+        "供应商管理",
+        "救援车队供应商",
+        "供应商台账",
+        "供应商主数据"
+      ]
+    },
+    {
+      "id": "vehicle-h2-fee-ledger",
+      "name": "车辆氢费明细",
+      "line": "energy",
+      "confidence": "architecture",
+      "aliases": [
+        "vehicle-h2-fee-ledger",
+        "车辆氢费明细"
+      ]
+    },
+    {
+      "id": "biz-vehicle-cost",
+      "name": "车辆成本维护",
+      "line": "ops",
+      "confidence": "legacy",
+      "aliases": [
+        "biz-vehicle-cost",
+        "车辆成本维护"
+      ]
+    },
+    {
+      "id": "insurance-procurement",
+      "name": "保险采购",
+      "line": "ops",
+      "confidence": "confirmed",
+      "aliases": [
+        "insurance-procurement",
+        "保险采购",
+        "保单台账",
+        "比价单",
+        "交强险",
+        "商业险交车"
+      ]
+    },
+    {
+      "id": "ledger-insurance-allocation",
+      "name": "保险分摊明细",
+      "line": "ops",
+      "confidence": "legacy",
+      "aliases": [
+        "ledger-insurance-allocation",
+        "保险分摊明细"
+      ]
+    },
+    {
+      "id": "oneos-v2-h5-vehicle-fault-handling",
+      "name": "故障处置（H5）",
+      "line": "ops",
+      "confidence": "confirmed",
+      "aliases": [
+        "oneos-v2-h5-vehicle-fault-handling",
+        "故障处置（H5）"
+      ]
+    },
+    {
+      "id": "oneos-web-ops",
+      "name": "车辆运维综合",
+      "line": "ops",
+      "confidence": "architecture",
+      "aliases": [
+        "oneos-web-ops",
+        "车辆运维综合"
+      ]
+    },
+    {
+      "id": "ops-aftermarket-device",
+      "name": "后装设备",
+      "line": "ops",
+      "confidence": "legacy",
+      "aliases": [
+        "ops-aftermarket-device",
+        "后装设备"
+      ]
+    },
+    {
+      "id": "ops-certificates",
+      "name": "证照管理",
+      "line": "ops",
+      "confidence": "building",
+      "aliases": [
+        "ops-certificates",
+        "证照管理",
+        "证照",
+        "行驶证",
+        "道路运输证",
+        "等级评定证照"
+      ]
+    },
+    {
+      "id": "ops-license-plate",
+      "name": "上牌管理",
+      "line": "ops",
+      "confidence": "legacy",
+      "aliases": [
+        "ops-license-plate",
+        "上牌管理"
+      ]
+    },
+    {
+      "id": "ops-parking-lot",
+      "name": "停车场管理",
+      "line": "ops",
+      "confidence": "building",
+      "aliases": [
+        "ops-parking-lot",
+        "停车场管理",
+        "停车场",
+        "场站",
+        "停放车辆"
+      ]
+    },
+    {
+      "id": "ops-parts-warehouse",
+      "name": "备件库存 / 仓库管理",
+      "line": "ops",
+      "confidence": "legacy",
+      "aliases": [
+        "ops-parts-warehouse",
+        "备件库存 / 仓库管理"
+      ]
+    },
+    {
+      "id": "ops-vehicle-annual-review",
+      "name": "年审管理",
+      "line": "ops",
+      "confidence": "building",
+      "aliases": [
+        "ops-vehicle-annual-review",
+        "年审管理",
+        "年审",
+        "等评",
+        "沪牌年审",
+        "检验到期"
+      ]
+    },
+    {
+      "id": "ops-vehicle-delivery",
+      "name": "交车管理",
+      "line": "ops",
+      "confidence": "building",
+      "aliases": [
+        "ops-vehicle-delivery",
+        "交车管理",
+        "交车",
+        "交还车交车",
+        "提车后交车"
+      ]
+    },
+    {
+      "id": "ops-vehicle-model",
+      "name": "型号参数",
+      "line": "ops",
+      "confidence": "legacy",
+      "aliases": [
+        "ops-vehicle-model",
+        "型号参数"
+      ]
+    },
+    {
+      "id": "ops-vehicle-prepare",
+      "name": "备车管理",
+      "line": "ops",
+      "confidence": "building",
+      "aliases": [
+        "ops-vehicle-prepare",
+        "ops-backup-vehicle",
+        "备车管理",
+        "备车",
+        "绿通",
+        "装备标签",
+        "尾板冷机"
+      ]
+    },
+    {
+      "id": "ops-vehicle-relocation",
+      "name": "异动管理",
+      "line": "ops",
+      "confidence": "building",
+      "aliases": [
+        "ops-vehicle-relocation",
+        "异动管理",
+        "异动",
+        "异动加氢",
+        "结束异动"
+      ]
+    },
+    {
+      "id": "ops-vehicle-replace",
+      "name": "替换车管理",
+      "line": "ops",
+      "confidence": "building",
+      "aliases": [
+        "ops-vehicle-replace",
+        "替换车管理",
+        "替换车",
+        "监控式预发起",
+        "自营互替"
+      ]
+    },
+    {
+      "id": "ops-vehicle-return",
+      "name": "还车管理",
+      "line": "ops",
+      "confidence": "building",
+      "aliases": [
+        "ops-vehicle-return",
+        "ops-vehicle-return-mgmt",
+        "还车管理",
+        "还车",
+        "交还车还车",
+        "胎纹授权更正"
+      ]
+    },
+    {
+      "id": "ops-vehicle-transfer",
+      "name": "调拨管理",
+      "line": "ops",
+      "confidence": "building",
+      "aliases": [
+        "ops-vehicle-transfer",
+        "调拨管理",
+        "调拨",
+        "跨区调拨",
+        "调拨待办102"
+      ]
+    },
+    {
+      "id": "procurement-third-party-exit",
+      "name": "三方退租车管理",
+      "line": "ops",
+      "confidence": "legacy",
+      "aliases": [
+        "procurement-third-party-exit",
+        "三方退租车管理"
+      ]
+    },
+    {
+      "id": "vehicle-fault-handling",
+      "name": "故障处置（PC）",
+      "line": "ops",
+      "confidence": "confirmed",
+      "aliases": [
+        "vehicle-fault-handling",
+        "故障处置（PC）",
+        "故障处置",
+        "报修",
+        "故障"
+      ]
+    },
+    {
+      "id": "rescue-task",
+      "name": "救援任务",
+      "line": "ops",
+      "confidence": "building",
+      "aliases": [
+        "rescue-task",
+        "救援任务",
+        "一键救援",
+        "救援匹配",
+        "救援应付"
+      ]
+    },
+    {
+      "id": "fcev-customer-report-lexicon",
+      "name": "氢能车客户报障话术语料",
+      "line": "ops",
+      "confidence": "confirmed",
+      "aliases": [
+        "fcev-customer-report-lexicon",
+        "离子水",
+        "去离子水",
+        "冷却液报障",
+        "漏气不给加",
+        "抛锚了",
+        "FCEV报障",
+        "氢能客户话术",
+        "故障灯"
+      ]
+    },
+    {
+      "id": "vehicle-inspection",
+      "name": "验车入库",
+      "line": "ops",
+      "confidence": "confirmed",
+      "aliases": [
+        "vehicle-inspection",
+        "验车入库"
+      ]
+    },
+    {
+      "id": "vehicle-maintenance-ledger",
+      "name": "车辆维修明细",
+      "line": "ops",
+      "confidence": "architecture",
+      "aliases": [
+        "vehicle-maintenance-ledger",
+        "车辆维修明细"
+      ]
+    },
+    {
+      "id": "vehicle-management",
+      "name": "车辆资产",
+      "line": "ops",
+      "confidence": "confirmed",
+      "aliases": [
+        "vehicle-management",
+        "车辆资产"
+      ]
+    },
+    {
+      "id": "vehicle-purchase-contract",
+      "name": "车辆采购合同",
+      "line": "ops",
+      "confidence": "confirmed",
+      "aliases": [
+        "vehicle-purchase-contract",
+        "车辆采购合同"
+      ]
+    },
+    {
+      "id": "safety-management",
+      "name": "安全管理（综合）",
+      "line": "safety",
+      "confidence": "building",
+      "aliases": [
+        "safety-management",
+        "安全管理（综合）"
+      ]
+    },
+    {
+      "id": "safety-training-scan",
+      "name": "安全培训扫码",
+      "line": "safety",
+      "confidence": "legacy",
+      "aliases": [
+        "safety-training-scan",
+        "安全培训扫码"
+      ]
+    },
+    {
+      "id": "biz-etc-management",
+      "name": "ETC 管理",
+      "line": "logistics",
+      "confidence": "legacy",
+      "aliases": [
+        "biz-etc-management",
+        "ETC 管理"
+      ]
+    },
+    {
+      "id": "self-operated-business-ledger",
+      "name": "物流业务明细 / 项目盈亏",
+      "line": "logistics",
+      "confidence": "architecture",
+      "aliases": [
+        "self-operated-business-ledger",
+        "物流业务明细 / 项目盈亏"
+      ]
+    },
+    {
+      "id": "self-operated-contract",
+      "name": "物流合同",
+      "line": "logistics",
+      "confidence": "architecture",
+      "aliases": [
+        "self-operated-contract",
+        "物流合同"
+      ]
+    },
+    {
+      "id": "self-operated-dispatch-task",
+      "name": "调度任务",
+      "line": "logistics",
+      "confidence": "architecture",
+      "aliases": [
+        "self-operated-dispatch-task",
+        "调度任务"
+      ]
+    },
+    {
+      "id": "biz-finance-integration",
+      "name": "业财一体化全链条",
+      "line": "foundation",
+      "confidence": "architecture",
+      "aliases": [
+        "biz-finance-integration",
+        "业财一体化全链条",
+        "资金闭环",
+        "业财",
+        "核销",
+        "门禁"
+      ]
+    },
+    {
+      "id": "document-numbering",
+      "name": "系统表单单据编号规则",
+      "line": "foundation",
+      "confidence": "confirmed",
+      "aliases": [
+        "document-numbering",
+        "系统表单单据编号规则",
+        "单号规则",
+        "表单编号",
+        "单据编号",
+        "编号规则",
+        "WO单号",
+        "前缀登记"
+      ]
+    },
+    {
+      "id": "meeting-20260803-lines-ai-finance",
+      "name": "五大条线改造与业财AI会议沉淀",
+      "line": "foundation",
+      "confidence": "architecture",
+      "aliases": [
+        "meeting-20260803-lines-ai-finance",
+        "五大条线会议",
+        "业财AI会议",
+        "条线改造会议",
+        "20260803会议"
+      ]
+    },
+    {
+      "id": "analytics-business-ledgers",
+      "name": "数据分析 / 业务台账报表",
+      "line": "foundation",
+      "confidence": "legacy",
+      "aliases": [
+        "analytics-business-ledgers",
+        "数据分析 / 业务台账报表"
+      ]
+    },
+    {
+      "id": "business-dept-ledger",
+      "name": "项目盈亏情况",
+      "line": "foundation",
+      "confidence": "architecture",
+      "aliases": [
+        "business-dept-ledger",
+        "项目盈亏情况"
+      ]
+    },
+    {
+      "id": "oneos-h5-vehicle-assets",
+      "name": "车辆资产 H5",
+      "line": "foundation",
+      "confidence": "confirmed",
+      "aliases": [
+        "oneos-h5-vehicle-assets",
+        "车辆资产 H5"
+      ]
+    },
+    {
+      "id": "vehicle-status-handbook",
+      "name": "车辆状态说明（五维）",
+      "line": "foundation",
+      "confidence": "legacy",
+      "aliases": [
+        "vehicle-status-handbook",
+        "车辆状态说明（五维）"
+      ]
+    },
+    {
+      "id": "help-center",
+      "name": "帮助中心",
+      "line": "platform",
+      "confidence": "legacy",
+      "aliases": [
+        "help-center",
+        "帮助中心",
+        "操作说明",
+        "说明书",
+        "帮助"
+      ]
+    },
+    {
+      "id": "message-center",
+      "name": "消息中心",
+      "line": "platform",
+      "confidence": "confirmed",
+      "aliases": [
+        "message-center",
+        "消息中心",
+        "站内信",
+        "消息"
+      ]
+    },
+    {
+      "id": "oneos-miniprogram",
+      "name": "ONE-OS 小程序",
+      "line": "platform",
+      "confidence": "building",
+      "aliases": [
+        "oneos-miniprogram",
+        "ONE-OS 小程序"
+      ]
+    },
+    {
+      "id": "oneos-mobile-app",
+      "name": "ONE-OS 移动端运管",
+      "line": "platform",
+      "confidence": "legacy",
+      "aliases": [
+        "oneos-mobile-app",
+        "ONE-OS 移动端运管"
+      ]
+    },
+    {
+      "id": "oneos-web-approval",
+      "name": "审核中心",
+      "line": "platform",
+      "confidence": "confirmed",
+      "aliases": [
+        "oneos-web-approval",
+        "审核中心",
+        "审批中心",
+        "待我审核",
+        "待我审批",
+        "审批",
+        "审核",
+        "AI审核中心",
+        "同人跳过",
+        "同人路径跳过",
+        "AI审核"
+      ]
+    },
+    {
+      "id": "oneos-web-crm-erp-sandbox",
+      "name": "ONEOS-web CRM/ERP 试验",
+      "line": "platform",
+      "confidence": "building",
+      "aliases": [
+        "oneos-web-crm-erp-sandbox",
+        "ONEOS-web CRM/ERP 试验"
+      ]
+    },
+    {
+      "id": "oneos-web-workbench-new",
+      "name": "全新工作台",
+      "line": "platform",
+      "confidence": "confirmed",
+      "aliases": [
+        "oneos-web-workbench-new",
+        "全新工作台",
+        "待办工作台",
+        "工作台",
+        "督办"
+      ]
+    },
+    {
+      "id": "workbench-todo-rules",
+      "name": "工作台待办规则",
+      "line": "platform",
+      "confidence": "confirmed",
+      "aliases": [
+        "workbench-todo-rules",
+        "工作台待办规则",
+        "待办规则",
+        "待办权限",
+        "董事长待办",
+        "年审待办"
+      ]
+    },
+    {
+      "id": "task-work-order",
+      "name": "任务工单",
+      "line": "platform",
+      "confidence": "confirmed",
+      "aliases": [
+        "task-work-order",
+        "任务工单",
+        "建工单",
+        "催办",
+        "工单"
+      ]
+    },
+    {
+      "id": "wecom-customer-fault-intent",
+      "name": "客户微信群主动报障意图",
+      "line": "platform",
+      "confidence": "confirmed",
+      "aliases": [
+        "wecom-customer-fault-intent",
+        "客户微信群报障",
+        "群报障",
+        "主动报故障",
+        "故障意图",
+        "客户群故障",
+        "仪表报障",
+        "离子水报障"
+      ]
+    },
+    {
+      "id": "oneos-org-contacts",
+      "name": "组织通讯录",
+      "line": "platform",
+      "confidence": "building",
+      "aliases": [
+        "oneos-org-contacts",
+        "组织通讯录",
+        "成员管理",
+        "部门管理",
+        "职位管理",
+        "用户管理",
+        "同步钉钉",
+        "人事主数据",
+        "组织默认",
+        "组织人事",
+        "钉钉通讯录习惯"
+      ]
+    },
+    {
+      "id": "version-roadmap",
+      "name": "版本完成情况与未来规划",
+      "line": "platform",
+      "confidence": "legacy",
+      "aliases": [
+        "version-roadmap",
+        "版本完成情况与未来规划"
+      ]
+    },
+    {
+      "id": "xiaolingling-delivery",
+      "name": "小羚羚 · 交车",
+      "line": "external",
+      "confidence": "legacy",
+      "aliases": [
+        "xiaolingling-delivery",
+        "小羚羚 · 交车"
+      ]
+    },
+    {
+      "id": "master-merge-gate",
+      "name": "Master 合入管控",
+      "line": "platform",
+      "confidence": "confirmed",
+      "aliases": [
+        "master-merge-gate",
+        "合Master",
+        "合入Master",
+        "发版合支",
+        "Master合入",
+        "门禁合Master",
+        "合入审计",
+        "yunxiao-master-merge-gate"
+      ]
+    },
+    {
+      "id": "ai-rd-default",
+      "name": "研发组织默认（人机分诊）",
+      "line": "platform",
+      "confidence": "confirmed",
+      "aliases": [
+        "ai-rd-default",
+        "组织默认",
+        "人机分诊",
+        "一任务一支",
+        "玻璃箱",
+        "研发onboarding",
+        "AI用法分诊"
+      ]
+    },
+    {
+      "id": "code-sidefx-boundary",
+      "name": "代码字段副作用边界",
+      "line": "foundation",
+      "confidence": "confirmed",
+      "aliases": [
+        "code-sidefx-boundary",
+        "字段副作用",
+        "表结构副作用",
+        "代码级副作用",
+        "改字段会不会炸",
+        "字典未喂"
+      ]
+    },
+    {
+      "id": "dual-track-p0",
+      "name": "双轨P0·L0规范",
+      "line": "foundation",
+      "confidence": "confirmed",
+      "aliases": [
+        "dual-track-p0",
+        "双轨P0",
+        "L0规范",
+        "冻Token",
+        "禁第二套皮",
+        "P0证据包",
+        "登录算不算L0",
+        "Vue复现不拷React"
+      ]
+    }
+  ]
+}

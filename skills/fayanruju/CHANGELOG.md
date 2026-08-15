@@ -2,6 +2,94 @@
 
 原名 wangmian-brain；自 v1.2.0 起正式更名。
 
+## v1.3.20 — 2026-08-16
+
+### 轨 B 现网冲突升档指针（配对明镜 v1.0.10）
+
+- `references/dual-track-p0.md` 增「轨 B · 现网冲突升档」
+- 明镜 `deviationCode: conflict_kb` → 升法眼 → 言出法随改包 → 再交明镜
+- ≠ 扩 KB 正文；≠ 写云效
+
+## v1.3.19 — 2026-08-16
+
+### 第七轮 KB↔AutoPRD 对表（evo-fy-kb-round7）
+
+- 报告 [`references/kb-drift-2026-08-16-round7.md`](references/kb-drift-2026-08-16-round7.md)：备车 · 停车场 · 证照
+- KB：三卡 legacy→building；备车钉 `ops-backup-vehicle`+装备标签；停车场有车禁删；开 `DEF-OPS-CERT-01`
+- ≠ 写云效 / 合 Master
+
+## v1.3.18 — 2026-08-16
+
+### 第六轮 KB↔AutoPRD 对表（evo-fy-kb-round6）
+
+- 报告 [`references/kb-drift-2026-08-16-round6.md`](references/kb-drift-2026-08-16-round6.md)：调拨 · 异动 · 年审
+- KB：三卡从 legacy 升 building；钉待办 102/104/105；**重开 DEF-OPS-03**（异动加氢汇算假绿）
+- ≠ 写云效 / 合 Master
+
+## v1.3.17 — 2026-08-15
+
+### 第五轮 KB↔AutoPRD 对表（evo-fy-kb-round5）
+
+- 报告 [`references/kb-drift-2026-08-15-round5.md`](references/kb-drift-2026-08-15-round5.md)：交车 · 还车 · 替换车 · 保险采购
+- KB：交还车/替换从 legacy 薄卡升 building；保险纠偏「业财规划 ≠ AutoPRD 主路径」；开 DEF-OPS-DELIV-03 / DEF-OPS-RETURN-03
+- ≠ 写云效 / 合 Master
+
+## v1.3.16 — 2026-08-15
+
+### 第四轮 KB↔AutoPRD 对表（evo-fy-kb-round4）
+
+- 报告 [`references/kb-drift-2026-08-15-round4.md`](references/kb-drift-2026-08-15-round4.md)：救援任务 · 供应商管理 · 应收催款函
+- KB：新建 `rescue-task` / `receivable-dunning`；补厚供应商（救援结算关系 + 二次态 Toast 禁令）；alias + manifest
+- 作战室开 `DEF-ENERGY-SUP-01`（供应商查看/编辑 Toast）
+- ≠ 写云效 / 合 Master
+
+## v1.3.15 — 2026-08-15
+
+### 第三轮 KB↔AutoPRD 对表（evo-fy-kb-round3）
+
+- 报告 [`references/kb-drift-2026-08-15-round3.md`](references/kb-drift-2026-08-15-round3.md)：消息中心 · 故障处置 · 加氢订单 H5
+- KB 回写：消息中心五端/业务键；故障 AI态分立+证明一期边界+P6 指针；加氢核对≠对账+手工台账门禁+禁真PLC假绿
+- ≠ 写云效 / 合 Master
+
+## v1.3.14 — 2026-08-15
+
+### 第二轮 KB↔AutoPRD 对表（evo-fy-kb-round2）
+
+- 报告 [`references/kb-drift-2026-08-15-round2.md`](references/kb-drift-2026-08-15-round2.md)：氢费账户/明细 · 任务工单 · 工作台待办
+- KB 回写：氢费核对≠对账；工单 PRD 指针 **1.5.0**；工作台董事长 `116` + foundations 催办真相源；Autoprd 黄条
+- 下一关：第三轮（消息中心·故障处置·加氢订单 H5）；≠ 写云效 / 合 Master
+
+## v1.3.13 — 2026-08-15
+
+### 双轨 P0/L0 裁决卡（evo-fy-dual-track-p0）
+
+- 新增 [`references/dual-track-p0.md`](references/dual-track-p0.md)：P0 证据包；登录/组织属 P2；Vue 禁拷 React
+- alias `dual-track-p0`；L0 升档表挂载；配对言出法随 v1.4.77 · 明镜 v1.0.4
+
+## v1.3.12 — 2026-08-14
+
+### 产线 MySQL 只读外部事实 cold-up
+
+- 硬规矩：现网表/库归属先跑本机只读探针，报告见 `~/oneos-prod/docs/external-facts/`
+- 禁写产线库；禁把连接口令写进本仓/答复正文；配对言出法随 v1.4.75 · `evo-prod-mysql-ro-coldup`
+
+## v1.3.11 — 2026-08-14
+
+### 四条进化任务落地（观测优化项）
+
+- **evo-fy-eval-routine**：`eval-mini` §0 双周例行 + 首轮 15/15 Pass
+- **evo-fy-kb-fresh**：三模块对表（租赁 / 组织通讯录 / 审核中心）；报告 `references/kb-drift-2026-08-14.md`；KB 已回写漂移点
+- **evo-fy-alias-boost**：L0 + 模块别名加厚（AI审核/同人跳过 · Master合入 · 组织默认 · 字段副作用）；alias v1.1.2
+- **evo-fy-code-level**：跨条线 §11 + 硬规矩 + eval-mini #13；无字典禁字段级假裁
+
+## v1.3.10 — 2026-08-14
+
+### 给分身边界 × 言出法随收口三行对齐
+
+- 答复包「给分身边界」改为交棒码短格式：`W/S/C/B` + 做/不做（D/N）
+- 分身收口第③行必须消费「是」项（habits §2.1 · `handoff-closeout.md`）
+- 进化任务 `evo-cross-handoff` → done；减少漏回写作战室 / 评分 / Bad Case
+
 ## v1.3.9 — 2026-08-14
 
 ### 双 Skill 能力进化评分 · 给分身边界提醒

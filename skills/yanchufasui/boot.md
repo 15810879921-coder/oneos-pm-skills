@@ -99,9 +99,11 @@
 **汇报大屏/PDF 只说事不对人 + 对外禁内部口吻（v1.4.34 / v1.4.51）**：产物禁「给董事长/××领导的汇报」「领导版」等对人口径；禁「叙事收口 / 跟进要点 / 评审锁范围 / 初步评判」等内部对齐话术；会话可提醒对人，大屏与 PDF 只写事项与完成周期（habits §2 · Rule `pdf-report-plain-language` §A–§C）。
 
 **总监向对外汇报范式（v1.4.64）**：开篇三卡（目标·解决什么·怎么落地）；自上而下；改点→改完；禁新旧整页并排抢视线；对内技术不进对外正文（habits §2 · Rule §E · eval 29）。  
+**决策层禁部门内部管理/协同机制（v1.4.70）**：禁「进度看得见、延期说得清」「任务按周拆解、过程留痕」；**禁整节「协同机制」**（跟踪粒度/信息同步/零散待办）进董事长向页；对外只写业务结论（habits §2 · Rule §F · eval 30）。  
 改原型删/增 import、砍视图：**防炸门禁** habits §3.2（搜清零 · 禁重复具名 · 变换 200 · **B2 嵌套 Referer** · 真预览挂载；禁单文件 200 假绿）。  
 **做页面精度优先于赶工效率**（habits §3.0 · 2026-08-03 本尊纠偏）：禁跳过母版对照；独立 H5 **唯一** `H5PhoneShell`（habits **§3.0.2**），禁自造手机壳；**吸底条壳内禁 viewport fixed**（§3.0.2 条 6 · `h5-shell.css` 已降级 absolute）；**禁伪系统状态条**（§3.0.2 条 8 · 时间/信号/电量误导 Codex）。  
 **未预览严禁通关（v1.4.48）**：改 UI/台账/H5 后 **Grep/HTTP200/「代码看起来对」≠完成**；须真预览 + 交付报「路径 + 必点清单已绿」；habits **§3.0.5** · eval **23**。  
+**二次态必做满（v1.4.95）**：台账 list/detail/edit 同页做满；PRD 二次页清单 + 禁 Toast 冒充；同页 ≠ 可不做内页；habits **§3.0.7** · eval **38**；跨入口 B 轨交明镜选型。  
 **禁偷懒自造 UI · 交付 Grep（v1.4.33）**：有吸底须 Grep 到 `V2MobileActionBar`；主 CTA 须 `V2Button`；禁自造 `dtx-action`/`*-btn` 冒充；仓内 Rule `oneos-v2-no-diy-ui.mdc`（habits **§3.0 条 6**）。  
 **Web / H5 同功能双端同步（v1.4.32）**：改行为/流程前分析对端是否包含该能力；双端都有则 **同轮齐改**；改后强制跑 habits **§3.0.3** 检查清单；禁只交一端装闭环（无本尊豁免）。
 改台账表格/操作列：habits **§3.3**（**表体 min-width:100% 铺满** · **表区独立滚/表头 sticky/白卡撑满（时生亮 · v1.4.49 非H5全仓）** · 禁固定 px 盖掉 · **入口必引 `vm-operation-actions.css`** · 至少一列弹性宽 · 无横滚禁乱用 Ant `fixed` · 操作列 · 表头无缝 · 右粘）同轮自检自修。  
@@ -110,12 +112,18 @@
 改更多筛选 / 详情·表单 KV：habits **§3.5**（一格一项 · 禁 span/`--wide` · PC 控件 height=minHeight=36）。
 **迁移 / 换皮**：habits **§3.0.1** — **强制全量对齐 OneOS V2**（禁只换 Token/状态栏；主 CTA/`V2Button`/`V2Badge`/H5 母版/视觉审计必须过关）。  
 **生产环境参考 · 完整复原现网逻辑（v1.4.59）**：本尊甩 OneOS/YOS 生产 URL/截图/「按现网」→ 须先摸底并列现网能力对照表，再改 IA/视觉；**禁**只抄钉钉习惯丢掉编辑/设置/权限等未豁免能力（habits **§3.0.6** · eval **26**）。  
-台账页头客户向副文案：只跟 **DESIGN.md §2.4.0**（不进分身习惯）。  
+台账页头：**禁**模块标题 + 标题下描述（**DESIGN.md §2.4.0** · 2026-08-16；不进分身习惯细则，只守事实源）。  
 **PRD 关键逻辑正文硬门禁（v1.4.31）**：门禁/起算/例外/拍照·相册等须写进 `requirements-prd.md` 正文，禁止只靠专题 MD 外链顶替（habits **§5.1**）。  
 **改 Skill / 修门禁 / 炸页纠偏后**：跑迷你评测（habits **§2.1** · [`eval-cases.md`](eval-cases.md)）；跑歪用 Trace 四问回写。  
 **AI-PM 一号位评分（v1.4.66）**：本尊说「更新 AI-PM 评分」/周五评测/AI 产品里程碑 → habits **§2.2** 刷新作战室评分页并 publish:war-room。  
 **双 Skill 能力进化评分（v1.4.67）**：本尊说「更新双 Skill 评分」/「跑 Skill 进化复评」→ habits **§2.3** 刷 `skillCapabilities.ts` 八维+进化任务并 publish:war-room。  
-**作战室新鲜度 / 三口径 / 外部事实（v1.4.69）**：本尊说「刷新作战室数据新鲜度 / 刷新外部事实条」→ `npm run war-room:refresh-facts` + habits **§2.4** + publish；主链 ≠ 产品缺口 ≠ Skill 修复记录；禁写云效。
+**研发 onboarding / 字段有限可答 / 周五套 A（v1.4.71）**：研发用法·合支升档 `rd-onboarding.md`；字段无字典禁假裁；周五强制套 A（1/19/31/30/23）。  
+**法眼交棒 × 收口三行（v1.4.72）**：业务收口升档 `handoff-closeout.md`；交棒码 W/S/C/B，收口③必须回写勾完。  
+**明镜止水交棒（v1.4.74）**：正式 C 轨双轨（可点原型→真仓）→ 升档 `handoff-to-dev.md` 出交棒包；未唤明镜时仍可按旧习惯改原型；窄例外仅纯文案/样式。  
+**本尊口令速查（v1.5.0 · 配对明镜 v1.0.10）**：该喊谁 → 明镜 [`../mingjingzhishui/twin-linkage.md`](../mingjingzhishui/twin-linkage.md) §0b；偏差回写 §2c；回执 `mj-receipt`。  
+**明镜技术顾问旁路（v1.4.84 · 配对明镜 v1.0.5）**：会话撞工程阻塞（产线握手/起服/VPN·网关/缺表/仓路由/灌结构/Vite 红屏/`5666`）→ **同轮**挂「## 明镜建议」（人话原因+本尊可执行步骤+解完口令）；**无需**本尊再喊明镜；**禁止**借顾问旁路无交棒改真码。  
+**作战室新鲜度 / 三口径 / 外部事实（v1.4.69）**：本尊说「刷新作战室数据新鲜度 / 刷新外部事实条」→ `npm run war-room:refresh-facts` + habits **§2.4** + publish；主链 ≠ 产品缺口 ≠ Skill 修复记录；禁写云效。  
+**产线 MySQL 外部事实 cold-up（v1.4.75）**：问「产线有没有××表 / 库归哪个服务」→ 本机 `~/oneos-prod/scripts/prod-ro-probe.sh` + `docs/external-facts/`（**只读**；密钥不进仓；禁写产线库）。
 
 ## 5. 升档 Read（按题型，能不读就不读）
 
@@ -127,10 +135,15 @@
 | 写用户可见中文且含「审批」风险 | [`copy-lexicon.md`](copy-lexicon.md) |
 | 口吻细节 / 交付结构长文 | [`persona.md`](persona.md) |
 | 听众角色细则争议 | [`audience-role.md`](audience-role.md) |
+| 研发：怎么用 AI / 开 Agent / 合支 / 首次确认研发角色 | [`rd-onboarding.md`](rd-onboarding.md)（半页分诊；闲聊/只要结论不挂） |
 | PM 进展/排期/延期 | [`pm.md`](pm.md) |
 | 周报同步 / 三人周会 / 会议纪要入库 / 会后确认 | [`pm.md`](pm.md)（§9 项目经理数字人） |
 | 业务口径 / 门禁 / 能不能做 | **只**读法眼 [`../fayanruju/SKILL.md`](../fayanruju/SKILL.md)（协议已内联；勿默认读 retrieval） |
+| 产线库表 / 外部事实 cold-up / 「现网有没有这张表」 | 先跑本机 `~/oneos-prod/scripts/prod-ro-probe.sh`（只读）；协议见 `~/oneos-prod/docs/external-facts/README.md`；**禁止**把口令写进仓 |
 | 改 Skill 规则、本尊说「跑评测」、严重 Bad Case 回写 | [`eval-cases.md`](eval-cases.md)（habits §2.1） |
+| 法眼交棒 / 收口三行对齐 / 「交棒模板」 | [`handoff-closeout.md`](handoff-closeout.md) |
+| 交棒明镜止水 / C 轨双轨 / 本机真仓模拟 | [`handoff-to-dev.md`](handoff-to-dev.md) |
+| 工程阻塞须挂明镜建议（握手/起服/VPN 等） | 升档读明镜 [`../mingjingzhishui/boot.md`](../mingjingzhishui/boot.md) §0c + [`twin-linkage.md`](../mingjingzhishui/twin-linkage.md) §2b；同轮挂「## 明镜建议」 |
 | 本尊说「更新 AI-PM 评分」/ 一号位进度复评 | habits **§2.2** + `aiAgentPmScorecard.ts` |
 | 本尊说「更新双 Skill 评分」/ Skill 进化复评 | habits **§2.3** + `skillCapabilities.ts` |
 | 本尊说「刷新作战室数据新鲜度」/ 三口径误读 | habits **§2.4** + `warRoomDataProvenance.ts` |
@@ -139,7 +152,12 @@
 
 若听众已是**研发**且题型=业务规则 / 能不能做：  
 → **优先只走法眼**，不要为寒暄去读 habits/playbook/profile。  
-人话答完即可；MD 仅双条件满足时再出（升档 habits）。
+人话答完即可；MD 仅双条件满足时再出（升档 habits）。  
+**只要结论** → 附一句人机分诊指针即可（禁半页墙）。
+
+若题型=怎么用 AI / 开 Agent / 合支规矩，或**本会话首次确认研发角色**：  
+→ 升档 Read [`rd-onboarding.md`](rd-onboarding.md)，挂 §0–§2 摘要 + 一任务一支硬闸（v1.4.71）。  
+纯闲聊 → 不挂。
 
 ## 7. 首条回复动作顺序
 

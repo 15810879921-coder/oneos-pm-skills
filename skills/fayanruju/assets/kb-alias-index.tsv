@@ -3,7 +3,8 @@ customer-management	客户管理	lease	architecture	customer-management|客户�
 customer-engagement	客户对接过程管理	lease	architecture	customer-engagement|客户对接过程管理|客户对接|对接认领
 contract-template-management	标准合同模板	lease	architecture	contract-template-management|标准合同模板|合同模板
 lease-business-ledger	租赁业务台账	lease	architecture	lease-business-ledger|租赁业务台账
-lease-contract-management	租赁合同	lease	confirmed	lease-contract-management|租赁合同怎么用|合同怎么建|租赁合同|E签宝|建合同|签合同|非标
+receivable-dunning	应收催款（催款函）	lease	building	receivable-dunning|应收催款|催款函|催款单|用印催款
+lease-contract-management	租赁合同	lease	confirmed	lease-contract-management|租赁合同怎么用|合同怎么建|租赁合同|E签宝|建合同|签合同|非标|v2.5.8f|租赁主链
 vehicle-pickup-receivable	提车应收款	lease	architecture	vehicle-pickup-receivable|提车应收款|怎么提车|提车应收|提车
 vehicle-return-settlement	还车应结款	lease	confirmed	vehicle-return-settlement|还车应结款|还车应结|还车结算|会签|还车
 h2-station-dashboard	加氢站大屏	energy	legacy	h2-station-dashboard|加氢站大屏
@@ -11,28 +12,30 @@ ledger-h2-procurement-summary	氢费采购端汇总报表	energy	legacy	ledger-h
 oneos-h5-h2-order	加氢订单（H5）	energy	architecture	oneos-h5-h2-order|加氢订单（H5）|加氢怎么录|加氢订单|补录加氢
 oneos-web-h2-station-site	加氢站管理	energy	architecture	oneos-web-h2-station-site|加氢站管理
 payment-records	收款记录 / 氢费账户	energy	architecture	payment-records|收款记录 / 氢费账户
-supplier-management	供应商管理	energy	architecture	supplier-management|供应商管理
+supplier-management	供应商管理	energy	architecture	supplier-management|供应商管理|救援车队供应商|供应商台账|供应商主数据
 vehicle-h2-fee-ledger	车辆氢费明细	energy	architecture	vehicle-h2-fee-ledger|车辆氢费明细
 biz-vehicle-cost	车辆成本维护	ops	legacy	biz-vehicle-cost|车辆成本维护
-insurance-procurement	保险采购	ops	confirmed	insurance-procurement|保险采购
+insurance-procurement	保险采购	ops	confirmed	insurance-procurement|保险采购|保单台账|比价单|交强险|商业险交车
 ledger-insurance-allocation	保险分摊明细	ops	legacy	ledger-insurance-allocation|保险分摊明细
 oneos-v2-h5-vehicle-fault-handling	故障处置（H5）	ops	confirmed	oneos-v2-h5-vehicle-fault-handling|故障处置（H5）
 oneos-web-ops	车辆运维综合	ops	architecture	oneos-web-ops|车辆运维综合
 ops-aftermarket-device	后装设备	ops	legacy	ops-aftermarket-device|后装设备
-ops-certificates	证照管理	ops	legacy	ops-certificates|证照管理
+ops-certificates	证照管理	ops	building	ops-certificates|证照管理|证照|行驶证|道路运输证|等级评定证照
 ops-license-plate	上牌管理	ops	legacy	ops-license-plate|上牌管理
-ops-parking-lot	停车场管理	ops	legacy	ops-parking-lot|停车场管理
+ops-parking-lot	停车场管理	ops	building	ops-parking-lot|停车场管理|停车场|场站|停放车辆
 ops-parts-warehouse	备件库存 / 仓库管理	ops	legacy	ops-parts-warehouse|备件库存 / 仓库管理
-ops-vehicle-annual-review	年审管理	ops	legacy	ops-vehicle-annual-review|年审管理
-ops-vehicle-delivery	交车管理	ops	legacy	ops-vehicle-delivery|交车管理
+ops-vehicle-annual-review	年审管理	ops	building	ops-vehicle-annual-review|年审管理|年审|等评|沪牌年审|检验到期
+ops-vehicle-delivery	交车管理	ops	building	ops-vehicle-delivery|交车管理|交车|交还车交车|提车后交车
 ops-vehicle-model	型号参数	ops	legacy	ops-vehicle-model|型号参数
-ops-vehicle-prepare	备车管理	ops	legacy	ops-vehicle-prepare|备车管理
-ops-vehicle-relocation	异动管理	ops	legacy	ops-vehicle-relocation|异动管理
-ops-vehicle-replace	替换车管理	ops	legacy	ops-vehicle-replace|替换车管理
-ops-vehicle-return	还车管理	ops	legacy	ops-vehicle-return|还车管理
-ops-vehicle-transfer	调拨管理	ops	legacy	ops-vehicle-transfer|调拨管理
+ops-vehicle-prepare	备车管理	ops	building	ops-vehicle-prepare|ops-backup-vehicle|备车管理|备车|绿通|装备标签|尾板冷机
+ops-vehicle-relocation	异动管理	ops	building	ops-vehicle-relocation|异动管理|异动|异动加氢|结束异动
+ops-vehicle-replace	替换车管理	ops	building	ops-vehicle-replace|替换车管理|替换车|监控式预发起|自营互替
+ops-vehicle-return	还车管理	ops	building	ops-vehicle-return|ops-vehicle-return-mgmt|还车管理|还车|交还车还车|胎纹授权更正
+ops-vehicle-transfer	调拨管理	ops	building	ops-vehicle-transfer|调拨管理|调拨|跨区调拨|调拨待办102
 procurement-third-party-exit	三方退租车管理	ops	legacy	procurement-third-party-exit|三方退租车管理
 vehicle-fault-handling	故障处置（PC）	ops	confirmed	vehicle-fault-handling|故障处置（PC）|故障处置|报修|故障
+rescue-task	救援任务	ops	building	rescue-task|救援任务|一键救援|救援匹配|救援应付
+fcev-customer-report-lexicon	氢能车客户报障话术语料	ops	confirmed	fcev-customer-report-lexicon|离子水|去离子水|冷却液报障|漏气不给加|抛锚了|FCEV报障|氢能客户话术|故障灯
 vehicle-inspection	验车入库	ops	confirmed	vehicle-inspection|验车入库
 vehicle-maintenance-ledger	车辆维修明细	ops	architecture	vehicle-maintenance-ledger|车辆维修明细
 vehicle-management	车辆资产	ops	confirmed	vehicle-management|车辆资产
@@ -44,6 +47,7 @@ self-operated-business-ledger	物流业务明细 / 项目盈亏	logistics	archit
 self-operated-contract	物流合同	logistics	architecture	self-operated-contract|物流合同
 self-operated-dispatch-task	调度任务	logistics	architecture	self-operated-dispatch-task|调度任务
 biz-finance-integration	业财一体化全链条	foundation	architecture	biz-finance-integration|业财一体化全链条|资金闭环|业财|核销|门禁
+document-numbering	系统表单单据编号规则	foundation	confirmed	document-numbering|系统表单单据编号规则|单号规则|表单编号|单据编号|编号规则|WO单号|前缀登记
 meeting-20260803-lines-ai-finance	五大条线改造与业财AI会议沉淀	foundation	architecture	meeting-20260803-lines-ai-finance|五大条线会议|业财AI会议|条线改造会议|20260803会议
 analytics-business-ledgers	数据分析 / 业务台账报表	foundation	legacy	analytics-business-ledgers|数据分析 / 业务台账报表
 business-dept-ledger	项目盈亏情况	foundation	architecture	business-dept-ledger|项目盈亏情况
@@ -53,9 +57,16 @@ help-center	帮助中心	platform	legacy	help-center|帮助中心|操作说明|�
 message-center	消息中心	platform	confirmed	message-center|消息中心|站内信|消息
 oneos-miniprogram	ONE-OS 小程序	platform	building	oneos-miniprogram|ONE-OS 小程序
 oneos-mobile-app	ONE-OS 移动端运管	platform	legacy	oneos-mobile-app|ONE-OS 移动端运管
-oneos-web-approval	审批中心	platform	confirmed	oneos-web-approval|审批中心|待我审批|审批
+oneos-web-approval	审核中心	platform	confirmed	oneos-web-approval|审核中心|审批中心|待我审核|待我审批|审批|审核|AI审核中心|同人跳过|同人路径跳过|AI审核
 oneos-web-crm-erp-sandbox	ONEOS-web CRM/ERP 试验	platform	building	oneos-web-crm-erp-sandbox|ONEOS-web CRM/ERP 试验
 oneos-web-workbench-new	全新工作台	platform	confirmed	oneos-web-workbench-new|全新工作台|待办工作台|工作台|督办
+workbench-todo-rules	工作台待办规则	platform	confirmed	workbench-todo-rules|工作台待办规则|待办规则|待办权限|董事长待办|年审待办
 task-work-order	任务工单	platform	confirmed	task-work-order|任务工单|建工单|催办|工单
+wecom-customer-fault-intent	客户微信群主动报障意图	platform	confirmed	wecom-customer-fault-intent|客户微信群报障|群报障|主动报故障|故障意图|客户群故障|仪表报障|离子水报障
+oneos-org-contacts	组织通讯录	platform	building	oneos-org-contacts|组织通讯录|成员管理|部门管理|职位管理|用户管理|同步钉钉|人事主数据|组织默认|组织人事|钉钉通讯录习惯
 version-roadmap	版本完成情况与未来规划	platform	legacy	version-roadmap|版本完成情况与未来规划
 xiaolingling-delivery	小羚羚 · 交车	external	legacy	xiaolingling-delivery|小羚羚 · 交车
+master-merge-gate	Master 合入管控	platform	confirmed	master-merge-gate|合Master|合入Master|发版合支|Master合入|门禁合Master|合入审计|yunxiao-master-merge-gate
+ai-rd-default	研发组织默认（人机分诊）	platform	confirmed	ai-rd-default|组织默认|人机分诊|一任务一支|玻璃箱|研发onboarding|AI用法分诊
+code-sidefx-boundary	代码字段副作用边界	foundation	confirmed	code-sidefx-boundary|字段副作用|表结构副作用|代码级副作用|改字段会不会炸|字典未喂
+dual-track-p0	双轨P0·L0规范	foundation	confirmed	dual-track-p0|双轨P0|L0规范|冻Token|禁第二套皮|P0证据包|登录算不算L0|Vue复现不拷React
