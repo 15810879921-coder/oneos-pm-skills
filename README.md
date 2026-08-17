@@ -81,6 +81,9 @@ npx skills update YunxiaoPM AutoRDO oneos-autoprd -g -y
 与 YunxiaoPM 同一套 `npx skills`。同事安装页：https://15810879921-coder.github.io/oneos-pm-skills/
 
 ```bash
+# 曾装过旧版：先卸再装（没有可忽略报错）
+npx skills remove yanchufasui -g -y -a cursor -a codex
+npx skills remove fayanruju -g -y -a cursor -a codex
 npx skills add 15810879921-coder/oneos-pm-skills --skill yanchufasui -a cursor -a codex -g -y
 npx skills add 15810879921-coder/oneos-pm-skills --skill fayanruju -a cursor -a codex -g -y
 npx skills add 15810879921-coder/oneos-pm-skills --skill mingjingzhishui -a cursor -a codex -g -y
@@ -99,6 +102,11 @@ npx skills update yanchufasui fayanruju mingjingzhishui -g -y
 ```text
 请帮我全局安装王冕驱动三 skill 到 Cursor + Codex：
 
+先卸旧版（若曾装过言出法随/法眼；没有可忽略报错）：
+npx skills remove yanchufasui -g -y -a cursor -a codex
+npx skills remove fayanruju -g -y -a cursor -a codex
+
+再安装：
 npx skills add 15810879921-coder/oneos-pm-skills --skill yanchufasui -a cursor -a codex -g -y
 npx skills add 15810879921-coder/oneos-pm-skills --skill fayanruju -a cursor -a codex -g -y
 npx skills add 15810879921-coder/oneos-pm-skills --skill mingjingzhishui -a cursor -a codex -g -y
@@ -108,9 +116,13 @@ npx skills add 15810879921-coder/oneos-pm-skills --skill mingjingzhishui -a curs
 
 ### 七 Skill 用途名（推荐团队 · 用途名优先）
 
-同事优先喊用途名口令；花名三 skill 为运行时深协议，建议同装。上线守闸一期休眠。
+同事优先喊用途名口令；花名三 skill 为运行时深协议，建议同装。上线守闸一期休眠。  
+**曾装过旧版言出法随 / 法眼：一键脚本会先 `remove` 再装新包。**
 
 ```bash
+# 先卸旧版（没有可忽略报错）
+npx skills remove yanchufasui -g -y -a cursor -a codex
+npx skills remove fayanruju -g -y -a cursor -a codex
 npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-wave-router -a cursor -a codex -g -y
 npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-pm-product -a cursor -a codex -g -y
 npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-biz-rules -a cursor -a codex -g -y
@@ -134,6 +146,11 @@ npx skills update oneos-wave-router oneos-pm-product oneos-biz-rules oneos-dev-d
 ```text
 请帮我全局安装 OneOS 七 Skill 用途名 + 三花名运行时到 Cursor + Codex：
 
+重要：若本机曾装过旧版言出法随 / 法眼如炬，必须先卸再装（没有可忽略报错）：
+npx skills remove yanchufasui -g -y -a cursor -a codex
+npx skills remove fayanruju -g -y -a cursor -a codex
+
+再安装：
 npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-wave-router -a cursor -a codex -g -y
 npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-pm-product -a cursor -a codex -g -y
 npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-biz-rules -a cursor -a codex -g -y
