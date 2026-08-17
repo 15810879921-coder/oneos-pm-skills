@@ -156,6 +156,55 @@
       margin-bottom: 12px;
     }
 
+    .role-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0 0 14px;
+      font-size: 13px;
+    }
+    .role-table th,
+    .role-table td {
+      border: 1px solid var(--line);
+      padding: 10px 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+    .role-table th {
+      background: var(--primary-soft);
+      color: var(--primary);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .role-table td:first-child {
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+    }
+    .role-table .muted {
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .role-table .tag-dormant {
+      display: inline-block;
+      margin-left: 6px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: var(--warn-soft);
+      color: var(--warn);
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .flow-line {
+      margin: 0 0 14px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: var(--primary-soft);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 500;
+      line-height: 1.5;
+    }
+
     .grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
@@ -335,6 +384,64 @@
     <section class="batch" data-batch>
       <h2>七 Skill 用途名（推荐团队）</h2>
       <p>任务指路 / 产品交付 / 业务口径 / 开发落地 / 测试验收 / 体验规范 / 上线守闸（休眠）。<strong>先卸旧版言出法随/法眼</strong>（若曾装过），再装七用途名 + 三花名运行时。</p>
+
+      <p class="flow-line">主链路：产品交付 →（必要时业务口径）→ 开发落地 → 测试验收 → <strong>本尊上线</strong>（上线守闸一期休眠）</p>
+
+      <table class="role-table" aria-label="七 Skill 职责与功用">
+        <thead>
+          <tr>
+            <th>用途名 · 称号</th>
+            <th>职责（一号位）</th>
+            <th>功用 / 什么时候喊</th>
+            <th>不做</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>任务指路 · 协调官<br><span class="muted">oneos-wave-router</span></td>
+            <td>编排薄层：只指路，不代打</td>
+            <td>不知道该喊谁、问 Skill 版图关系</td>
+            <td>不改需求、不改码、不写云效</td>
+          </tr>
+          <tr>
+            <td>产品交付 · 主理人<br><span class="muted">oneos-pm-product · 花名言出法随</span></td>
+            <td>把「谁要做什么」变成 PRD、可点原型、验收剧本、交棒包</td>
+            <td>写需求、出原型、交开发</td>
+            <td>止于交开发；不宣布测试通过；不上线发版</td>
+          </tr>
+          <tr>
+            <td>业务口径 · 合规官<br><span class="muted">oneos-biz-rules · 花名法眼如炬</span></td>
+            <td>业务规则真相源：能不能做、字段/主链口径、交棒码</td>
+            <td>问规则、冲突裁决、研发/测试查口径</td>
+            <td>不改原型、不改真码、不发版</td>
+          </tr>
+          <tr>
+            <td>开发落地 · 架构师<br><span class="muted">oneos-dev-delivery · 花名明镜止水</span></td>
+            <td>只吃交棒包；双轨落地（可点原型→真仓可跑）；输出回执</td>
+            <td>按交棒改原型/真仓、工程回执、待测交接</td>
+            <td>无交棒拒做；不合 Master；不生产发版</td>
+          </tr>
+          <tr>
+            <td>测试验收 · 质检官<br><span class="muted">oneos-qa-verify · 工具层 YunxiaoQA</span></td>
+            <td>风险测计划、可核验证据、缺陷门与打回；给发布候选建议</td>
+            <td>开始测试、留证据、提缺陷、复测、打回</td>
+            <td>不含上线发布；不替本尊点发版</td>
+          </tr>
+          <tr>
+            <td>体验规范 · 设计官<br><span class="muted">oneos-ux-guide</span></td>
+            <td>UI / AI 交互原则、Pattern、反 AI 味门禁</td>
+            <td>页面评审、交互原则、改皮规范争议</td>
+            <td>不定业务能不能做；不报「测试通过」</td>
+          </tr>
+          <tr>
+            <td>上线守闸 · 安全官<span class="tag-dormant">一期休眠</span><br><span class="muted">oneos-release-gate</span></td>
+            <td>（远期）发布/现网质量；一期只告知发版权在本尊</td>
+            <td>问发版/合生产时会被拦回本尊</td>
+            <td>禁止自动合 Master、推生产、点云效发布</td>
+          </tr>
+        </tbody>
+      </table>
+
       <div class="batch-actions">
         <button type="button" class="btn btn-primary" data-copy="seven-install">复制一键安装</button>
         <button type="button" class="btn btn-secondary" data-copy="seven-update">复制一键更新</button>
@@ -436,6 +543,17 @@ npx skills add 15810879921-coder/oneos-pm-skills --skill mingjingzhishui -a curs
 改原型请打开 oneos-v2；真仓本机根 ~/oneos-prod。</pre>
       <pre id="seven-update" hidden>npx skills update oneos-wave-router oneos-pm-product oneos-biz-rules oneos-dev-delivery oneos-qa-verify oneos-ux-guide oneos-release-gate yanchufasui fayanruju mingjingzhishui -g -y</pre>
       <pre id="seven-ai" hidden>请帮我全局安装 OneOS 七 Skill 用途名 + 三花名运行时到 Cursor + Codex：
+
+【七分身职责速览】
+- 任务指路（协调官）：只指路喊谁，不代打
+- 产品交付（主理人 / 言出法随）：PRD·原型·验收·交棒；止于交开发
+- 业务口径（合规官 / 法眼如炬）：能不能做、规则裁决；不改码
+- 开发落地（架构师 / 明镜止水）：只吃交棒包双轨落地；止于待测
+- 测试验收（质检官）：证据·缺陷·打回；给发布候选建议，不点发版
+- 体验规范（设计官）：UI/AI 交互原则；不定业务口径
+- 上线守闸（安全官）：一期休眠，发版权在本尊
+
+主链路：产品交付 →（业务口径）→ 开发落地 → 测试验收 → 本尊上线
 
 重要：若本机曾装过旧版言出法随 / 法眼如炬，必须先卸再装（没有可忽略报错）：
 npx skills remove yanchufasui -g -y -a cursor -a codex
