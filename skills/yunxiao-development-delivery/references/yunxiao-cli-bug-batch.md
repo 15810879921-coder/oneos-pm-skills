@@ -66,6 +66,7 @@ skill-run yunxiao_cli_bug_batch.py snapshot --space-id <项目ID> [--space-id <�
       "sourceBranch": "fix/ONEOS-123",
       "targetBranch": "develop",
       "bugSerials": ["ONEOS-123"],
+      "associationMode": "unassociated-fix",
       "reuseExisting": false,
       "mrTitle": "fix(ONEOS-123): <摘要>",
       "mrDescription": "<修复和验证摘要>"
@@ -87,6 +88,7 @@ skill-run yunxiao_cli_bug_delivery.py preflight --plan <计划JSON>
 预检必须证明：
 
 - 每个Bug来自同一冻结快照且只属于一个提交组；
+- 每组必须声明`associationMode`：`associated-development-branch`表示关联Bug复用已验证开发分支，`unassociated-fix`表示经正式关系证明无关联项的独立Bug。前者必须`reuseExisting=true`且源分支在预检时已存在；后者只能包含一个无关联Bug，源分支必须为`fix/<BUG-ID>`；
 - Codeup数字仓库ID、读写权限、目标分支和提交基线可回读；
 - 已有源分支仅在`reuseExisting=true`且提交一致时复用；
 - 未提供流水线ID时，从组织现有流水线中按代码源和目标分支唯一发现；提供ID时只用于缩小范围，仍必须回读验证；
@@ -104,7 +106,7 @@ skill-run yunxiao_cli_bug_delivery.py preflight --plan <计划JSON>
 skill-run yunxiao_cli_bug_delivery.py ensure-branches --preflight <预检回执>
 ```
 
-适配器重新读取目标分支并核对预检提交。目标分支变化时停止并要求重新预检。创建分支后必须回读精确名称和提交；同名分支被其他提交占用时阻塞。
+适配器重新读取目标分支并核对预检提交。关联开发分支在预检后缺失、变化或不可复用时阻塞，绝不降级创建`fix`分支。无关联Bug才允许创建其计划内的`fix/<BUG-ID>`分支；创建后必须回读精确名称和提交；同名分支被其他提交占用时阻塞。
 
 ## 7. 进入处理中并循环修改
 

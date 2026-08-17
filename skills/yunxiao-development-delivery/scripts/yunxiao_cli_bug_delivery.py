@@ -28,6 +28,7 @@ SENSITIVE_KEY_RE = re.compile(
 )
 SUCCESS = {"SUCCESS", "SUCCEEDED", "PASSED"}
 RUNNING = {"RUNNING", "WAITING", "PENDING", "QUEUED"}
+ASSOCIATION_MODES = {"associated-development-branch", "unassociated-fix"}
 
 
 def stable_hash(value: dict[str, Any]) -> str:
@@ -326,16 +327,40 @@ def load_plan(path: str, executable: str) -> tuple[dict[str, Any], dict[str, Any
         source = str(group.get("sourceBranch") or "")
         target = str(group.get("targetBranch") or "")
         bug_serials = [str(item) for item in group.get("bugSerials") or []]
+        association_mode = str(group.get("associationMode") or "")
         if not group_id or group_id in group_ids or not repository_id.isdigit():
             raise core.AdapterError("提交组ID必须唯一，repositoryId必须是Codeup数字ID。")
         validate_branch_name(source)
         validate_branch_name(target)
         if source == target or not bug_serials:
             raise core.AdapterError(f"提交组{group_id}的源/目标分支或Bug清单无效。")
+        if association_mode not in ASSOCIATION_MODES:
+            raise core.AdapterError(
+                f"提交组{group_id}必须声明associationMode："
+                "associated-development-branch或unassociated-fix。")
         unknown = [item for item in bug_serials if item not in snapshot_bugs]
         duplicate = [item for item in bug_serials if item in assigned]
         if unknown or duplicate:
             raise core.AdapterError(f"提交组{group_id}包含快照外或重复Bug：{unknown + duplicate}")
+        if association_mode == "associated-development-branch":
+            if not group.get("reuseExisting", False):
+                raise core.AdapterError(f"关联Bug必须复用已验证开发分支：{group_id}")
+            for bug_serial in bug_serials:
+                relations = snapshot_bugs[bug_serial].get("relations")
+                if not isinstance(relations, list) or not relations:
+                    raise core.AdapterError(
+                        f"关联开发分支组缺少可回读的正式关联项：{group_id}/{bug_serial}")
+        else:
+            if len(bug_serials) != 1:
+                raise core.AdapterError(f"无关联Bug必须独立使用一个fix分支：{group_id}")
+            bug_serial = bug_serials[0]
+            relations = snapshot_bugs[bug_serial].get("relations")
+            if not isinstance(relations, list) or relations:
+                raise core.AdapterError(
+                    f"仅正式关系为空的Bug可创建fix分支：{group_id}/{bug_serial}")
+            if source != f"fix/{bug_serial}":
+                raise core.AdapterError(
+                    f"无关联Bug的源分支必须为fix/{bug_serial}：{group_id}")
         group_ids.add(group_id)
         assigned.update(bug_serials)
     return plan, snapshot, user
@@ -352,6 +377,9 @@ def cmd_preflight(args: argparse.Namespace) -> int:
         if not target or not branch_commit(target):
             raise core.AdapterError(f"目标分支不存在或无提交：{spec['groupId']}")
         expected_source = spec.get("expectedSourceCommit")
+        association_mode = str(spec["associationMode"])
+        if association_mode == "associated-development-branch" and not source:
+            raise core.AdapterError(f"关联开发分支不存在，禁止创建fix分支：{spec['groupId']}")
         if source and not spec.get("reuseExisting", False):
             raise core.AdapterError(f"源分支已存在但计划未授权复用：{spec['groupId']}")
         if source and expected_source and branch_commit(source) != str(expected_source):
@@ -363,6 +391,7 @@ def cmd_preflight(args: argparse.Namespace) -> int:
             "targetBranch": str(spec["targetBranch"]), "targetCommit": branch_commit(target),
             "sourceExisted": bool(source), "sourceCommit": branch_commit(source),
             "reuseExisting": bool(spec.get("reuseExisting", False)),
+            "associationMode": association_mode,
             "bugSerials": [str(item) for item in spec["bugSerials"]],
             "mrTitle": str(spec.get("mrTitle") or ""),
             "mrDescription": str(spec.get("mrDescription") or ""),
@@ -405,6 +434,8 @@ def cmd_ensure_branches(args: argparse.Namespace) -> int:
                 if group.get("sourceExisted") and branch_commit(source) != group.get("sourceCommit"):
                     raise core.AdapterError("已有源分支在预检后发生变化，需重新预检。")
             else:
+                if group.get("associationMode") == "associated-development-branch":
+                    raise core.AdapterError("关联开发分支在预检后缺失，禁止创建fix分支。")
                 core.run_devops(executable, [
                     "codeup-create-branch", "--repository-id", repo_id,
                     "--branch", str(group["sourceBranch"]), "--ref", str(group["targetBranch"]),
