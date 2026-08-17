@@ -21,7 +21,7 @@
     "client": "cursor",
     "skill": "yunxiao-development-delivery",
     "archive": "yunxiao-development-delivery.zip",
-    "sha256": "d58bffb01dd6f36551e234f37ff8572998dd55a8a4299ba0790caef6d6a5a1d6"
+    "sha256": "1cb005de94b9f4b1f4f776b1d3185a886cbe49b455042de1b0f5229f61786b5b"
   },
   {
     "client": "cursor",
@@ -33,6 +33,6 @@
     "client": "cursor",
     "skill": "yunxiao-release-operations",
     "archive": "yunxiao-release-operations.zip",
-    "sha256": "c104e6c046b561470aab459176ead2bef0b7e19de83859348c40b1dcb0d7a43d"
+    "sha256": "fe9a6446d04a58ec615a465100e47b928f6055cd4dc4a5b4431f2b532cfea05e"
   }
 ]

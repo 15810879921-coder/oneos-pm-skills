@@ -496,9 +496,6 @@ def create_development(executable: str, scope: dict[str, Any],
         "--parent-id", delivery["id"], "--format-type", "MARKDOWN",
         "--custom-field-values", json.dumps(custom, ensure_ascii=False, separators=(",", ":")),
     ]
-    sprint_id = scope.get("sprintId")
-    if sprint_id:
-        cli_args.extend(["--sprint", sprint_id])
     if not custom["priority"]:
         raise core.AdapterError("来源【交付】优先级快照为空，拒绝创建开发任务。")
     value = core.unwrap(core.run_devops(executable, cli_args))
