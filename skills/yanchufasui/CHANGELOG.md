@@ -2,6 +2,15 @@
 
 原名 wangmian-twin；自 v1.4.0 起正式更名。
 
+## v1.5.2 — 2026-08-16
+
+### 用途名版图 · 产品交付主入口（一期不上线）
+
+- 团队主入口：`oneos-pm-product`（产品交付）；本目录保留为花名运行时
+- 卫星：`oneos-qa-verify` / `oneos-ux-guide` / `oneos-release-gate`（休眠）/ `oneos-wave-router`
+- 配对：`oneos-biz-rules` · `oneos-dev-delivery`；版图 `oneos-wave-router/SKILL-MAP.md`
+- 本尊边界：发版上线自留；Skill 止于交开发→待测
+
 ## v1.5.1 — 2026-08-16
 
 ### 禁页头模块标题 + 标题下描述（DESIGN §2.4.0 升格）
@@ -10,6 +19,7 @@
 - `DESIGN.md` §2.4.0 / `V2LedgerChrome` / `MigrateLedgerHub` / `oneos-ds-page-chrome.css` 同步
 - Rules：`oneos-v2-copy-no-overexplain` · `oneos-v2-prototype-visual-align`；habits §3.0 条 7 / §3.0.4；eval **20**
 - 详情/表单仍守 §4.8 业务页名（禁页名下描述）；口令门 / 汇报叙事 / Showcase 豁免口径写进 §2.4.0
+- **标准包收口**：`references/no-page-title-chrome.md`（L0）· `evo-yc-no-page-title-chrome` done · 作战室能力卡 v1.5.1 / 综合 **8.8**（+0.1）
 
 ## v1.5.0 — 2026-08-16
 

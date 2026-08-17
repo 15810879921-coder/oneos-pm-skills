@@ -1,5 +1,14 @@
 # 明镜止水（mingjingzhishui）changelog
 
+## v1.0.11 — 2026-08-16
+
+### 用途名主入口 · 开发落地（一期止于待测）
+
+- 团队主入口：`oneos-dev-delivery`；本目录为花名运行时
+- `twin-linkage`：用途名优先；接测试验收；上线守闸休眠
+- 版图：`oneos-wave-router/SKILL-MAP.md`
+- ≠ 自动发版 / 合 Master
+
 ## v1.0.10 — 2026-08-16
 
 ### 三方联动可组装包（本尊拍板 · P0+P1）

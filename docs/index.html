@@ -328,8 +328,32 @@
         <button type="button" class="chip" data-role="测试" aria-pressed="false">测试</button>
         <button type="button" class="chip" data-role="研发" aria-pressed="false">研发</button>
         <button type="button" class="chip" data-role="分身" aria-pressed="false">分身</button>
+        <button type="button" class="chip" data-role="用途名" aria-pressed="false">用途名</button>
       </div>
     </div>
+
+    <section class="batch" data-batch>
+      <h2>七 Skill 用途名（推荐团队）</h2>
+      <p>任务指路 / 产品交付 / 业务口径 / 开发落地 / 测试验收 / 体验规范 / 上线守闸（休眠）。同事优先喊用途名；花名三 skill 为运行时深协议，建议同装。</p>
+      <div class="batch-actions">
+        <button type="button" class="btn btn-primary" data-copy="seven-install">复制一键安装</button>
+        <button type="button" class="btn btn-secondary" data-copy="seven-update">复制一键更新</button>
+        <button type="button" class="btn btn-ghost" data-copy="seven-ai">复制发给 AI</button>
+      </div>
+      <div class="cmd-block">
+        <span class="cmd-label">一键安装（七用途名 + 三花名运行时）</span>
+        <pre id="seven-install">npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-wave-router -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-pm-product -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-biz-rules -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-dev-delivery -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-qa-verify -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-ux-guide -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-release-gate -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill yanchufasui -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill fayanruju -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill mingjingzhishui -a cursor -a codex -g -y</pre>
+      </div>
+    </section>
 
     <section class="batch" data-batch>
       <h2>产品三件套</h2>
@@ -373,6 +397,7 @@ npx skills add 15810879921-coder/oneos-pm-skills --skill mingjingzhishui -a curs
         <li>旧 lifecycle 若本机还在，先卸载：npx skills remove yunxiao-requirement-lifecycle -g -y -a cursor -a codex</li>
         <li>装完后建议新开 Chat / 重启 Codex 再喊口令。</li>
         <li>言出法随 / 法眼如炬 / 明镜止水：同事用 npx；完整知识库与改原型在 oneos-v2；真仓在本机 oneos-prod。本机若已软链到 oneos-v2，不要用 -g 覆盖。</li>
+        <li>七 Skill 用途名：团队优先喊产品交付 / 业务口径等；上线守闸一期休眠（发版权在本尊）。</li>
       </ol>
       <div class="batch-actions" style="margin-top:12px">
         <button type="button" class="btn btn-secondary" data-copy="remove-lifecycle">复制卸载旧 lifecycle</button>
@@ -397,6 +422,24 @@ npx skills add 15810879921-coder/oneos-pm-skills --skill mingjingzhishui -a curs
 装完请新开 Chat。
 口令：言出法随 / $yanchufasui ；法眼如炬 / $fayanruju ；明镜止水 / $mingjingzhishui
 签名：王冕驱动 · 言出法随 / 法眼如炬 / 明镜止水
+改原型请打开 oneos-v2；真仓本机根 ~/oneos-prod。</pre>
+      <pre id="seven-update" hidden>npx skills update oneos-wave-router oneos-pm-product oneos-biz-rules oneos-dev-delivery oneos-qa-verify oneos-ux-guide oneos-release-gate yanchufasui fayanruju mingjingzhishui -g -y</pre>
+      <pre id="seven-ai" hidden>请帮我全局安装 OneOS 七 Skill 用途名 + 三花名运行时到 Cursor + Codex：
+
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-wave-router -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-pm-product -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-biz-rules -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-dev-delivery -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-qa-verify -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-ux-guide -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-release-gate -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill yanchufasui -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill fayanruju -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill mingjingzhishui -a cursor -a codex -g -y
+
+装完请新开 Chat。
+用途名口令：任务指路 / 产品交付 / 业务口径 / 开发落地 / 测试验收 / 体验规范 / 上线守闸（休眠）。
+花名兼容：言出法随 / 法眼如炬 / 明镜止水。
 改原型请打开 oneos-v2；真仓本机根 ~/oneos-prod。</pre>
     </section>
   </div>
@@ -471,6 +514,83 @@ npx skills add 15810879921-coder/oneos-pm-skills --skill mingjingzhishui -a curs
         update: "npx skills update YunxiaoQA -g -y",
         extra: "mkdir -p ~/.codex/skills && ln -sfn ~/.agents/skills/yunxiaoqa ~/.codex/skills/yunxiaoqa",
         ai: "请帮我全局安装 YunxiaoQA 到 Cursor + Codex：\nnpx skills add 15810879921-coder/YunxiaoQA -a cursor -a codex -g -y\nmkdir -p ~/.codex/skills && ln -sfn ~/.agents/skills/yunxiaoqa ~/.codex/skills/yunxiaoqa\n装完后说「拉取测试任务」。使用前请登录 https://devops.aliyun.com 。"
+      },
+      {
+        id: "oneos-wave-router",
+        name: "任务指路（oneos-wave-router）",
+        role: "用途名",
+        purpose: "按「谁要做什么」指出下一步该喊哪个 Skill；只指路，不代打。",
+        repo: "https://github.com/15810879921-coder/oneos-pm-skills",
+        tips: "口令：任务指路 / oneos-wave-router / /oneos-wave-router",
+        install: "npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-wave-router -a cursor -a codex -g -y",
+        update: "npx skills update oneos-wave-router -g -y",
+        ai: "请帮我全局安装任务指路（oneos-wave-router）到 Cursor + Codex：\nnpx skills add 15810879921-coder/oneos-pm-skills --skill oneos-wave-router -a cursor -a codex -g -y\n装完新开 Chat。口令：任务指路 / oneos-wave-router。"
+      },
+      {
+        id: "oneos-pm-product",
+        name: "产品交付（oneos-pm-product）",
+        role: "用途名",
+        purpose: "AI 产品经理一号位：PRD / 可点原型 / 验收剧本 / 交棒包；止于交开发。运行时深协议：言出法随。",
+        repo: "https://github.com/15810879921-coder/oneos-pm-skills",
+        tips: "口令：产品交付 / oneos-pm-product｜花名兼容：言出法随｜须同装 yanchufasui",
+        install: "npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-pm-product -a cursor -a codex -g -y",
+        update: "npx skills update oneos-pm-product -g -y",
+        ai: "请帮我全局安装产品交付（oneos-pm-product）到 Cursor + Codex：\nnpx skills add 15810879921-coder/oneos-pm-skills --skill oneos-pm-product -a cursor -a codex -g -y\nnpx skills add 15810879921-coder/oneos-pm-skills --skill yanchufasui -a cursor -a codex -g -y\n装完新开 Chat。口令：产品交付 / oneos-pm-product。"
+      },
+      {
+        id: "oneos-biz-rules",
+        name: "业务口径（oneos-biz-rules）",
+        role: "用途名",
+        purpose: "业务规则一号位：能不能做 / 字段口径 / 交棒码；不改码。运行时深协议：法眼如炬。",
+        repo: "https://github.com/15810879921-coder/oneos-pm-skills",
+        tips: "口令：业务口径 / oneos-biz-rules｜花名兼容：法眼如炬｜须同装 fayanruju｜完整 KB 在 oneos-v2",
+        install: "npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-biz-rules -a cursor -a codex -g -y",
+        update: "npx skills update oneos-biz-rules -g -y",
+        ai: "请帮我全局安装业务口径（oneos-biz-rules）到 Cursor + Codex：\nnpx skills add 15810879921-coder/oneos-pm-skills --skill oneos-biz-rules -a cursor -a codex -g -y\nnpx skills add 15810879921-coder/oneos-pm-skills --skill fayanruju -a cursor -a codex -g -y\n装完新开 Chat。口令：业务口径 / oneos-biz-rules。完整 KB 请打开 oneos-v2。"
+      },
+      {
+        id: "oneos-dev-delivery",
+        name: "开发落地（oneos-dev-delivery）",
+        role: "用途名",
+        purpose: "AI 开发经理一号位：只吃交棒包；双轨本机模拟；止于待测。运行时深协议：明镜止水。",
+        repo: "https://github.com/15810879921-coder/oneos-pm-skills",
+        tips: "口令：开发落地 / oneos-dev-delivery｜花名兼容：明镜止水｜须同装 mingjingzhishui",
+        install: "npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-dev-delivery -a cursor -a codex -g -y",
+        update: "npx skills update oneos-dev-delivery -g -y",
+        ai: "请帮我全局安装开发落地（oneos-dev-delivery）到 Cursor + Codex：\nnpx skills add 15810879921-coder/oneos-pm-skills --skill oneos-dev-delivery -a cursor -a codex -g -y\nnpx skills add 15810879921-coder/oneos-pm-skills --skill mingjingzhishui -a cursor -a codex -g -y\n装完新开 Chat。口令：开发落地 / oneos-dev-delivery。"
+      },
+      {
+        id: "oneos-qa-verify",
+        name: "测试验收（oneos-qa-verify）",
+        role: "用途名",
+        purpose: "测试一号位：风险测计划 / 证据块 / 打回 / 发布候选建议；云效工具层对接 YunxiaoQA；不含发版。",
+        repo: "https://github.com/15810879921-coder/oneos-pm-skills",
+        tips: "口令：测试验收 / oneos-qa-verify｜写云效测试态可再装 YunxiaoQA",
+        install: "npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-qa-verify -a cursor -a codex -g -y",
+        update: "npx skills update oneos-qa-verify -g -y",
+        ai: "请帮我全局安装测试验收（oneos-qa-verify）到 Cursor + Codex：\nnpx skills add 15810879921-coder/oneos-pm-skills --skill oneos-qa-verify -a cursor -a codex -g -y\n装完新开 Chat。口令：测试验收 / oneos-qa-verify。"
+      },
+      {
+        id: "oneos-ux-guide",
+        name: "体验规范（oneos-ux-guide）",
+        role: "用途名",
+        purpose: "体验一号位：UI/AI 交互原则、Pattern、反 AI 味；不定业务口径；报完成归测试验收。",
+        repo: "https://github.com/15810879921-coder/oneos-pm-skills",
+        tips: "口令：体验规范 / oneos-ux-guide｜Token 落盘请打开 oneos-v2 DESIGN.md",
+        install: "npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-ux-guide -a cursor -a codex -g -y",
+        update: "npx skills update oneos-ux-guide -g -y",
+        ai: "请帮我全局安装体验规范（oneos-ux-guide）到 Cursor + Codex：\nnpx skills add 15810879921-coder/oneos-pm-skills --skill oneos-ux-guide -a cursor -a codex -g -y\n装完新开 Chat。口令：体验规范 / oneos-ux-guide。"
+      },
+      {
+        id: "oneos-release-gate",
+        name: "上线守闸（oneos-release-gate · 休眠）",
+        role: "用途名",
+        purpose: "发布/现网质量一号位【一期休眠】。唤起只告知发版权在本尊；禁止自动合 Master / 推生产。",
+        repo: "https://github.com/15810879921-coder/oneos-pm-skills",
+        tips: "口令：上线守闸 / oneos-release-gate｜一期休眠｜唯本尊「启用上线守闸」才唤醒",
+        install: "npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-release-gate -a cursor -a codex -g -y",
+        update: "npx skills update oneos-release-gate -g -y",
+        ai: "请帮我全局安装上线守闸（oneos-release-gate）到 Cursor + Codex：\nnpx skills add 15810879921-coder/oneos-pm-skills --skill oneos-release-gate -a cursor -a codex -g -y\n装完新开 Chat。注意：一期休眠，发版权在本尊。"
       },
       {
         id: "yanchufasui",

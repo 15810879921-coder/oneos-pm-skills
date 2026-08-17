@@ -4,12 +4,12 @@
 
 ## 一句话
 
-**P0 = 冻 Token / DESIGN / 禁第二套皮**，不是登录业务换皮，也不是组织通讯录通关。
+**P0 = 冻 DESIGN-NEXT Token / 禁第三套皮**，不是登录业务换皮，也不是组织通讯录通关。出厂主色 `#007A55`。
 
 ## 通关 · 证据包（齐）
 
 1. 原型：`oneos-v2` L0 检定可点（正绿 / 逆红）  
-2. 现网 Vue：`--ln-*` / `--oneos-primary`；主色禁 `#409EFF` / `#32a06e`；禁拷 React `UIComponents` / `V2Button`  
+2. 现网 Vue：`--ln-*` / `--oneos-primary` 出厂 `#007A55`；禁出厂 `#409EFF`；禁拷 React `UIComponents` / `V2Button`  
 3. 本机：前端登录成功可演示（连通性）
 
 ## 明确不是 P0
@@ -29,7 +29,7 @@
 
 ## 现网 Vue 复现硬裁决
 
-- **吃**：DESIGN.md Token、若依/Ant 主题 CSS、自建 Vue 对齐  
+- **吃**：DESIGN-NEXT.md Token、若依/Ant 主题 CSS、Ant ConfigProvider 对等  
 - **禁**：把 `oneos-v2` React `UIComponents` 拷进 Vben  
 
 ## 轨 B · 现网冲突升档（v1.3.20 · 配对明镜 v1.0.10）

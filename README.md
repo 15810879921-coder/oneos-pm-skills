@@ -18,6 +18,13 @@ OneOS 产品团队自用的 AI Agent Skills 合集，支持 `npx skills` 一键�
 | **`yanchufasui`**（言出法随） | 王冕驱动产品分身：落需求 / 改原型；写云效先确认 | 见下方「王冕驱动三 skill」 |
 | **`fayanruju`**（法眼如炬） | 口径裁决；完整 KB 在 oneos-v2 工作区 | 见下方「王冕驱动三 skill」 |
 | **`mingjingzhishui`**（明镜止水） | AI 开发分身：只吃交棒包；双轨本机模拟（原型→真仓） | 见下方「王冕驱动三 skill」 |
+| **`oneos-wave-router`**（任务指路） | 只指路不办事：下一步喊哪个 Skill | 见下方「七 Skill 用途名」 |
+| **`oneos-pm-product`**（产品交付） | AI 产品经理一号位；运行时→言出法随 | 见下方「七 Skill 用途名」 |
+| **`oneos-biz-rules`**（业务口径） | 规则一号位；运行时→法眼如炬 | 见下方「七 Skill 用途名」 |
+| **`oneos-dev-delivery`**（开发落地） | AI 开发经理一号位；运行时→明镜止水 | 见下方「七 Skill 用途名」 |
+| **`oneos-qa-verify`**（测试验收） | 测试一号位；云效工具层→YunxiaoQA | 见下方「七 Skill 用途名」 |
+| **`oneos-ux-guide`**（体验规范） | 体验一号位；UI/AI 交互原则 | 见下方「七 Skill 用途名」 |
+| **`oneos-release-gate`**（上线守闸） | 发布一号位【一期休眠】 | 见下方「七 Skill 用途名」 |
 
 > **已下架：** `yunxiao-requirement-lifecycle`（旧全生命周期 Skill）已从本仓库删除。产品侧云效**只**用 `YunxiaoPM`；`oneos-autoprd` **只**写 PRD/标注/描述，**不**建同名阶段任务。本机若仍有旧包请卸载：  
 > `npx skills remove yunxiao-requirement-lifecycle -g -y -a cursor -a codex`
@@ -97,6 +104,49 @@ npx skills add 15810879921-coder/oneos-pm-skills --skill fayanruju -a cursor -a 
 npx skills add 15810879921-coder/oneos-pm-skills --skill mingjingzhishui -a cursor -a codex -g -y
 
 装完请新开 Chat。口令：言出法随 / $yanchufasui ；法眼如炬 / $fayanruju ；明镜止水 / $mingjingzhishui
+```
+
+### 七 Skill 用途名（推荐团队 · 用途名优先）
+
+同事优先喊用途名口令；花名三 skill 为运行时深协议，建议同装。上线守闸一期休眠。
+
+```bash
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-wave-router -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-pm-product -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-biz-rules -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-dev-delivery -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-qa-verify -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-ux-guide -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-release-gate -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill yanchufasui -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill fayanruju -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill mingjingzhishui -a cursor -a codex -g -y
+```
+
+更新：
+
+```bash
+npx skills update oneos-wave-router oneos-pm-product oneos-biz-rules oneos-dev-delivery oneos-qa-verify oneos-ux-guide oneos-release-gate yanchufasui fayanruju mingjingzhishui -g -y
+```
+
+丢进 AI：
+
+```text
+请帮我全局安装 OneOS 七 Skill 用途名 + 三花名运行时到 Cursor + Codex：
+
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-wave-router -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-pm-product -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-biz-rules -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-dev-delivery -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-qa-verify -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-ux-guide -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-release-gate -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill yanchufasui -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill fayanruju -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill mingjingzhishui -a cursor -a codex -g -y
+
+装完请新开 Chat。
+用途名：任务指路 / 产品交付 / 业务口径 / 开发落地 / 测试验收 / 体验规范 / 上线守闸（休眠）。
 ```
 
 ### 丢进 AI 代装（复制整段）
@@ -423,7 +473,14 @@ oneos-pm-skills/
     ├── AutoRDO/
     ├── yanchufasui/
     ├── fayanruju/
-    └── mingjingzhishui/
+    ├── mingjingzhishui/
+    ├── oneos-wave-router/
+    ├── oneos-pm-product/
+    ├── oneos-biz-rules/
+    ├── oneos-dev-delivery/
+    ├── oneos-qa-verify/
+    ├── oneos-ux-guide/
+    └── oneos-release-gate/
 ```
 
 ---
