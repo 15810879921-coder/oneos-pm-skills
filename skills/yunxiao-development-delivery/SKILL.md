@@ -5,7 +5,7 @@ description: "Manage Yunxiao development after a YunxiaoPM handoff entirely thro
 
 # Yunxiao Development Delivery
 
-Operate development tasks and Codeup assets without using code activity as a substitute for real work state. Suite version: `9.4.5`.
+Operate development tasks and Codeup assets without using code activity as a substitute for real work state. Suite version: `9.4.6`.
 
 ## Load the required references
 
@@ -169,7 +169,7 @@ All Yunxiao Projex, Codeup, Flow, and AppStack discovery, state reads, relation 
 - Prefer frontend=`develop` and backend=`dev`, but their absence is not a gate; use the repository's verified actual integration branch.
 - Missing or failed branch-association automation is not a gate. Record whether state changes were native, bridged, or direct.
 - An optimization requirement with empty, unreadable, placeholder, or ambiguous description must stop with specific missing information.
-- A new requirement without attachments, without a detailed requirement document, without a local HTML prototype, without an accessible prototype URL, or with conflicting local/online prototypes must stop with evidence.
+- A new requirement requires a complete detailed requirement document plus at least one uniquely addressable canonical prototype (local HTML attachment or accessible online entry). Attachment count=0 or lack of a duplicate local/online copy is not itself a blocker when those two materials are complete and traceable. Compare local and online prototypes only when both are available; conflicting copies or an unreadable business-material reference must stop the affected scope with evidence.
 - A **Web** development task cannot complete without proportionate developer-side automated and real-page verification against the implemented version; a **小程序** development task records the skip instead. This evidence (or skip note) is not a formal QA plan, case execution, report, or acceptance result.
 - `完成开发`: **Web** must run a fresh developer-side completion validation rather than reusing the first validation record; **小程序** skips that revalidation and records the skip.
 - Developer-discovered failures remain inside the development scope; formal Bug creation, retest, closure, and test evidence follow `YunxiaoQA` after test handoff.
