@@ -5,7 +5,7 @@ description: "Manage Yunxiao development after a YunxiaoPM handoff entirely thro
 
 # Yunxiao Development Delivery
 
-Operate development tasks and Codeup assets without using code activity as a substitute for real work state. Suite version: `9.4.4`.
+Operate development tasks and Codeup assets without using code activity as a substitute for real work state. Suite version: `9.4.5`.
 
 ## Load the required references
 
