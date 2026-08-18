@@ -39,7 +39,7 @@ skill-run yunxiao_cli_testhub.py `
 适配器的硬门禁：
 
 1. 先用官方 CLI 回读用例和计划目录。
-2. 若用例未规划，返回`CLI_CAPABILITY_GAP`，回执记录阻塞原因并停止；不得猜测未公开OAPI路由。
+2. 若用例未规划，返回`CLI_CAPABILITY_GAP`，回执记录`测试证据待补`和一次性页面补齐的最小条件；只停止该用例的规划/结果写入，不得猜测未公开OAPI路由，也不得把整个测试任务或缺陷记录标为失败。
 3. 只有官方 CLI 的计划结果目录和结果列表已回读到同一用例，才允许更新执行结果。
 4. PASS/FAILURE/POSTPONE/TODO 更新调用官方 `test-hub-update-test-result`。
 5. 最后回读计划进度和用例结果；未匹配目标状态时返回失败，不得据此关闭测试任务。

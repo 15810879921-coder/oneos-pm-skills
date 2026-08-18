@@ -21,18 +21,18 @@
     "client": "codex",
     "skill": "yunxiao-development-delivery",
     "archive": "yunxiao-development-delivery.zip",
-    "sha256": "fbb3fecb60409013b4ee9ad1e1733b9087e0918d7df63d28eacf812daacb4322"
+    "sha256": "2cf6b71ac985067a6e704c5e5be3a0c1dd4bb840d7fa0e076062233b5e8e0a42"
   },
   {
     "client": "codex",
     "skill": "YunxiaoQA",
     "archive": "YunxiaoQA.zip",
-    "sha256": "6bb20365665fffbb4b20c28267c22dc9f582d67af720a41d8b100f7cc5f330a4"
+    "sha256": "a00ac43a7176781d0796967bf3e97cad0586e1aa9717c3fe5b4888557ed1e05a"
   },
   {
     "client": "codex",
     "skill": "yunxiao-release-operations",
     "archive": "yunxiao-release-operations.zip",
-    "sha256": "86eef20389ee4a522773f1821612ff22035b566603383de8c714d39320660ab8"
+    "sha256": "a425ea679c3d66bad85b1af89885141f5429059f1d9ee00a008921dbfd6fa227"
   }
 ]
