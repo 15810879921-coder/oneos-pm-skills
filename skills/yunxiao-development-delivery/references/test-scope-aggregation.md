@@ -19,15 +19,14 @@
 [跨端] 任务工单/端间联调
 ```
 
-`PC`归为`Web`。一个目录只能属于一个范围；没有端侧前缀的目录不自动纳入任一端。计划存在但当前端没有可识别目录时，结论是`scope-unconfigured`，不是“无测试计划”，也不得降级为轻量验证。
+`PC`归为`Web`。一个目录只能属于一个范围；没有端侧前缀的目录不自动纳入任一端。计划存在但当前端没有可识别目录时，结论是`scope-unconfigured`：本次完成开发改跑开发侧验证，并报告测试计划配置缺口；不得猜测或更新整份计划的用例结果。
 
 ## 完成开发分流
 
-1. 先完成当前开发任务的真实代码验证和可信交付版本。
-2. `优化`：写轻量验证记录；不查询、不要求 TestHub 计划。
-3. `新增`：调用`yunxiao_cli_test_scope.py resolve`查询精确需求计划与当前端范围。
-4. `no-formal-plan`：写`oneos.lightweight-verification/v1`，不创建【测试】、不运行 TestHub。
-5. `formal-plan`：创建/复用该交付范围的【测试】任务，写`oneos.test-scope/v1`，交给测试范围执行。开发只可在有真实执行证据后更新被选中的 TestHub 用例；人工用例、缺陷复测、范围关单由`$YunxiaoQA`负责。
+1. `新增`先调用`yunxiao_cli_test_scope.py resolve`查询精确需求计划与当前端范围；`优化`不查询计划。
+2. `新增 + formal-plan`：执行当前端被选中的真实测试用例作为完成开发验证；仅有真实执行证据时才更新对应 TestHub 结果。
+3. 其他所有情况（优化、`no-formal-plan`、`scope-unconfigured`、计划歧义/读取失败）：执行普通开发侧验证；其中无计划新增写`oneos.lightweight-verification/v1`，计划问题额外报告配置缺口。
+4. `formal-plan`验证通过后创建/复用该交付范围的【测试】任务，写`oneos.test-scope/v1`，交给测试范围执行。人工用例、缺陷复测、范围关单由`$YunxiaoQA`负责。
 
 `oneos.test-scope/v1`至少包含`requirementId`、`deliveryId`、`deliveryEnd`、`scopeId`、`testMode`、`testPlanId`、`directoryIds`、`selectedCaseIds`、交付版本和幂等键。`oneos.lightweight-verification/v1`至少包含需求/交付/开发任务、端侧、真实验证命令或页面路径、版本、结果、时间和幂等键。
 
