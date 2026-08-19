@@ -100,11 +100,11 @@
 
 ### 开始、记录证据与完成测试
 
-- `开始测试`同时推进【测试】`待处理→处理中`和需求`待测试→测试中`。
+- `开始测试`推进当前范围【测试】`待处理→处理中`；需求为`开发中/开发完成/待测试`时可由首个正式范围进入`测试中`，不等待兄弟开发任务。
 - `记录测试证据`使用`yunxiao_cli_test_lifecycle.py record`幂等写入并回读证据，不推进状态。
 - `record|complete`必须传`--evidence-manifest`，由脚本读取、校验真实证据清单与test部署、项目、迭代、需求、测试任务的一致性；不再接受聊天参数自报计划、用例、执行、报告和计数。
 - test部署证据按`deliveryEnd`分流：**Web**要求test环境成功部署；**小程序**接受`testPipeline=skipped`，跳过流水线与自动化测试证据，但测试计划、用例执行、报告和逐Bug复测证据一律不放宽。
-- `完成测试`须校验关系、证据清单、用例计数闭合、逐Bug复测证据与暂不修复批准，同时推进【测试】`处理中→已完成`和需求`测试中→测试完成`。
+- `完成测试`须校验关系、当前范围证据清单、所选用例计数闭合、逐Bug复测证据与暂不修复批准，先推进当前【测试】`处理中→已完成`；仅最后范围加`--aggregate-complete`并通过聚合预检时推进需求`测试中→测试完成`。
 - **唯一完整入口**：`skill-run yunxiao_cli_test_lifecycle.py start|record|complete ...`（先预检，确认后加`--apply`；启动规则见 [runtime-launcher.md](runtime-launcher.md)）。
 - 旧`close_test_task.py`仅保留为拒绝式兼容入口，固定不写状态并返回完整`complete --evidence-manifest`命令；不得用于正式闭环。
 - 完整参数、证据区块和发布交接见 [test-execution.md](test-execution.md)。

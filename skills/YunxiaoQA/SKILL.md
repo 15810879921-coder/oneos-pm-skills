@@ -21,7 +21,7 @@ description: >-
 
 与 **YunxiaoPM（需求任务）**、开发交付 Skill 分工：本 Skill **只做测试侧**读写。
 
-闭环版本：`2.6.1`。
+闭环版本：`2.7.0`。
 
 ## Plan 模式门禁（强制 · 凡写云效）
 
@@ -49,7 +49,7 @@ description: >-
 缺陷打开态 = 待确认（禁止再用「待处理」指缺陷）
 查重/复用 = 优先编号；禁止只按模糊标题瞎改他人单
 测试可改状态 = 已修复→已关闭 | 已修复→再次打开 |（闭环）【测试】→已完成
-测试阶段状态 = 【测试】待处理→处理中→已完成；需求待测试→测试中→测试完成
+测试阶段状态 = 【测试】待处理→处理中→已完成；首个正式范围可使需求开发中/开发完成/待测试→测试中；只有需求范围聚合闭环才→测试完成
 测试不改     = 待确认/再次打开/处理中 → 已修复|暂不修复|处理中（开发侧）
 【测试】任务打开态 = 待处理 / 处理中（任务状态名，与缺陷待确认不同）
 产品不建迭代 = 本 Skill 只把已关闭缺陷挂到已有当期迭代；迭代按端分列，缺陷只并入与来源【交付】端侧标签一致的迭代
@@ -96,7 +96,7 @@ description: >-
 | 场景 | 模块 |
 |---|---|
 | 口令面 | [references/commands.md](references/commands.md) |
-| 开始测试 / 证据 / 完成测试 / 发布交接 | [references/test-execution.md](references/test-execution.md) |
+| 开始测试 / 证据 / 完成测试 / 发布交接 | [references/test-execution.md](references/test-execution.md) · [references/test-scope-aggregation.md](references/test-scope-aggregation.md) |
 | 条线 1/2 · 状态机 · 再次打开 | [references/defect-flow.md](references/defect-flow.md) |
 | 诊断 · 查重 · 分层初判 | [references/diagnosis.md](references/diagnosis.md) |
 | 缺陷描述模板 | [references/bug-template.md](references/bug-template.md) |
@@ -153,10 +153,10 @@ description: >-
 2. 需求=`测试中`。
 3. 开发交接中的`oneos.test-deployment/v1`区块按`deliveryEnd`分流：**Web**表明版本已成功部署到test，且项目、迭代、需求、测试任务、执行ID和部署版本均一致；**小程序**为`testPipeline=skipped`、`status=skipped`且含`reason`，项目、迭代、需求、测试任务一致，不要求test流水线与自动化测试证据。
 4. `oneos.qa-evidence/v1`证据清单已从真实测试资产读取并校验，包含计划ID/URL、用例执行ID/URL、报告ID/URL、test部署执行和SHA-256；禁止用聊天参数、自填“0失败”或占位链接代替。
-5. 无未执行、失败或阻塞用例，且总数等于通过、失败、阻塞、未执行之和。
+5. 当前测试范围所选用例无未执行、失败或阻塞，且范围计数闭合；不得使用整份需求计划总计数代替当前端范围。
 6. 无`待确认/处理中/已修复/再次打开`缺陷；每条已关闭Bug均带独立`oneos.bug-retest/v1`复测通过证据。
 7. 每条`暂不修复`缺陷都有明确批准人和证据；只有状态没有批准证据仍阻塞。
-8. 证据块写入并回读后，才依次推进【测试】→`已完成`、需求→`测试完成`。
+8. 证据块写入并回读后，先推进当前【测试】→`已完成`；仅`--aggregate-complete`且所有关联开发/测试范围已闭环时才推进需求→`测试完成`。
 9. 输出项目、必填迭代、需求、交付、测试任务、部署版本、缺陷状态、证据清单哈希、完成时间和幂等键，交给`$yunxiao-release-operations`组建发布批次。
 
 ## 本 Skill 终点与明确不做

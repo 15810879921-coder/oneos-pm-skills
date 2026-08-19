@@ -324,6 +324,26 @@ def collect_bugs(executable: str, project_id: str, test_id: str,
     return sorted(bugs, key=lambda item: item["serialNumber"])
 
 
+def requirement_delivery_progress(executable: str, project_id: str,
+                                  requirement_id: str, current_test_id: str) -> dict[str, list[dict[str, Any]]]:
+    """Aggregate only formally associated development/test children for requirement closure."""
+    development: list[dict[str, Any]] = []
+    tests: list[dict[str, Any]] = []
+    for row in search_workitems(executable, project_id, "Task"):
+        item_id = str(row.get("id") or "")
+        subject = str(row.get("subject") or "")
+        if not item_id or requirement_id not in relation_ids(executable, item_id, "ASSOCIATED"):
+            continue
+        item = get_workitem(executable, item_id)
+        snapshot = item_snapshot(item)
+        if subject.startswith("【开发】"):
+            development.append(snapshot)
+        elif subject.startswith("【测试】") or item_id == current_test_id:
+            tests.append(snapshot)
+    return {"development": sorted(development, key=lambda item: item["serialNumber"]),
+            "tests": sorted(tests, key=lambda item: item["serialNumber"])}
+
+
 def parse_approvals(values: list[str]) -> dict[str, dict[str, str]]:
     result: dict[str, dict[str, str]] = {}
     for raw in values:
@@ -407,7 +427,7 @@ def run(args: argparse.Namespace) -> int:
         raise core.AdapterError("测试任务正式PARENT/ASSOCIATED关系不完整。")
     if args.command == "start":
         if status_name(test) not in {"待处理", "处理中"} or \
-                status_name(req) not in {"待测试", "测试中"}:
+                status_name(req) not in {"开发中", "开发完成", "待测试", "测试中"}:
             raise core.AdapterError(f"开始测试状态门禁失败：{before}")
         actions = [
             {"operation": "projex-update-workitem", "target": args.test_sn,
@@ -485,6 +505,7 @@ def run(args: argparse.Namespace) -> int:
     bugs = collect_bugs(executable, args.space_id, str(test["id"]),
                         str(deployment.get("deployedVersion") or ""),
                         match_version=not is_skip_deployment(deployment))
+    aggregate = None
     if args.command == "complete":
         active = [bug for bug in bugs if bug["status"] not in {"已关闭", "暂不修复"}]
         missing = [bug for bug in bugs if bug["status"] == "暂不修复"
@@ -498,6 +519,19 @@ def run(args: argparse.Namespace) -> int:
                 "activeBugs": active, "missingRiskApprovals": missing,
                 "closedWithoutRetest": closed_invalid, "extraApprovals": extra,
             }, ensure_ascii=False))
+        if args.aggregate_complete:
+            aggregate = requirement_delivery_progress(
+                executable, args.space_id, str(req["id"]), str(test["id"])
+            )
+            pending_development = [item for item in aggregate["development"]
+                                   if item["status"] not in {"已完成", "已取消"}]
+            pending_tests = [item for item in aggregate["tests"]
+                             if item["id"] != str(test["id"]) and item["status"] != "已完成"]
+            if pending_development or pending_tests:
+                raise core.AdapterError(json.dumps({
+                    "pendingDevelopmentScopes": pending_development,
+                    "pendingTestScopes": pending_tests,
+                }, ensure_ascii=False))
     bug_snapshot = [{
         "id": bug["id"], "serialNumber": bug["serialNumber"],
         "status": bug["status"],
@@ -536,19 +570,18 @@ def run(args: argparse.Namespace) -> int:
         actions.insert(0, {"operation": "projex-update-workitem", "target": args.test_sn,
                            "fields": ["oneos.test-deployment/v1"]})
     if args.command == "complete":
-        actions.extend([
-            {"operation": "projex-update-workitem", "target": args.test_sn,
-             "status": "已完成"},
-            {"operation": "projex-update-workitem", "target": args.req_sn,
-             "status": "测试完成"},
-        ])
+        actions.append({"operation": "projex-update-workitem", "target": args.test_sn,
+                        "status": "已完成"})
+        if args.aggregate_complete:
+            actions.append({"operation": "projex-update-workitem", "target": args.req_sn,
+                            "status": "测试完成"})
     receipt: dict[str, Any] = {
         "schemaVersion": SCHEMA, "mode": "apply" if args.apply else "preflight",
         "command": args.command, "organizationId": auth["organizationId"],
         "projectId": args.space_id, "before": before, "relations": {
             "parentIds": parents, "associatedIds": associated,
         }, "deployment": deployment, "testHub": live_testhub,
-        "bugs": bugs, "manifestSha256": evidence["manifestSha256"],
+        "bugs": bugs, "aggregate": aggregate, "manifestSha256": evidence["manifestSha256"],
         "plannedActions": actions, "verified": False,
     }
     if args.apply:
@@ -565,7 +598,7 @@ def run(args: argparse.Namespace) -> int:
                 test = update_item(executable, str(test["id"]), {
                     "status": status_id(executable, args.space_id, test, "已完成")
                 })
-            if status_name(req) != "测试完成":
+            if args.aggregate_complete and status_name(req) != "测试完成":
                 req = update_item(executable, str(req["id"]), {
                     "status": status_id(executable, args.space_id, req, "测试完成")
                 })
@@ -574,7 +607,7 @@ def run(args: argparse.Namespace) -> int:
         receipt["verified"] = status_name(test) == (
             "已完成" if args.command == "complete" else before["test"]["status"]
         ) and status_name(req) == (
-            "测试完成" if args.command == "complete" else before["requirement"]["status"]
+            "测试完成" if args.command == "complete" and args.aggregate_complete else before["requirement"]["status"]
         )
         if not receipt["verified"]:
             raise core.AdapterError("测试生命周期写入后状态回读失败。")
@@ -600,6 +633,8 @@ def main() -> int:
     parser.add_argument("--evidence-manifest")
     parser.add_argument("--deployment-evidence")
     parser.add_argument("--risk-approval", action="append", default=[])
+    parser.add_argument("--aggregate-complete", action="store_true",
+                        help="仅当本需求所有关联开发/测试范围均已闭环时推进需求测试完成")
     parser.add_argument("--idempotency-key", required=True)
     parser.add_argument("--apply", action="store_true")
     parser.add_argument("--output")
