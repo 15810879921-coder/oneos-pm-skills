@@ -66,12 +66,12 @@ TestHub、测试报告、复测记录或测试环境暂时不可读时，不得�
 
 测试部署缺失或版本无法确认时，Web 不开始正式测试，以免用错版本；小程序仍按已回读的`testPipeline=skipped`和非空测试版本标识执行。任何缺口都不得伪造TestHub结果、报告URL或复测通过结论。
 
-测试任务描述维护一个机器可解析的`oneos.qa-evidence/v1`幂等区块。证据来源必须是一份由真实测试执行资产导出的JSON清单，不接受聊天中逐项填写的字符串作为完成依据。计划与范围规则见[test-scope-aggregation.md](test-scope-aggregation.md)：计划属于需求，清单必须说明当前交付端与被选中的范围；不得把整份计划的总进度当成单端结论。
+测试任务描述维护一个机器可解析的`oneos.qa-evidence/v1`幂等区块。证据来源必须是一份由真实测试执行资产导出的JSON清单，不接受聊天中逐项填写的字符串作为完成依据。该区块仅按以下隐藏 HTML 注释格式由脚本写入，不能以`<pre>`、HTML标题或可见JSON污染测试任务正文。计划与范围规则见[test-scope-aggregation.md](test-scope-aggregation.md)：计划属于需求，清单必须说明当前交付端与被选中的范围；不得把整份计划的总进度当成单端结论。
 
 ```markdown
-## 测试执行证据（YunxiaoQA）
-
-{"schemaVersion":"oneos.qa-evidence/v1","sourceVerified":true,"projectId":"...","iterationId":"...","iterationName":"...","requirementId":"...","testTaskId":"...","testPlan":{"id":"...","url":"..."},"caseRun":{"id":"...","url":"...","status":"completed","total":10,"passed":10,"failed":0,"blocked":0,"unexecuted":0},"caseCounts":{"total":10,"passed":10,"failed":0,"blocked":0,"unexecuted":0},"report":{"id":"...","url":"..."},"testDeployment":{"executionId":"...","deployedVersion":"...","evidenceUrl":"..."},"bugSnapshot":[],"bugSnapshotSha256":"...","riskApprovals":{},"manifestSha256":"...","idempotencyKey":"qa-..."}
+<!-- YUNXIAOQA_TEST_EVIDENCE_START -->
+<!-- {"schemaVersion":"oneos.qa-evidence/v1","sourceVerified":true,"projectId":"...","iterationId":"...","iterationName":"...","requirementId":"...","testTaskId":"...","testPlan":{"id":"...","url":"..."},"caseRun":{"id":"...","url":"...","status":"completed","total":10,"passed":10,"failed":0,"blocked":0,"unexecuted":0},"caseCounts":{"total":10,"passed":10,"failed":0,"blocked":0,"unexecuted":0},"report":{"id":"...","url":"..."},"testDeployment":{"executionId":"...","deployedVersion":"...","evidenceUrl":"..."},"bugSnapshot":[],"bugSnapshotSha256":"...","riskApprovals":{},"manifestSha256":"...","idempotencyKey":"qa-..."} -->
+<!-- YUNXIAOQA_TEST_EVIDENCE_END -->
 ```
 
 小程序端清单的`testDeployment`改写跳过口径，其余字段不变：

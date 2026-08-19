@@ -24,7 +24,7 @@
 
 ```html
 <!-- ONEOS_TEST_DEPLOYMENT_EVIDENCE_START -->
-<pre>{"schemaVersion":"oneos.test-deployment/v1","projectId":"...","iterationId":"...","iterationName":"...","requirementId":"REQ-1","testTaskId":"TEST-1","executionId":"EXEC-1","environment":"test","status":"success","deployedVersion":"commit-or-artifact","includedChanges":["MR-or-commit"],"evidenceUrl":"...","completedAt":"ISO-8601","idempotencyKey":"test-deploy-..."}</pre>
+<!-- {"schemaVersion":"oneos.test-deployment/v1","projectId":"...","iterationId":"...","iterationName":"...","requirementId":"REQ-1","testTaskId":"TEST-1","executionId":"EXEC-1","environment":"test","status":"success","deployedVersion":"commit-or-artifact","includedChanges":["MR-or-commit"],"evidenceUrl":"...","completedAt":"ISO-8601","idempotencyKey":"test-deploy-..."} -->
 <!-- ONEOS_TEST_DEPLOYMENT_EVIDENCE_END -->
 ```
 
@@ -32,7 +32,7 @@
 
 ```html
 <!-- ONEOS_TEST_DEPLOYMENT_EVIDENCE_START -->
-<pre>{"schemaVersion":"oneos.test-deployment/v1","projectId":"...","iterationId":"...","iterationName":"...","requirementId":"REQ-1","testTaskId":"TEST-1","deliveryEnd":"小程序","testPipeline":"skipped","status":"skipped","reason":"小程序交付按规则跳过test流水线与开发自测","completedAt":"ISO-8601","idempotencyKey":"test-deploy-skip-miniprogram-..."}</pre>
+<!-- {"schemaVersion":"oneos.test-deployment/v1","projectId":"...","iterationId":"...","iterationName":"...","requirementId":"REQ-1","testTaskId":"TEST-1","deliveryEnd":"小程序","testPipeline":"skipped","status":"skipped","reason":"小程序交付按规则跳过test流水线与开发自测","completedAt":"ISO-8601","idempotencyKey":"test-deploy-skip-miniprogram-..."} -->
 <!-- ONEOS_TEST_DEPLOYMENT_EVIDENCE_END -->
 ```
 

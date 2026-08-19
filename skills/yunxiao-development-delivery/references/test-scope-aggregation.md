@@ -28,7 +28,15 @@
 3. 其他所有情况（优化、`no-formal-plan`、`scope-unconfigured`、计划歧义/读取失败）：执行普通开发侧验证；其中无计划新增写`oneos.lightweight-verification/v1`，计划问题额外报告配置缺口。
 4. `formal-plan`验证通过后创建/复用该交付范围的【测试】任务，写`oneos.test-scope/v1`，交给测试范围执行。人工用例、缺陷复测、范围关单由`$YunxiaoQA`负责。
 
-`oneos.test-scope/v1`至少包含`requirementId`、`deliveryId`、`deliveryEnd`、`scopeId`、`testMode`、`testPlanId`、`directoryIds`、`selectedCaseIds`、交付版本和幂等键。`oneos.lightweight-verification/v1`至少包含需求/交付/开发任务、端侧、真实验证命令或页面路径、版本、结果、时间和幂等键。
+`oneos.test-scope/v1`至少包含`requirementId`、`deliveryId`、`deliveryEnd`、`scopeId`、`testMode`、`testPlanId`、`directoryIds`、`selectedCaseIds`、交付版本和幂等键。它不是给人看的任务正文，必须按以下格式隐藏写入，JSON使用紧凑单行，重试时只替换这一个区块：
+
+```html
+<!-- ONEOS_TEST_SCOPE_START -->
+<!-- {"schemaVersion":"oneos.test-scope/v1","requirementId":"...","deliveryId":"...","deliveryEnd":"Web","scopeId":"...","testMode":"formal-plan","testPlanId":"...","directoryIds":["..."],"selectedCaseIds":["..."],"deliveryVersion":"...","idempotencyKey":"..."} -->
+<!-- ONEOS_TEST_SCOPE_END -->
+```
+
+不得使用`<pre>`包装受管JSON，也不得把它与`## 开发交接`正文拼接为`<br/>`文本。`oneos.lightweight-verification/v1`至少包含需求/交付/开发任务、端侧、真实验证命令或页面路径、版本、结果、时间和幂等键。
 
 ## 需求级聚合
 

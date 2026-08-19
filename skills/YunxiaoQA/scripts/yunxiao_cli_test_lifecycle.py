@@ -359,15 +359,15 @@ def parse_approvals(values: list[str]) -> dict[str, dict[str, str]]:
 
 
 def managed_block(payload: dict[str, Any]) -> str:
-    return f"{QA_START}<h2>测试执行证据（YunxiaoQA）</h2><pre>" + \
+    return f"{QA_START}\n<!-- " + \
         html.escape(json.dumps(payload, ensure_ascii=False, sort_keys=True)) + \
-        f"</pre>{QA_END}"
+        f" -->\n{QA_END}"
 
 
 def deployment_block(payload: dict[str, Any]) -> str:
-    return f"{DEPLOY_START}<pre>" + \
+    return f"{DEPLOY_START}\n<!-- " + \
         html.escape(json.dumps(payload, ensure_ascii=False, sort_keys=True)) + \
-        f"</pre>{DEPLOY_END}"
+        f" -->\n{DEPLOY_END}"
 
 
 def replace_block(content: str, block: str) -> str:
