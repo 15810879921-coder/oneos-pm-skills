@@ -47,5 +47,6 @@ skill-run yunxiao_cli_gateway.py apply --preflight <预检回执JSON> --receipt 
 
 - 一条业务口令只做一次环境诊断和一次写入事务，不用第二次 `apply`做验证。
 - 独立只读发现可并行，写动作及其依赖保持顺序。
+- `flow-list-pipelines`、`flow-list-pipeline-runs`、Codeup 列表和 AppStack 列表必须按服务的实际分页协议读取至空页（或读取到明确的总数）；不得把第一页当作全集。发布矩阵解析只接受逐页汇总后的活动生产定义，并在回执中保留页数、定义总数和被选定义 ID。
 - 等待最终一致性时只轮询受影响任务或执行 ID，不重扫项目、迭代或全部流水线。
 - 每次轮询最多等待 60 秒并向用户更新；结束后只抓取失败步骤需要的日志区间。
