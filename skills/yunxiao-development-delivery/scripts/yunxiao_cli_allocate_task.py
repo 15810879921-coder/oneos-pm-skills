@@ -17,12 +17,15 @@ from typing import Any
 import yunxiao_cli_bug_batch as core
 
 
-SCHEMA = "oneos.yunxiao-cli-allocation/v1"
+SCHEMA = "oneos.yunxiao-cli-allocation/v2"
 SERIAL_RE = re.compile(r"^([A-Za-z][A-Za-z0-9_-]*)-(\d+)$")
 MARKDOWN_BLOCK_RE = re.compile(r"(?ms)^## 下一阶段\s*\n.*?(?=^## |\Z)")
 HTML_BLOCK_RE = re.compile(r"(?is)<h2>下一阶段</h2>.*?(?=<h2>|\Z)")
 MARKDOWN_PLAN_RE = re.compile(
     r"(?ms)^## 技术实施方案\s*\n<!-- ONEOS_DEVELOPMENT_TECHNICAL_PLAN_START(?: sha256=[a-f0-9]{64})? -->.*?<!-- ONEOS_DEVELOPMENT_TECHNICAL_PLAN_END -->\s*"
+)
+MARKDOWN_SNAPSHOT_RE = re.compile(
+    r"(?ms)^## 开发需求快照\s*\n<!-- ONEOS_DEVELOPMENT_REQUIREMENT_SNAPSHOT_START(?: sha256=[a-f0-9]{64})? -->.*?<!-- ONEOS_DEVELOPMENT_REQUIREMENT_SNAPSHOT_END -->\s*"
 )
 EXECUTION_COMMAND_RE = re.compile(
     r"(?m)^\s*(?:开始开发|开发任务|提交代码|完成开发|开始修复bug|完成修复bug|修复bug|实现所有负责人是我的开发任务|实现我的全部开发任务|开发我负责的所有开发任务|修复负责人是我的所有Bug|修复我负责的全部Bug|处理所有分配给我的Bug)"
@@ -30,7 +33,14 @@ EXECUTION_COMMAND_RE = re.compile(
 HTML_PLAN_RE = re.compile(
     r"(?is)<h2>技术实施方案</h2><!-- ONEOS_DEVELOPMENT_TECHNICAL_PLAN_START(?: sha256=[a-f0-9]{64})? -->.*?<!-- ONEOS_DEVELOPMENT_TECHNICAL_PLAN_END -->"
 )
+HTML_SNAPSHOT_RE = re.compile(
+    r"(?is)<h2>开发需求快照</h2><!-- ONEOS_DEVELOPMENT_REQUIREMENT_SNAPSHOT_START(?: sha256=[a-f0-9]{64})? -->.*?<!-- ONEOS_DEVELOPMENT_REQUIREMENT_SNAPSHOT_END -->"
+)
 PLAN_SECTIONS = ("实现范围", "处理逻辑", "实施步骤", "验证标准")
+SNAPSHOT_SECTIONS = ("任务目标", "本次范围", "页面与交互", "业务规则", "验收条件", "来源与版本")
+PRODUCT_SNAPSHOT_MARKER_RE = re.compile(
+    r"ONEOS_PRODUCT_HANDOFF_SNAPSHOT_START id=(ps-[a-f0-9]{16}) sha256=([a-f0-9]{64})"
+)
 
 
 def canonical_hash(value: dict[str, Any], excluded: set[str] | None = None) -> str:
@@ -189,7 +199,57 @@ def workflow_status_id(executable: str, project_id: str, type_id: str,
     return matches[0]
 
 
-def load_technical_plan(path: str, requirement: dict[str, Any]) -> dict[str, str]:
+def product_snapshot_identity(requirement: dict[str, Any],
+                              delivery: dict[str, Any]) -> dict[str, str]:
+    def marker(item: dict[str, Any]) -> tuple[str, str] | None:
+        matches = set(PRODUCT_SNAPSHOT_MARKER_RE.findall(
+            str(item.get("description") or "")))
+        if len(matches) > 1:
+            raise core.AdapterError("工作项中存在多个不同产品交棒快照标识。")
+        return next(iter(matches)) if matches else None
+
+    requirement_marker = marker(requirement)
+    delivery_marker = marker(delivery)
+    if requirement_marker is None and delivery_marker is None:
+        return {"status": "missing-legacy", "snapshotId": "", "sha256": ""}
+    if requirement_marker is None or delivery_marker is None or \
+            requirement_marker != delivery_marker:
+        return {"status": "conflict", "snapshotId": "", "sha256": ""}
+    return {"status": "verified", "snapshotId": requirement_marker[0],
+            "sha256": requirement_marker[1]}
+
+
+def load_requirement_snapshot(path: str, requirement: dict[str, Any],
+                              product_snapshot: dict[str, str]) -> dict[str, str]:
+    source = Path(path).resolve()
+    if not source.is_file():
+        raise core.AdapterError("开发需求快照文件不存在。")
+    content = source.read_text(encoding="utf-8").strip()
+    if len(content) < 240:
+        raise core.AdapterError("开发需求快照内容过短，不能支撑任务分配。")
+    if re.search(r"(?<!\w)\$[A-Za-z][A-Za-z0-9_-]*\b", content) or EXECUTION_COMMAND_RE.search(content):
+        raise core.AdapterError("开发需求快照不得包含Skill选择器或执行口令。")
+    missing = [name for name in SNAPSHOT_SECTIONS if name not in content]
+    if missing:
+        raise core.AdapterError(f"开发需求快照缺少必要章节：{'、'.join(missing)}。")
+    requirement_serial = item_serial(requirement)
+    if requirement_serial not in content:
+        raise core.AdapterError("开发需求快照未绑定关联需求编号，拒绝写入。")
+    if product_snapshot["status"] == "verified":
+        if product_snapshot["snapshotId"] not in content or \
+                product_snapshot["sha256"] not in content:
+            raise core.AdapterError("开发需求快照未绑定PM产品交棒快照编号和哈希。")
+    elif product_snapshot["status"] == "missing-legacy":
+        if "历史补录" not in content or "产品交棒快照" not in content:
+            raise core.AdapterError("历史需求无产品快照时，开发需求快照必须明确标记历史补录。")
+    else:
+        raise core.AdapterError("需求与交付中的产品交棒快照缺失一侧或哈希不一致。")
+    return {"path": str(source), "content": content,
+            "sha256": hashlib.sha256(content.encode("utf-8")).hexdigest()}
+
+
+def load_technical_plan(path: str, requirement: dict[str, Any],
+                        requirement_snapshot: dict[str, str]) -> dict[str, str]:
     source = Path(path).resolve()
     if not source.is_file():
         raise core.AdapterError("技术方案文件不存在。")
@@ -204,6 +264,8 @@ def load_technical_plan(path: str, requirement: dict[str, Any]) -> dict[str, str
     requirement_serial = item_serial(requirement)
     if requirement_serial not in content:
         raise core.AdapterError("技术方案未绑定关联需求编号，拒绝写入。")
+    if requirement_snapshot["sha256"] not in content:
+        raise core.AdapterError("技术方案未绑定开发需求快照哈希，拒绝写入。")
     return {"path": str(source), "content": content,
             "sha256": hashlib.sha256(content.encode("utf-8")).hexdigest()}
 
@@ -213,22 +275,34 @@ def markdown_as_html(content: str) -> str:
 
 
 def managed_description(current: str | None, format_type: str | None,
+                        requirement_snapshot: dict[str, str],
                         technical_plan: dict[str, str]) -> tuple[str, str]:
-    marker = technical_plan["sha256"]
+    snapshot_marker = requirement_snapshot["sha256"]
+    plan_marker = technical_plan["sha256"]
     if str(format_type or "").upper() == "RICHTEXT":
-        block = ("<h2>技术实施方案</h2>"
-                 f"<!-- ONEOS_DEVELOPMENT_TECHNICAL_PLAN_START sha256={marker} -->"
+        snapshot_block = ("<h2>开发需求快照</h2>"
+                 f"<!-- ONEOS_DEVELOPMENT_REQUIREMENT_SNAPSHOT_START sha256={snapshot_marker} -->"
+                 f"{markdown_as_html(requirement_snapshot['content'])}"
+                 "<!-- ONEOS_DEVELOPMENT_REQUIREMENT_SNAPSHOT_END -->")
+        plan_block = ("<h2>技术实施方案</h2>"
+                 f"<!-- ONEOS_DEVELOPMENT_TECHNICAL_PLAN_START sha256={plan_marker} -->"
                  f"{markdown_as_html(technical_plan['content'])}"
                  "<!-- ONEOS_DEVELOPMENT_TECHNICAL_PLAN_END -->")
-        source = HTML_PLAN_RE.sub("", HTML_BLOCK_RE.sub("", current or "", count=1), count=1).rstrip()
-        updated = f"{source}{block}" if source else block
+        source = HTML_SNAPSHOT_RE.sub("", HTML_PLAN_RE.sub("", HTML_BLOCK_RE.sub("", current or "", count=1), count=1), count=1).rstrip()
+        managed = snapshot_block + plan_block
+        updated = f"{source}{managed}" if source else managed
         return updated, "RICHTEXT"
-    block = ("## 技术实施方案\n"
-             f"<!-- ONEOS_DEVELOPMENT_TECHNICAL_PLAN_START sha256={marker} -->\n"
+    snapshot_block = ("## 开发需求快照\n"
+             f"<!-- ONEOS_DEVELOPMENT_REQUIREMENT_SNAPSHOT_START sha256={snapshot_marker} -->\n"
+             f"{requirement_snapshot['content']}\n"
+             "<!-- ONEOS_DEVELOPMENT_REQUIREMENT_SNAPSHOT_END -->")
+    plan_block = ("## 技术实施方案\n"
+             f"<!-- ONEOS_DEVELOPMENT_TECHNICAL_PLAN_START sha256={plan_marker} -->\n"
              f"{technical_plan['content']}\n"
              "<!-- ONEOS_DEVELOPMENT_TECHNICAL_PLAN_END -->")
-    source = MARKDOWN_PLAN_RE.sub("", MARKDOWN_BLOCK_RE.sub("", current or "", count=1), count=1).rstrip()
-    updated = f"{source}\n\n{block}" if source else block
+    source = MARKDOWN_SNAPSHOT_RE.sub("", MARKDOWN_PLAN_RE.sub("", MARKDOWN_BLOCK_RE.sub("", current or "", count=1), count=1), count=1).rstrip()
+    managed = f"{snapshot_block}\n\n{plan_block}"
+    updated = f"{source}\n\n{managed}" if source else managed
     return updated.rstrip(), "MARKDOWN"
 
 
@@ -311,7 +385,11 @@ def build_preflight(executable: str, args: argparse.Namespace) -> dict[str, Any]
     if len(requirements) != 1 or item_status(requirements[0]) != "待开发":
         raise core.AdapterError("来源【交付】未唯一关联状态为待开发的产品需求。")
     requirement = requirements[0]
-    technical_plan = load_technical_plan(args.technical_plan_file, requirement)
+    product_snapshot = product_snapshot_identity(requirement, delivery)
+    requirement_snapshot = load_requirement_snapshot(
+        args.requirement_snapshot_file, requirement, product_snapshot)
+    technical_plan = load_technical_plan(
+        args.technical_plan_file, requirement, requirement_snapshot)
 
     child_ids = relation_ids(executable, str(delivery["id"]), "SUB")
     children = [get_workitem(executable, value) for value in child_ids]
@@ -365,6 +443,11 @@ def build_preflight(executable: str, args: argparse.Namespace) -> dict[str, Any]
         "owner": owner,
         "fieldIds": field_ids,
         "statusIds": status_ids,
+        "productSnapshot": product_snapshot,
+        "requirementSnapshot": {
+            "path": requirement_snapshot["path"],
+            "sha256": requirement_snapshot["sha256"],
+        },
         "technicalPlan": {"path": technical_plan["path"], "sha256": technical_plan["sha256"]},
     }
     return {
@@ -373,8 +456,10 @@ def build_preflight(executable: str, args: argparse.Namespace) -> dict[str, Any]
             "task": args.task, "owner": args.owner, "planStart": args.plan_start,
             "planFinish": args.plan_finish, "estimatedHours": estimated_hours,
             "developmentTask": args.development_task, "spaceId": args.space_id,
+            "requirementSnapshotFile": requirement_snapshot["path"],
             "technicalPlanFile": technical_plan["path"],
         },
+        "requirementSnapshot": requirement_snapshot,
         "technicalPlan": technical_plan,
         "currentUser": core.current_user(executable),
         "action": action, "liveScope": live_scope,
@@ -406,6 +491,7 @@ def args_from_preflight(value: dict[str, Any]) -> argparse.Namespace:
         plan_start=source.get("planStart"), plan_finish=source.get("planFinish"),
         estimated_hours=source.get("estimatedHours"),
         development_task=source.get("developmentTask"), space_id=source.get("spaceId"),
+        requirement_snapshot_file=source.get("requirementSnapshotFile"),
         technical_plan_file=source.get("technicalPlanFile"),
     )
 
@@ -523,16 +609,23 @@ def build_requirement_analysis(executable: str, task_serial: str,
         raise core.AdapterError("来源【交付】未唯一关联产品需求。")
     requirement = requirements[0]
     requirement_description = str(requirement.get("description") or "").strip()
-    if not requirement_description:
-        raise core.AdapterError("关联需求没有详细说明，不能生成技术方案。")
+    delivery_description = str(delivery.get("description") or "").strip()
+    product_snapshot = product_snapshot_identity(requirement, delivery)
     return {
         "schema": SCHEMA, "command": "analyze", "createdAt": core.now_utc(),
         "project": {"id": project_id, "name": project.get("name")},
-        "delivery": {**snapshot_item(delivery), "description": str(delivery.get("description") or "")},
+        "delivery": {**snapshot_item(delivery), "description": delivery_description},
         "requirement": {**snapshot_item(requirement), "description": requirement_description},
+        "productSnapshot": product_snapshot,
         "analysisInstruction": {
-            "requiredSections": list(PLAN_SECTIONS),
+            "executionOrder": ["生成开发需求快照", "基于快照生成技术实施方案"],
+            "snapshotRequiredSections": list(SNAPSHOT_SECTIONS),
+            "planRequiredSections": list(PLAN_SECTIONS),
             "mustBindRequirementSerial": item_serial(requirement),
+            "materialStatus": (
+                "requirement-description-ready" if requirement_description
+                else "requirement-description-missing-search-authoritative-handoff"
+            ),
             "forbidden": ["Skill选择器", "执行口令", "未验证的具体文件路径", "未验证的接口字段"],
         },
     }
@@ -547,7 +640,10 @@ def cmd_analyze(args: argparse.Namespace) -> int:
     print(json.dumps({"schema": SCHEMA, "command": "analyze", "ready": True,
                       "analysisPath": str(path), "project": value["project"],
                       "delivery": value["delivery"], "requirement": value["requirement"],
-                      "requiredSections": list(PLAN_SECTIONS)}, ensure_ascii=False, indent=2))
+                      "productSnapshot": value["productSnapshot"],
+                      "materialStatus": value["analysisInstruction"]["materialStatus"],
+                      "snapshotRequiredSections": list(SNAPSHOT_SECTIONS),
+                      "planRequiredSections": list(PLAN_SECTIONS)}, ensure_ascii=False, indent=2))
     return 0
 
 
@@ -577,6 +673,8 @@ def cmd_preflight(args: argparse.Namespace) -> int:
         "requirement": value["liveScope"]["requirement"],
         "development": value["liveScope"]["selectedDevelopment"],
         "owner": value["liveScope"]["owner"],
+        "productSnapshot": value["liveScope"]["productSnapshot"],
+        "requirementSnapshotSha256": value["requirementSnapshot"]["sha256"],
         "technicalPlanSha256": value["technicalPlan"]["sha256"],
     }, ensure_ascii=False, indent=2))
     return 0
@@ -592,7 +690,10 @@ def cmd_apply(args: argparse.Namespace) -> int:
 
     source = frozen["input"]
     live = frozen["liveScope"]
+    requirement_snapshot = frozen.get("requirementSnapshot")
     technical_plan = frozen.get("technicalPlan")
+    if not isinstance(requirement_snapshot, dict) or requirement_snapshot.get("sha256") != current.get("requirementSnapshot", {}).get("sha256"):
+        raise core.AdapterError("开发需求快照在预检后发生变化，请重新预检。")
     if not isinstance(technical_plan, dict) or technical_plan.get("sha256") != current.get("technicalPlan", {}).get("sha256"):
         raise core.AdapterError("技术方案在预检后发生变化，请重新预检。")
     scope = {
@@ -614,7 +715,8 @@ def cmd_apply(args: argparse.Namespace) -> int:
                            "serialNumber": item_serial(development)})
 
     description, format_type = managed_description(
-        development.get("description"), development.get("formatType"), technical_plan)
+        development.get("description"), development.get("formatType"),
+        requirement_snapshot, technical_plan)
     update_body: dict[str, Any] = {
         live["fieldIds"]["planStart"]: source["planStart"] + " 00:00:00",
         live["fieldIds"]["planFinish"]: source["planFinish"] + " 23:59:59",
@@ -696,6 +798,8 @@ def cmd_apply(args: argparse.Namespace) -> int:
         raise core.AdapterError("开发任务父交付关系回读失败。")
     if live["requirement"]["id"] not in relation_ids(executable, str(development["id"]), "ASSOCIATED"):
         raise core.AdapterError("开发任务需求关联回读失败。")
+    if f"sha256={requirement_snapshot['sha256']}" not in str(after_development.get("description") or ""):
+        raise core.AdapterError("开发任务需求快照回读失败。")
     if f"sha256={technical_plan['sha256']}" not in str(after_development.get("description") or ""):
         raise core.AdapterError("开发任务技术方案回读失败。")
 
@@ -729,6 +833,9 @@ def cmd_apply(args: argparse.Namespace) -> int:
         "delivery": snapshot_item(after_delivery),
         "requirement": snapshot_item(after_requirement),
         "development": snapshot_item(after_development), "fields": actual,
+        "productSnapshot": live["productSnapshot"],
+        "requirementSnapshotSha256": requirement_snapshot["sha256"],
+        "technicalPlanSha256": technical_plan["sha256"],
     }
     receipt["receiptHash"] = canonical_hash(receipt, {"receiptHash"})
     stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -743,7 +850,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
     doctor = sub.add_parser("doctor", help="检查CLI、插件和中心版环境变量")
     doctor.set_defaults(func=cmd_doctor)
-    analyze = sub.add_parser("analyze", help="只读读取关联需求详细说明，供生成技术方案")
+    analyze = sub.add_parser("analyze", help="只读读取关联需求和交付材料，供生成需求快照及技术方案")
     analyze.add_argument("--task", required=True)
     analyze.add_argument("--space-id")
     analyze.add_argument("--output")
@@ -756,6 +863,7 @@ def build_parser() -> argparse.ArgumentParser:
     preflight.add_argument("--estimated-hours")
     preflight.add_argument("--development-task")
     preflight.add_argument("--space-id")
+    preflight.add_argument("--requirement-snapshot-file", required=True)
     preflight.add_argument("--technical-plan-file", required=True)
     preflight.add_argument("--output")
     preflight.set_defaults(func=cmd_preflight)
