@@ -1,20 +1,35 @@
 [CmdletBinding()]
 param(
-    [string]$OutputRoot = (Join-Path $PSScriptRoot '..\packages')
+    [string]$OutputRoot,
+    [string[]]$SkillNames
 )
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
+if ([string]::IsNullOrWhiteSpace($OutputRoot)) {
+    $OutputRoot = Join-Path $repoRoot 'packages'
+}
 $skillsRoot = Join-Path $repoRoot 'skills'
 $resolvedOutput = [System.IO.Path]::GetFullPath($OutputRoot)
-$skillNames = @(
+$allSkillNames = @(
     'AutoRDO',
     'oneos-autoprd',
     'YunxiaoPM',
     'yunxiao-development-delivery',
+    'development-brain',
     'YunxiaoQA',
     'yunxiao-release-operations'
 )
+if ($null -eq $SkillNames -or $SkillNames.Count -eq 0) {
+    $skillNames = $allSkillNames
+}
+else {
+    $skillNames = @($SkillNames | Select-Object -Unique)
+    $unknown = @($skillNames | Where-Object { $_ -notin $allSkillNames })
+    if ($unknown.Count -gt 0) {
+        throw "不支持的 Skill：$($unknown -join ', ')"
+    }
+}
 
 $tempBase = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath())
 $tempRoot = Join-Path $tempBase ('oneos-lifecycle-skills-' + [guid]::NewGuid().ToString('N'))
@@ -29,7 +44,14 @@ try {
     foreach ($client in @('codex', 'cursor')) {
         $clientOutput = Join-Path $resolvedOutput $client
         New-Item -ItemType Directory -Path $clientOutput -Force | Out-Null
-        $manifest = @()
+        $manifestPath = Join-Path $clientOutput 'manifest.json'
+        $manifest = New-Object 'System.Collections.Generic.List[object]'
+        if (Test-Path -LiteralPath $manifestPath) {
+            $existingManifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding utf8 | ConvertFrom-Json
+            foreach ($entry in $existingManifest) {
+                [void]$manifest.Add($entry)
+            }
+        }
 
         foreach ($skillName in $skillNames) {
             $source = Join-Path $skillsRoot $skillName
@@ -63,16 +85,18 @@ try {
             }
             Compress-Archive -LiteralPath $stageSkill -DestinationPath $archive -CompressionLevel Optimal
             $hash = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
-            $manifest += [ordered]@{
+            foreach ($existing in @($manifest | Where-Object { $_.skill -eq $skillName })) {
+                [void]$manifest.Remove($existing)
+            }
+            [void]$manifest.Add([pscustomobject][ordered]@{
                 client = $client
                 skill = $skillName
                 archive = [System.IO.Path]::GetFileName($archive)
                 sha256 = $hash
-            }
+            })
         }
 
-        $manifestPath = Join-Path $clientOutput 'manifest.json'
-        $manifest | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $manifestPath -Encoding utf8
+        @($manifest.ToArray()) | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $manifestPath -Encoding utf8
     }
 }
 finally {

@@ -1,0 +1,4 @@
+interface:
+  display_name: "开发大脑"
+  short_description: "开发前约束、执行中引用与证据化复盘沉淀"
+  default_prompt: "使用 $development-brain 对当前开发工作做预检、约束引用和结束复盘；只沉淀有可追溯证据的规则或候选。"

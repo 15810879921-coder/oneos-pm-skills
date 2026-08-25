@@ -29,6 +29,7 @@ Read each selected file completely before acting:
 - For `分配任务`, read the official CLI environment, hashed preflight/apply receipt, idempotency, field, relation, and read-back rules: [references/yunxiao-cli-allocation.md](references/yunxiao-cli-allocation.md); then read [references/requirement-snapshot.md](references/requirement-snapshot.md) and [references/allocation-technical-plan.md](references/allocation-technical-plan.md). Create the development requirement snapshot first and derive the technical plan from that exact snapshot.
 - For `修复负责人是我的所有Bug`, read the official CLI adapter, credentials, frozen snapshot, status-write, and fallback rules: [references/yunxiao-cli-bug-batch.md](references/yunxiao-cli-bug-batch.md).
 - Run bundled Python through the cross-platform launcher contract in [references/runtime-launcher.md](references/runtime-launcher.md).
+- On every invocation, invoke `$development-brain` under the mandatory contract below. It owns its independent knowledge resources; pass only the current action, exact IDs, known scope and non-sensitive evidence pointers. Do not read or copy its installation files from this Skill.
 
 The safeguards in this Skill are self-contained. If `git-submit-safety` is also installed, use it as an additional repository-specific guardrail.
 
@@ -57,6 +58,26 @@ This Skill does not impersonate the tester: **Web** developer-side automated tes
 - Accept and emit only formal Skill names, exact requirement/delivery/development/test/release IDs, live states, formal `ASSOCIATED`/`TASK_SUB` relations, and necessary MR, commit, pipeline, deployment, evidence, or idempotency identifiers.
 - Never discover, read, copy, or require another Skill's installation directory. This Skill owns its bundled resources; missing Yunxiao context must be resolved from the explicit handoff IDs and live services.
 - Downstream selectors are `$YunxiaoQA` and `$yunxiao-release-operations`; product return is `$YunxiaoPM`. Never emit a legacy alias or a filesystem path as a command.
+
+## Mandatory development-brain contract
+
+`$development-brain` is a mandatory internal invocation for **every** `$yunxiao-development-delivery` command, including queries, plan mode, allocation, development, completion, single/Bug batch repair, release repair and branch cleanup. It is not a recommendation and cannot be skipped because this Skill already has a `开发复盘` section.
+
+1. **Before selected work**: invoke its preflight after reading the command but before local code, Git, Yunxiao, Flow, Codeup or production writes. Supply only the command, exact work-item/Bug/release IDs when known, discovered repository/technology scope, and non-sensitive task/Git/test evidence pointers. Receive and retain its preflight receipt.
+2. **During work**: apply only the receipt's scope-matching `confirmed` rule IDs. For each implementation/repair group, record the applied IDs or the evidence-backed reason that none applies. Candidate, pending, conflicting or expired knowledge cannot add a requirement, expand a diff, or justify any write. A confirmed-rule conflict blocks only the affected scope before a write; all ordinary gates in this Skill remain in force.
+3. **After work**: after this Skill's required final Git-grounded `开发复盘` and verification evidence are available, invoke development-brain end review. It may retain an evidence-complete `candidate`, but must not automatically promote it to `confirmed`, change code, change task/Bug state, alter Git/MR, run a pipeline, or touch production.
+
+Failure handling is deterministic. A valid receipt with zero matching confirmed rules is `无匹配规则` and this Skill continues under its own gates. An unreadable/corrupt knowledge record or a matching confirmed-rule conflict is `安全阻塞`: diagnostic reads may continue, but no code, Git, Yunxiao, Flow, Codeup or production write may occur until the brain record is repaired or the conflict is explicitly resolved. An end-review candidate write failure does not undo an already completed delivery; report `候选未落盘`, preserve its evidence-backed content and failure reason, and never claim it was retained.
+
+Every final response must include:
+
+```text
+开发大脑：预检通过|无匹配规则|安全阻塞|候选已记录|候选未落盘
+适用 confirmed 规则/不适用依据：
+执行中引用：
+复盘候选/待何斐确认：
+开发大脑证据：
+```
 
 Command state contract:
 
@@ -238,6 +259,12 @@ Bug负责人/状态：
 1. <系统> <对象> <操作> <变更前→变更后> <结果/证据>
 实际代码变更：
 - <仓库>/<分支> [新增|修改|删除|重命名] <文件> <代码位置> <修改内容和原因> <+N/-N> <验证>
+开发大脑：
+- 预检：
+- 适用 confirmed 规则/不适用依据：
+- 执行中引用：
+- 复盘候选/待何斐确认：
+- 证据：
 开发复盘（仅完成开发）：
 - 修改内容：
 - 修改原因：

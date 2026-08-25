@@ -10,6 +10,7 @@ OneOS 产品团队自用的 AI Agent Skills 合集，支持 `npx skills` 一键�
 |-------|------|----------|
 | **`YunxiaoPM`**（推荐 · 口令 YunxiaoPM / 需求任务） | 记录需求 → 分析/设计 → 交棒待开发；压缩点选；迭代只挂交付；**不建【开发】/【测试】** | 见下方「发给产品同事」 |
 | **`yunxiao-development-delivery`** | 接收待开发交棒 → 分配开发 → 开始/完成开发 → Bug闭环 → 严格按项目唯一测试主管创建测试任务 | 见下方「云效开发交付」 |
+| **`development-brain`**（知行合一） | 云效开发 Skill 的强制知识层：前置预检、执行中约束、通用经验准入与结束复盘 | 见下方「知行合一」 |
 | **`YunxiaoQA`** | 接收测试任务 → 执行用例 → 创建/复测缺陷 → 测试完成 → 交接发布 | Codex/Cursor 双版本 |
 | **`yunxiao-release-operations`** | 组建发布批次 → 生产发布 → 上线验证 → 自动回滚/重新发布 → 交接产品验收 | Codex/Cursor 双版本 |
 | `oneos-autoprd`（展示名 OneOS-AutoPRD） | 整模块 AutoPRD + 标注目录；**需求定稿**写功能变更；云效描述「需求说明/更新内容」 | 见下方 |
@@ -37,7 +38,7 @@ OneOS 产品团队自用的 AI Agent Skills 合集，支持 `npx skills` 一键�
 
 ### 双版本发布模型
 
-六套生命周期 Skill 使用同一份业务规则源，发布时生成两个独立版本，避免两端业务口径漂移：
+七套需双端分发的 Skill 使用同一份业务规则源，发布时生成两个独立版本，避免两端业务口径漂移：
 
 - **Codex 版**：包含 `SKILL.md`、业务资源、跨平台启动器和 `agents/openai.yaml`。
 - **Cursor 版**：包含相同的 `SKILL.md`、业务资源和跨平台启动器，不携带 Codex 专用 UI 元数据。
@@ -56,7 +57,7 @@ npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoPM -a codex -g -
 npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoPM -a cursor -g -y
 ```
 
-构建六套双版本离线包：
+构建七套双版本离线包：
 
 ```powershell
 pwsh -File ./scripts/build-dual-client-packages.ps1
@@ -322,6 +323,24 @@ npx skills update yunxiao-development-delivery
 
 ---
 
+## development-brain · 知行合一
+
+云效开发交付的强制知识层：每次调用 `yunxiao-development-delivery` 时自动执行前置预检、执行中约束和结束复盘。它只沉淀通用、可复用且有证据的模式；项目快照、单问题和未确认经验不会成为强制规则。
+
+### 全局安装到 Cursor + Codex
+
+```bash
+npx skills add 15810879921-coder/oneos-pm-skills --skill development-brain -a cursor -a codex -g -y
+```
+
+### 更新已安装的 Skill
+
+```bash
+npx skills update development-brain -g -y
+```
+
+---
+
 ## oneos-autoprd · 产品需求说明（AutoPRD）
 
 为 OneOS 业务模块生成**产品经理可读**的需求说明：目标、边界、用户故事（业务条线说明口径：起点 → 怎么运作 → 闭环）、故事点、正逆向、流程图、验收；并同步到 Axhub Make 标注工具「原型目录」。
@@ -508,6 +527,7 @@ oneos-pm-skills/
 └── skills/
     ├── YunxiaoPM/
     ├── yunxiao-development-delivery/
+    ├── development-brain/
     ├── oneos-autoprd/
     ├── AutoVUL/
     ├── AutoRDO/
