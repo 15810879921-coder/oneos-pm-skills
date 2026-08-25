@@ -325,7 +325,7 @@ npx skills update yunxiao-development-delivery
 
 ## development-brain · 知行合一
 
-云效开发交付的强制知识层：每次调用 `yunxiao-development-delivery` 时自动执行前置预检、执行中约束和结束复盘。它只沉淀通用、可复用且有证据的模式；项目快照、单问题和未确认经验不会成为强制规则。
+云效开发交付的强制知识层：每次调用 `yunxiao-development-delivery` 时自动执行前置预检、执行中约束和结束复盘。它只沉淀通用、可复用且有证据的模式；相同或近似模式不重复入库，任何自动或人工确认的新知识都须推送并读回 GitHub 后才算入脑。
 
 ### 全局安装到 Cursor + Codex
 
