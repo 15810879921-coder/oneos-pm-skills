@@ -1,11 +1,16 @@
 ---
 name: yunxiao-development-delivery
-description: "Manage Yunxiao development after a YunxiaoPM handoff entirely through the official aliyun devops CLI for Yunxiao Projex, Codeup, Flow, and AppStack reads/writes: accept 【交付】, allocate and complete 【开发】 tasks, repair Bugs, submit branches/MRs, prepare test handoff, handle release repair, and clean branches. Every platform mutation uses a read-only snapshot, hashed preflight, drift check, one write pass, targeted read-back, and idempotent receipt; browser, DOM, Cookie, visual clicking, and webpage-internal APIs are forbidden fallbacks. Local code editing, tests, commit, and push remain native local actions. Development owns 【交付】 only 待处理→已分配→处理中; YunxiaoPM closes it after acceptance."
+description: >-
+  云效开发交付与代码实现。用户即使没有写 $yunxiao-development-delivery 或标准口令，只要自然语言明确表达
+  查看、领取、分配、开始、实现、提交、完成开发任务，修复本人或指定Bug，处理发布回流或清理发版分支，
+  就主动识别为开发意图；先通过官方 aliyun devops CLI 唯一定位【交付】、【开发】或Bug，再规范化为现有正式命令。
+  零候选或多候选只读返回，不按标题猜编号，不静默写云效。通用的本地代码测试、正式QA测试任务、产品需求和生产发布不应触发本Skill。
+  所有平台写入继续使用快照、哈希预检、漂移检查、单次写入、定向回读和幂等回执；禁止浏览器、DOM、Cookie和网页内部接口回退。
 ---
 
 # Yunxiao Development Delivery
 
-Operate development tasks and Codeup assets without using code activity as a substitute for real work state. Suite version: `9.6.1`.
+Operate development tasks and Codeup assets without using code activity as a substitute for real work state. Suite version: `9.7.0`.
 
 ## Load the required references
 
@@ -13,6 +18,7 @@ Read each selected file completely before acting:
 
 - Development task, Codeup, stage-task and OneOS controls: [references/controls.md](references/controls.md).
 - Short Chinese commands and defect-fix workflow: [references/commands.md](references/commands.md).
+- For implicit invocation, natural-language normalization, unique task selection, and development-versus-test disambiguation, read [references/semantic-routing.md](references/semantic-routing.md) completely before selecting a command.
 - `开发任务:任务=<ID>` direct/plan modes, 新增/优化材料门禁, prototype comparison, and implementation completion: [references/implementation-materials.md](references/implementation-materials.md).
 - Codex task association, active-duration accounting, minute-to-hour conversion, and completion-field writeback: [references/codex-time-accounting.md](references/codex-time-accounting.md).
 - Batch discovery, stable snapshots, per-task continuation, worktree isolation, and final reporting: [references/batch-execution.md](references/batch-execution.md).

@@ -630,24 +630,23 @@ npx skills add 15810879921-coder/oneos-pm-skills --skill mingjingzhishui -a curs
         id: "yunxiao-development-delivery",
         name: "yunxiao-development-delivery（开发交付）",
         role: "研发",
-        purpose: "接产品交棒后分配【开发】、执行/完成开发、Bug 修复与代码提交，并交接测试；给研发同学用。",
+        purpose: "主动识别自然语言中的开发意图，唯一定位【开发】任务或Bug后，执行分配、开发、提交、完成和测试交接；歧义时零写入。",
         repo: "https://github.com/15810879921-coder/oneos-pm-skills",
-        tips: "口令：开发任务 / 完成开发 / 分配任务",
+        tips: "可直接说：开始做这个开发任务 / 把我负责的Bug都修了",
         install: "npx skills add 15810879921-coder/oneos-pm-skills --skill yunxiao-development-delivery -a cursor -a codex -g -y",
-        update: "npx skills update yunxiao-development-delivery -g -y",
+        update: "npx skills add 15810879921-coder/oneos-pm-skills --skill yunxiao-development-delivery -a cursor -a codex -g -y",
         ai: "请帮我全局安装 yunxiao-development-delivery 到 Cursor + Codex：\nnpx skills add 15810879921-coder/oneos-pm-skills --skill yunxiao-development-delivery -a cursor -a codex -g -y"
       },
       {
         id: "YunxiaoQA",
         name: "YunxiaoQA（测试任务）",
         role: "测试",
-        purpose: "测试侧拉【测试】任务、发起缺陷、关闭/再次打开、并入迭代、闭环测试任务；不建【开发】、不代开发改已修复。",
-        repo: "https://github.com/15810879921-coder/YunxiaoQA",
-        tips: "若 Codex 列不出，再复制「Codex 保险链接」",
-        install: "npx skills add 15810879921-coder/YunxiaoQA -a cursor -a codex -g -y",
-        update: "npx skills update YunxiaoQA -g -y",
-        extra: "mkdir -p ~/.codex/skills && ln -sfn ~/.agents/skills/yunxiaoqa ~/.codex/skills/yunxiaoqa",
-        ai: "请帮我全局安装 YunxiaoQA 到 Cursor + Codex：\nnpx skills add 15810879921-coder/YunxiaoQA -a cursor -a codex -g -y\nmkdir -p ~/.codex/skills && ln -sfn ~/.agents/skills/yunxiaoqa ~/.codex/skills/yunxiaoqa\n装完后说「拉取测试任务」。使用前请登录 https://devops.aliyun.com 。"
+        purpose: "主动识别自然语言中的正式测试意图，唯一定位【测试】任务或Bug后执行测试、缺陷和复测闭环；歧义时零写入。",
+        repo: "https://github.com/15810879921-coder/oneos-pm-skills",
+        tips: "可直接说：拉一下我的测试任务 / 开始测这个 / 复测通过后关闭",
+        install: "npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoQA -a cursor -a codex -g -y",
+        update: "npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoQA -a cursor -a codex -g -y",
+        ai: "请帮我全局安装 YunxiaoQA 到 Cursor + Codex：\nnpx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoQA -a cursor -a codex -g -y\n装完后可以直接说『拉一下我的测试任务』。使用前请配置官方aliyun devops CLI认证。"
       },
       {
         id: "oneos-wave-router",

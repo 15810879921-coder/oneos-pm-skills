@@ -285,7 +285,7 @@ npx skills update YunxiaoPM -g -y
 
 从 `YunxiaoPM` 的待开发交棒开始，负责创建和分配【开发】任务、开发实现、完成开发、Bug修复、代码资产提交以及测试交接。
 
-v9.3.0 在保留两种开发任务执行模式、真实变更回报和测试交接的基础上，补齐官方 CLI 闭环、开发完成工时审计，并保证新建开发任务继承交付优先级：
+v9.7.0 在保留两种开发任务执行模式、真实变更回报和测试交接的基础上，增加自然语言主动识别：用户无需记忆Skill名和标准口令，系统会先唯一定位开发任务或Bug，再路由到已有正式命令；零候选或多候选保持零写入。原有官方 CLI 闭环、开发完成工时审计和优先级继承门禁保持不变：
 
 - 云效 Projex、Codeup、Flow、AppStack 的读写统一通过官方 `aliyun devops` CLI，不使用浏览器或视觉回退。
 - 新建`【开发】`任务复制来源`【交付】`优先级并按标识ID回读；复用已有开发任务时不覆盖其优先级。
@@ -317,7 +317,13 @@ npx skills add 15810879921-coder/oneos-pm-skills --skill yunxiao-development-del
 ### 用户级全局更新已安装的 Skill
 
 ```bash
-npx skills update yunxiao-development-delivery -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill yunxiao-development-delivery -a cursor -a codex -g -y
+```
+
+`YunxiaoQA`现统一从本仓库发布。曾从独立`15810879921-coder/YunxiaoQA`安装的用户，重新执行以下全局命令即可迁移到带主动识别能力的当前版本：
+
+```bash
+npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoQA -a cursor -a codex -g -y
 ```
 
 ---

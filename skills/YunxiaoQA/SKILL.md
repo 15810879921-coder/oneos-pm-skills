@@ -9,6 +9,9 @@ description: >-
   将【测试】标已完成、需求推进测试完成并输出正式发布候选交接。
   用户说 YunxiaoQA、测试任务、拉取测试任务、发起缺陷、再次打开、批量关闭、并入迭代、
   开始测试、记录测试证据、完成测试、闭环测试任务、接收发布回流、验证发布回流、交接发布 时使用。
+  用户未写Skill名或标准口令，但自然语言明确表达查看本人测试任务、开始/继续/完成正式测试、记录证据、提Bug、复测关闭或重新打开时也主动调用；
+  先通过官方CLI唯一定位【测试】任务或Bug，再规范化为现有命令。零候选或多候选只读返回，不按标题猜编号。
+  仅运行本地代码测试、开发自测或修复代码而没有云效测试任务语境时不要触发。
   仅测试角色；不建【开发】/不创建迭代/不代开发改已修复。
   凡写云效先 Plan 确认再一口气 apply；禁止对齐 yunxiao-requirement-lifecycle。
 ---
@@ -21,7 +24,7 @@ description: >-
 
 与 **YunxiaoPM（需求任务）**、开发交付 Skill 分工：本 Skill **只做测试侧**读写。
 
-闭环版本：`2.7.1`。
+闭环版本：`2.8.0`。
 
 ## Plan 模式门禁（强制 · 凡写云效）
 
@@ -96,6 +99,7 @@ description: >-
 | 场景 | 模块 |
 |---|---|
 | 口令面 | [references/commands.md](references/commands.md) |
+| 主动识别 / 自然语言命令 / 唯一测试任务定位 | [references/semantic-routing.md](references/semantic-routing.md) |
 | 开始测试 / 证据 / 完成测试 / 发布交接 | [references/test-execution.md](references/test-execution.md) · [references/test-scope-aggregation.md](references/test-scope-aggregation.md) |
 | 条线 1/2 · 状态机 · 再次打开 | [references/defect-flow.md](references/defect-flow.md) |
 | 诊断 · 查重 · 分层初判 | [references/diagnosis.md](references/diagnosis.md) |
@@ -126,6 +130,8 @@ description: >-
 ```
 
 **编号优先**：口令显式 `ONEOS-xx` > 当前上下文 > 询问；**禁止按标题猜编号后静默写云效**。
+
+隐式调用或用户使用口语表达时，先完整读取[主动识别与语义路由](references/semantic-routing.md)，将原话规范化为本页已有口令；不得绕过Plan、编号、关系、证据和回读门禁。
 
 ## 发起缺陷流水线（强制 · 方案 B）
 
