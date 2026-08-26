@@ -6,6 +6,8 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
+$globalCommandCheck = Join-Path $PSScriptRoot 'check-global-skill-commands.ps1'
+& $globalCommandCheck -RepositoryRoot $repoRoot
 if ([string]::IsNullOrWhiteSpace($OutputRoot)) {
     $OutputRoot = Join-Path $repoRoot 'packages'
 }

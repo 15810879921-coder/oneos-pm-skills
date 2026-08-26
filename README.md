@@ -4,6 +4,8 @@ OneOS 产品团队自用的 AI Agent Skills 合集，支持 `npx skills` 一键�
 
 **同事安装页（一键复制安装/更新）：** https://15810879921-coder.github.io/oneos-pm-skills/
 
+> **安装范围约定：** 本仓库公开的新装和更新口令默认使用 `-g`，统一安装到当前操作系统用户的全局 Skill 目录，对该用户的所有项目生效，不再提供项目级安装口令。
+
 ## Skills 列表
 
 | Skill | 说明 | 安装 / 更新 |
@@ -242,9 +244,6 @@ npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoPM -a cursor -a 
 
 # 再加 Claude Code
 npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoPM -a cursor -a codex -a claude-code -g -y
-
-# 仅当前项目
-npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoPM -a cursor -a codex -y
 ```
 
 ### 更新到最新版
@@ -315,10 +314,10 @@ npx skills add 15810879921-coder/oneos-pm-skills --skill yunxiao-development-del
 npx skills add 15810879921-coder/oneos-pm-skills --skill yunxiao-development-delivery -a codex -g -y
 ```
 
-### 更新已安装的 Skill
+### 用户级全局更新已安装的 Skill
 
 ```bash
-npx skills update yunxiao-development-delivery
+npx skills update yunxiao-development-delivery -g -y
 ```
 
 ---
