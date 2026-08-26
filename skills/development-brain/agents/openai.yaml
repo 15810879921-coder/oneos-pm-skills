@@ -1,4 +1,6 @@
 interface:
   display_name: "开发大脑"
-  short_description: "开发前约束、执行中引用与证据化复盘沉淀"
-  default_prompt: "使用 $development-brain 对当前开发工作做预检、约束引用和结束复盘；只沉淀有可追溯证据的规则或候选。"
+  short_description: "主动识别开发，自动预检、复盘和安全进化"
+  default_prompt: "主动识别当前会话是否正在开始、继续或完成真实开发工作；开发写入前用 $development-brain 预检，完成且有 Git/测试/MR 证据后自动复盘。首次闭环只形成候选，第二个独立任务再次验证且通过安全门槛后才可自动确认。"
+policy:
+  allow_implicit_invocation: true

@@ -330,7 +330,7 @@ npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoQA -a cursor -a 
 
 ## development-brain · 知行合一
 
-云效开发交付的强制知识层：每次调用 `yunxiao-development-delivery` 时自动执行前置预检、执行中约束和结束复盘。它只沉淀通用、可复用且有证据的模式；相同或近似模式不重复入库，任何自动或人工确认的新知识都须推送并读回 GitHub 后才算入脑。
+全局主动开发知识层：即使没有输入固定口令，只要自然语言或当前工作区表明正在开始、继续或完成真实开发，它就会在首次写入前自动预检，并在代码与测试/MR 证据闭环后自动复盘。新模式第一次只进入候选；由第二个独立开发任务再次验证并通过安全门槛后，才可自动转为正式规则。破坏性、扩权、生产发布、强推和敏感凭据类规则始终需要何斐确认。
 
 ### 全局安装到 Cursor + Codex
 
@@ -338,10 +338,10 @@ npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoQA -a cursor -a 
 npx skills add 15810879921-coder/oneos-pm-skills --skill development-brain -a cursor -a codex -g -y
 ```
 
-### 更新已安装的 Skill
+### 更新已安装的 Skill（重新执行全局安装，确保 Cursor + Codex 同步）
 
 ```bash
-npx skills update development-brain -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill development-brain -a cursor -a codex -g -y
 ```
 
 ---
