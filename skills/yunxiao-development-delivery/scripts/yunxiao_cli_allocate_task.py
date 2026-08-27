@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
-import html
 import hashlib
 import json
 import re
@@ -19,28 +18,34 @@ import yunxiao_cli_bug_batch as core
 
 SCHEMA = "oneos.yunxiao-cli-allocation/v2"
 SERIAL_RE = re.compile(r"^([A-Za-z][A-Za-z0-9_-]*)-(\d+)$")
-MARKDOWN_BLOCK_RE = re.compile(r"(?ms)^## 下一阶段\s*\n.*?(?=^## |\Z)")
-HTML_BLOCK_RE = re.compile(r"(?is)<h2>下一阶段</h2>.*?(?=<h2>|\Z)")
-MARKDOWN_PLAN_RE = re.compile(
-    r"(?ms)^## 技术实施方案\s*\n<!-- ONEOS_DEVELOPMENT_TECHNICAL_PLAN_START(?: sha256=[a-f0-9]{64})? -->.*?<!-- ONEOS_DEVELOPMENT_TECHNICAL_PLAN_END -->\s*"
-)
-MARKDOWN_SNAPSHOT_RE = re.compile(
-    r"(?ms)^## 开发需求快照\s*\n<!-- ONEOS_DEVELOPMENT_REQUIREMENT_SNAPSHOT_START(?: sha256=[a-f0-9]{64})? -->.*?<!-- ONEOS_DEVELOPMENT_REQUIREMENT_SNAPSHOT_END -->\s*"
-)
 EXECUTION_COMMAND_RE = re.compile(
     r"(?m)^\s*(?:开始开发|开发任务|提交代码|完成开发|开始修复bug|完成修复bug|修复bug|实现所有负责人是我的开发任务|实现我的全部开发任务|开发我负责的所有开发任务|修复负责人是我的所有Bug|修复我负责的全部Bug|处理所有分配给我的Bug)"
-)
-HTML_PLAN_RE = re.compile(
-    r"(?is)<h2>技术实施方案</h2><!-- ONEOS_DEVELOPMENT_TECHNICAL_PLAN_START(?: sha256=[a-f0-9]{64})? -->.*?<!-- ONEOS_DEVELOPMENT_TECHNICAL_PLAN_END -->"
-)
-HTML_SNAPSHOT_RE = re.compile(
-    r"(?is)<h2>开发需求快照</h2><!-- ONEOS_DEVELOPMENT_REQUIREMENT_SNAPSHOT_START(?: sha256=[a-f0-9]{64})? -->.*?<!-- ONEOS_DEVELOPMENT_REQUIREMENT_SNAPSHOT_END -->"
 )
 PLAN_SECTIONS = ("实现范围", "处理逻辑", "实施步骤", "验证标准")
 SNAPSHOT_SECTIONS = ("任务目标", "本次范围", "页面与交互", "业务规则", "验收条件", "来源与版本")
 PRODUCT_SNAPSHOT_MARKER_RE = re.compile(
     r"ONEOS_PRODUCT_HANDOFF_SNAPSHOT_START id=(ps-[a-f0-9]{16}) sha256=([a-f0-9]{64})"
 )
+HOURS_PER_WORKDAY = Decimal("8")
+CHINA_WORKDAY_CALENDARS: dict[int, dict[str, frozenset[dt.date]]] = {
+    2026: {
+        "rest": frozenset(dt.date.fromisoformat(value) for value in (
+            "2026-01-01", "2026-01-02", "2026-01-03",
+            "2026-02-15", "2026-02-16", "2026-02-17", "2026-02-18", "2026-02-19",
+            "2026-02-20", "2026-02-21", "2026-02-22", "2026-02-23",
+            "2026-04-04", "2026-04-05", "2026-04-06",
+            "2026-05-01", "2026-05-02", "2026-05-03", "2026-05-04", "2026-05-05",
+            "2026-06-19", "2026-06-20", "2026-06-21",
+            "2026-09-25", "2026-09-26", "2026-09-27",
+            "2026-10-01", "2026-10-02", "2026-10-03", "2026-10-04", "2026-10-05",
+            "2026-10-06", "2026-10-07",
+        )),
+        "makeup": frozenset(dt.date.fromisoformat(value) for value in (
+            "2026-01-04", "2026-02-14", "2026-02-28", "2026-05-09",
+            "2026-09-20", "2026-10-10",
+        )),
+    },
+}
 
 
 def canonical_hash(value: dict[str, Any], excluded: set[str] | None = None) -> str:
@@ -270,42 +275,6 @@ def load_technical_plan(path: str, requirement: dict[str, Any],
             "sha256": hashlib.sha256(content.encode("utf-8")).hexdigest()}
 
 
-def markdown_as_html(content: str) -> str:
-    return "<pre>" + html.escape(content) + "</pre>"
-
-
-def managed_description(current: str | None, format_type: str | None,
-                        requirement_snapshot: dict[str, str],
-                        technical_plan: dict[str, str]) -> tuple[str, str]:
-    snapshot_marker = requirement_snapshot["sha256"]
-    plan_marker = technical_plan["sha256"]
-    if str(format_type or "").upper() == "RICHTEXT":
-        snapshot_block = ("<h2>开发需求快照</h2>"
-                 f"<!-- ONEOS_DEVELOPMENT_REQUIREMENT_SNAPSHOT_START sha256={snapshot_marker} -->"
-                 f"{markdown_as_html(requirement_snapshot['content'])}"
-                 "<!-- ONEOS_DEVELOPMENT_REQUIREMENT_SNAPSHOT_END -->")
-        plan_block = ("<h2>技术实施方案</h2>"
-                 f"<!-- ONEOS_DEVELOPMENT_TECHNICAL_PLAN_START sha256={plan_marker} -->"
-                 f"{markdown_as_html(technical_plan['content'])}"
-                 "<!-- ONEOS_DEVELOPMENT_TECHNICAL_PLAN_END -->")
-        source = HTML_SNAPSHOT_RE.sub("", HTML_PLAN_RE.sub("", HTML_BLOCK_RE.sub("", current or "", count=1), count=1), count=1).rstrip()
-        managed = snapshot_block + plan_block
-        updated = f"{source}{managed}" if source else managed
-        return updated, "RICHTEXT"
-    snapshot_block = ("## 开发需求快照\n"
-             f"<!-- ONEOS_DEVELOPMENT_REQUIREMENT_SNAPSHOT_START sha256={snapshot_marker} -->\n"
-             f"{requirement_snapshot['content']}\n"
-             "<!-- ONEOS_DEVELOPMENT_REQUIREMENT_SNAPSHOT_END -->")
-    plan_block = ("## 技术实施方案\n"
-             f"<!-- ONEOS_DEVELOPMENT_TECHNICAL_PLAN_START sha256={plan_marker} -->\n"
-             f"{technical_plan['content']}\n"
-             "<!-- ONEOS_DEVELOPMENT_TECHNICAL_PLAN_END -->")
-    source = MARKDOWN_SNAPSHOT_RE.sub("", MARKDOWN_PLAN_RE.sub("", MARKDOWN_BLOCK_RE.sub("", current or "", count=1), count=1), count=1).rstrip()
-    managed = f"{snapshot_block}\n\n{plan_block}"
-    updated = f"{source}\n\n{managed}" if source else managed
-    return updated.rstrip(), "MARKDOWN"
-
-
 def field_value(item: dict[str, Any], field_id: str) -> str | None:
     for row in item.get("customFieldValues") or []:
         if isinstance(row, dict) and str(row.get("fieldId")) == field_id:
@@ -363,16 +332,50 @@ def validate_dates(start: str, finish: str, estimated_hours: str | None) -> None
             raise core.AdapterError("预计工时必须为正数。")
 
 
+def planned_workday_capacity(start: str, finish: str,
+                             estimated_hours: str | None) -> dict[str, Any]:
+    start_date = dt.date.fromisoformat(start)
+    finish_date = dt.date.fromisoformat(finish)
+    years = range(start_date.year, finish_date.year + 1)
+    missing_years = [str(year) for year in years if year not in CHINA_WORKDAY_CALENDARS]
+    if missing_years:
+        raise core.AdapterError(
+            "计划日期涉及未配置的中国工作日历年份：" + "、".join(missing_years) + "。")
+
+    workday_count = 0
+    current = start_date
+    while current <= finish_date:
+        calendar = CHINA_WORKDAY_CALENDARS[current.year]
+        if current in calendar["makeup"] or (
+                current.weekday() < 5 and current not in calendar["rest"]):
+            workday_count += 1
+        current += dt.timedelta(days=1)
+    capacity_hours = HOURS_PER_WORKDAY * workday_count
+    if estimated_hours is not None and Decimal(estimated_hours) > capacity_hours:
+        raise core.AdapterError(
+            f"预计工时{estimated_hours}超过计划区间{workday_count}个工作日的可用容量"
+            f"{format(capacity_hours, 'f')}小时。")
+    return {
+        "calendar": f"China-State-Council-{start_date.year}",
+        "workdayCount": workday_count,
+        "hoursPerWorkday": format(HOURS_PER_WORKDAY, "f"),
+        "capacityHours": format(capacity_hours, "f"),
+    }
+
+
 def build_preflight(executable: str, args: argparse.Namespace) -> dict[str, Any]:
     validate_dates(args.plan_start, args.plan_finish, args.estimated_hours)
     estimated_hours = decimal_field_value(args.estimated_hours)
+    schedule_capacity = planned_workday_capacity(
+        args.plan_start, args.plan_finish, estimated_hours)
     project = resolve_project(executable, args.task, args.space_id)
     project_id = str(project["id"])
     delivery = find_workitem_by_serial(executable, project_id, "Task", args.task)
     if not str(delivery.get("subject") or "").startswith("【交付】"):
         raise core.AdapterError("来源任务标题不是【交付】任务。")
-    if str((delivery.get("assignedTo") or {}).get("name") or "") != "何斐":
-        raise core.AdapterError("来源【交付】负责人不是何斐。")
+    delivery_owner = delivery.get("assignedTo") or {}
+    if not str(delivery_owner.get("id") or ""):
+        raise core.AdapterError("来源【交付】负责人无法官方回读。")
     delivery_status = item_status(delivery)
     if delivery_status == "已完成":
         raise core.AdapterError("来源【交付】已完成，禁止重开生命周期。")
@@ -410,8 +413,6 @@ def build_preflight(executable: str, args: argparse.Namespace) -> dict[str, Any]
         action = "reuse"
     else:
         raise core.AdapterError("交付下存在多条【开发】任务，请显式提供--development-task。")
-    if action == "create" and not field_value(delivery, "priority"):
-        raise core.AdapterError("来源【交付】缺少可复制的优先级，停止创建开发任务。")
     if development and item_status(development) != "待处理":
         raise core.AdapterError("复用开发任务必须保持待处理，禁止状态回退。")
 
@@ -449,7 +450,11 @@ def build_preflight(executable: str, args: argparse.Namespace) -> dict[str, Any]
             "sha256": requirement_snapshot["sha256"],
         },
         "technicalPlan": {"path": technical_plan["path"], "sha256": technical_plan["sha256"]},
+        "scheduleCapacity": schedule_capacity,
     }
+    warnings: list[str] = []
+    if action == "create" and not field_value(delivery, "priority"):
+        warnings.append("来源【交付】优先级为空；新建开发任务将不写优先级。")
     return {
         "schema": SCHEMA, "command": "preflight", "createdAt": core.now_utc(),
         "input": {
@@ -462,7 +467,7 @@ def build_preflight(executable: str, args: argparse.Namespace) -> dict[str, Any]
         "requirementSnapshot": requirement_snapshot,
         "technicalPlan": technical_plan,
         "currentUser": core.current_user(executable),
-        "action": action, "liveScope": live_scope,
+        "action": action, "warnings": warnings, "liveScope": live_scope,
         "scopeFingerprint": canonical_hash(live_scope),
     }
 
@@ -568,10 +573,12 @@ def create_development(executable: str, scope: dict[str, Any],
     title = str(delivery.get("subject") or "")
     subject = title.replace("【交付】", "【开发】", 1)
     custom = {
-        "priority": str(delivery.get("priorityId") or ""),
         scope["fieldIds"]["planStart"]: scope["input"]["planStart"] + " 00:00:00",
         scope["fieldIds"]["planFinish"]: scope["input"]["planFinish"] + " 23:59:59",
     }
+    delivery_priority = str(delivery.get("priorityId") or "")
+    if delivery_priority:
+        custom["priority"] = delivery_priority
     # The create command coerces a whole decimal such as 16.0 to JSON integer 16,
     # which Projex rejects for float fields. Set hours through the generic update
     # command immediately after creation, where the decimal string is preserved.
@@ -582,14 +589,12 @@ def create_development(executable: str, scope: dict[str, Any],
         "--parent-id", delivery["id"], "--format-type", "MARKDOWN",
         "--custom-field-values", json.dumps(custom, ensure_ascii=False, separators=(",", ":")),
     ]
-    if not custom["priority"]:
-        raise core.AdapterError("来源【交付】优先级快照为空，拒绝创建开发任务。")
     value = core.unwrap(core.run_devops(executable, cli_args))
     workitem_id = str((value or {}).get("id") if isinstance(value, dict) else "")
     if not workitem_id:
         raise core.AdapterError("创建开发任务后未取得内部ID。")
     created = get_workitem(executable, workitem_id)
-    if field_value(created, "priority") != custom["priority"]:
+    if delivery_priority and field_value(created, "priority") != delivery_priority:
         raise core.AdapterError("开发任务创建后优先级与来源【交付】不一致。")
     return created
 
@@ -674,6 +679,7 @@ def cmd_preflight(args: argparse.Namespace) -> int:
         "development": value["liveScope"]["selectedDevelopment"],
         "owner": value["liveScope"]["owner"],
         "productSnapshot": value["liveScope"]["productSnapshot"],
+        "scheduleCapacity": value["liveScope"]["scheduleCapacity"],
         "requirementSnapshotSha256": value["requirementSnapshot"]["sha256"],
         "technicalPlanSha256": value["technicalPlan"]["sha256"],
     }, ensure_ascii=False, indent=2))
@@ -714,13 +720,9 @@ def cmd_apply(args: argparse.Namespace) -> int:
         operations.append({"operation": "reuse-development", "result": "idempotent",
                            "serialNumber": item_serial(development)})
 
-    description, format_type = managed_description(
-        development.get("description"), development.get("formatType"),
-        requirement_snapshot, technical_plan)
     update_body: dict[str, Any] = {
         live["fieldIds"]["planStart"]: source["planStart"] + " 00:00:00",
         live["fieldIds"]["planFinish"]: source["planFinish"] + " 23:59:59",
-        "description": description, "formatType": format_type,
     }
     if owner:
         update_body["assignedTo"] = owner["id"]
@@ -732,16 +734,12 @@ def cmd_apply(args: argparse.Namespace) -> int:
         "planFinish": field_value(development, live["fieldIds"]["planFinish"]),
         "estimatedHours": field_value(development, live["fieldIds"]["estimatedHours"]),
         "priority": field_value(development, "priority"),
-        "description": str(development.get("description") or ""),
-        "formatType": str(development.get("formatType") or "MARKDOWN").upper(),
     }
     desired_owner = str(owner["id"]) if owner else current_values["owner"]
     needs_update = any((
         current_values["owner"] != desired_owner,
         current_values["planStart"] != source["planStart"] + " 00:00:00",
         current_values["planFinish"] != source["planFinish"] + " 23:59:59",
-        current_values["description"] != description,
-        current_values["formatType"] != format_type,
     ))
     if needs_update:
         core.run_devops(executable, [
@@ -790,7 +788,9 @@ def cmd_apply(args: argparse.Namespace) -> int:
     if expected["estimatedHours"] is not None and Decimal(
             actual["estimatedHours"]) != Decimal(expected["estimatedHours"]):
         raise core.AdapterError("开发任务预计工时写入后回读不一致。")
-    if actual["priority"] != expected["priority"]:
+    source_priority = str(live["delivery"].get("priorityId") or "")
+    if frozen["action"] == "create" and source_priority \
+            and actual["priority"] != source_priority:
         raise core.AdapterError("开发任务优先级写入后回读不一致。")
     if item_status(after_development) != "待处理":
         raise core.AdapterError("开发任务状态回读不是待处理。")
@@ -798,11 +798,6 @@ def cmd_apply(args: argparse.Namespace) -> int:
         raise core.AdapterError("开发任务父交付关系回读失败。")
     if live["requirement"]["id"] not in relation_ids(executable, str(development["id"]), "ASSOCIATED"):
         raise core.AdapterError("开发任务需求关联回读失败。")
-    if f"sha256={requirement_snapshot['sha256']}" not in str(after_development.get("description") or ""):
-        raise core.AdapterError("开发任务需求快照回读失败。")
-    if f"sha256={technical_plan['sha256']}" not in str(after_development.get("description") or ""):
-        raise core.AdapterError("开发任务技术方案回读失败。")
-
     before_delivery_status = item_status(get_workitem(executable, live["delivery"]["id"]))
     if before_delivery_status == "待处理":
         body = json.dumps({"status": live["statusIds"]["assigned"]},
@@ -834,6 +829,7 @@ def cmd_apply(args: argparse.Namespace) -> int:
         "requirement": snapshot_item(after_requirement),
         "development": snapshot_item(after_development), "fields": actual,
         "productSnapshot": live["productSnapshot"],
+        "scheduleCapacity": live["scheduleCapacity"],
         "requirementSnapshotSha256": requirement_snapshot["sha256"],
         "technicalPlanSha256": technical_plan["sha256"],
     }

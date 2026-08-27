@@ -189,20 +189,54 @@ def structured_evidence_gaps(item: dict[str, Any]) -> list[str]:
 
 
 def qa_gaps(item: dict[str, Any]) -> list[str]:
-    """Keep only the release-readiness states; QA artifacts are recorded, not gates."""
+    """Apply the requirement-level readiness gate according to its test mode."""
     gaps: list[str] = []
     if item.get("requirementStatus") != "测试完成":
         gaps.append("需求状态不是测试完成")
-    if item.get("testTaskStatus") != "已完成":
-        gaps.append("测试任务不是已完成")
+    mode = str(item.get("testMode") or "formal-plan").strip()
+    if mode in {"formal-plan", "qa-requested-exception"}:
+        if item.get("testTaskStatus") != "已完成":
+            gaps.append(f"{mode}测试任务不是已完成")
+        if not isinstance(item.get("hasRequiredCases"), bool):
+            gaps.append(f"{mode}未明确是否存在必需用例")
+        elif item.get("hasRequiredCases") is True and item.get("requiredCaseStatus") != "passed":
+            gaps.append(f"{mode}必需用例未通过")
+    elif mode == "lightweight-verification":
+        if item.get("lightweightVerificationStatus") != "passed":
+            gaps.append("轻量开发验证未通过")
+        if not valid_ref(item.get("trustedDeliveryVersion")):
+            gaps.append("轻量开发验证缺可信交付版本")
+    else:
+        gaps.append(f"不支持的测试模式：{mode or '(空)'}")
+    bugs = item.get("bugs")
+    if not isinstance(bugs, list):
+        gaps.append("未取得完整关联Bug清单")
+    else:
+        for bug in bugs:
+            if not isinstance(bug, dict) or not valid_ref(bug.get("id")):
+                gaps.append("关联Bug缺有效ID")
+                continue
+            status = str(bug.get("status") or "")
+            if status != "已关闭":
+                gaps.append(
+                    f"Bug {bug.get('serialNumber') or bug.get('id')}未关闭：{status or '(空)'}"
+                )
     return gaps
 
 
 def classify(data: dict[str, Any]) -> dict[str, Any]:
     project_id = str(data.get("projectId") or "").strip()
     iteration_id = str(data.get("iterationId") or "").strip()
-    if not project_id or not iteration_id:
-        raise ValueError("projectId和iterationId不能为空")
+    scope_mode = str(data.get("scopeMode") or "iteration").strip()
+    if not project_id:
+        raise ValueError("projectId不能为空")
+    if scope_mode == "iteration" and not iteration_id:
+        raise ValueError("迭代模式下iterationId不能为空")
+    if scope_mode == "exceptional":
+        if not valid_ref(data.get("exceptionalReason")):
+            raise ValueError("例外发布必须提供exceptionalReason")
+    elif scope_mode != "iteration":
+        raise ValueError(f"不支持的scopeMode：{scope_mode}")
     items_raw = data.get("iterationRequirements")
     if not isinstance(items_raw, list):
         raise ValueError("iterationRequirements必须是数组")
@@ -249,17 +283,24 @@ def classify(data: dict[str, Any]) -> dict[str, Any]:
         reasons: list[str] = []
         formal_direct = item.get("formallyInIteration") is True
         formal_via_delivery = item.get("formallyInIterationViaDelivery") is True
-        formal = formal_direct or formal_via_delivery
+        formal_exceptional = item.get("formallyInExceptionalScope") is True
+        formal = formal_exceptional if scope_mode == "exceptional" else (
+            formal_direct or formal_via_delivery
+        )
         scoped_iteration_id = str(
             item.get("sourceDeliveryIterationId") if formal_via_delivery
             else item.get("iterationId") or ""
         )
         if str(item.get("projectId") or "") != project_id:
             reasons.append("跨项目")
-        if scoped_iteration_id != iteration_id:
+        if scope_mode == "iteration" and scoped_iteration_id != iteration_id:
             reasons.append("跨迭代")
         if not formal:
-            reasons.append("缺迭代交付到需求的正式关联")
+            reasons.append(
+                "缺例外范围到需求的正式关联"
+                if scope_mode == "exceptional"
+                else "缺迭代交付到需求的正式关联"
+            )
         if item.get("relationConflict") is True:
             reasons.append("正式关系冲突")
 
@@ -293,11 +334,23 @@ def classify(data: dict[str, Any]) -> dict[str, Any]:
             groups["A"].append({"id": requirement_id})
 
     blocking = not groups["A"] or bool(groups["C"] or groups["D"])
+    unsafe_identity_reasons = {
+        "迭代快照重复编号", "选入编号不在迭代快照", "跨项目", "跨迭代",
+        "正式关系冲突", "缺迭代交付到需求的正式关联", "缺例外范围到需求的正式关联",
+    }
+    unsafe_identity = any(
+        reason in unsafe_identity_reasons
+        for row in groups["D"]
+        for reason in row.get("reasons", [])
+    )
     return {
         "ok": not blocking,
         "blocking": blocking,
+        "canPersistDraft": not unsafe_identity,
+        "releaseReady": not blocking,
         "projectId": project_id,
         "iterationId": iteration_id,
+        "scopeMode": scope_mode,
         "selectionMode": selection_mode,
         "selectedRequirementIds": sorted(selected_set),
         "A_releaseScope": groups["A"],

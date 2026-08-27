@@ -27,10 +27,12 @@ READ_PREFIXES = (
 WRITE_OPERATIONS = {
     "projex-create-workitem", "projex-update-workitem",
     "projex-create-workitem-comment", "projex-create-workitem-relation-record",
+    "projex-delete-workitem-relation-record",
     "projex-create-workitem-ext-relation-record", "projex-update-custom-field",
     "projex-create-estimated-effort", "projex-update-estimated-effort",
     "projex-create-effort-record", "projex-update-effort-record",
-    "codeup-create-branch", "codeup-create-change-request",
+    "codeup-create-branch", "codeup-commit-multiple-files",
+    "codeup-create-change-request",
     "codeup-update-change-request", "codeup-update-change-request-related-person",
     "codeup-merge-change-request", "codeup-delete-branch",
     "flow-create-pipeline-run", "flow-execute-pipeline-job-action",
@@ -86,13 +88,16 @@ def write_json(path: Path, value: dict[str, Any]) -> None:
     path.write_text(json.dumps(value, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-def validate_args(args: Any) -> list[str]:
+def validate_args(args: Any, allow_source_content: bool = False) -> list[str]:
     if not isinstance(args, list) or not all(isinstance(v, str) for v in args):
         raise core.AdapterError("CLI args必须是字符串数组。")
-    for value in args:
-        if "\x00" in value or "\r" in value or "\n" in value:
+    for index, value in enumerate(args):
+        is_source_content = allow_source_content and (
+            value.startswith("content=") or (index > 0 and args[index - 1] == "--actions")
+        )
+        if "\x00" in value or "\r" in value or ("\n" in value and not is_source_content):
             raise core.AdapterError("CLI参数不得包含换行或NUL。")
-        if SECRET_RE.search(value):
+        if SECRET_RE.search(value) and not is_source_content:
             raise core.AdapterError("计划/回执不得包含凭据或敏感参数；请使用云效受保护变量。")
     return list(args)
 
@@ -110,7 +115,13 @@ def validate_call(call: Any, write: bool) -> dict[str, Any]:
             raise core.AdapterError(f"写操作不在白名单：{operation}")
     elif not is_read(operation):
         raise core.AdapterError(f"只读操作不在白名单：{operation}")
-    return {"operation": operation, "args": validate_args(call.get("args", []))}
+    return {
+        "operation": operation,
+        "args": validate_args(
+            call.get("args", []),
+            allow_source_content=write and operation == "codeup-commit-multiple-files",
+        ),
+    }
 
 
 def get_path(value: Any, path: str) -> Any:
@@ -156,6 +167,85 @@ def parse_flag_args(args: list[str], required: set[str]) -> dict[str, str]:
     if set(values) != required:
         raise core.AdapterError("模拟生产流水线参数不完整或包含未允许字段。")
     return values
+
+
+def flag_value(args: list[str], name: str) -> str | None:
+    for index in range(0, len(args) - 1):
+        if args[index] == name:
+            return args[index + 1]
+    return None
+
+
+def source_safe_plan(value: dict[str, Any]) -> dict[str, Any]:
+    """Hide source text from keyword-only credential detection.
+
+    The actual source remains in the immutable preflight plan; only this scan copy
+    is changed. Runtime scrubbing still removes real PAT/secret-shaped values.
+    """
+    copied = json.loads(json.dumps(value, ensure_ascii=False))
+    for action in copied.get("actions", []):
+        if not isinstance(action, dict) or action.get("operation") != "codeup-commit-multiple-files":
+            continue
+        safe_args: list[Any] = []
+        previous = ""
+        for item in action.get("args", []):
+            if isinstance(item, str) and (
+                item.startswith("content=") or previous == "--actions"
+            ):
+                safe_args.append("<verified-source-action>")
+            else:
+                safe_args.append(item)
+            previous = item if isinstance(item, str) else ""
+        action["args"] = safe_args
+    return copied
+
+
+def validate_codeup_file_commit(action: dict[str, Any], authority: str) -> None:
+    if authority != "execute":
+        raise core.AdapterError("干净发布候选代码提交必须使用execute权限。")
+    args = action["args"]
+    repository_id = flag_value(args, "--repository-id") or ""
+    branch = flag_value(args, "--branch") or ""
+    commit_message = flag_value(args, "--commit-message") or ""
+    release_match = re.match(r"^release/(ONEOS-\d+)(?:[-/].*)?$", branch)
+    if not repository_id.isdigit() or not release_match:
+        raise core.AdapterError("代码文件提交只允许写入release/ONEOS-<id>临时发布候选分支。")
+    if release_match.group(1) not in commit_message:
+        raise core.AdapterError("提交信息必须包含与候选分支一致的发版任务编号。")
+    groups: list[dict[str, str]] = []
+    index = 0
+    singleton_flags = {"--repository-id", "--branch", "--commit-message"}
+    while index < len(args):
+        token = args[index]
+        if token in singleton_flags:
+            index += 2
+            continue
+        if token != "--actions":
+            raise core.AdapterError(f"代码文件提交包含未允许参数：{token}")
+        if index + 1 >= len(args):
+            raise core.AdapterError("代码文件actions缺少JSON对象。")
+        try:
+            group = json.loads(args[index + 1])
+        except json.JSONDecodeError as exc:
+            raise core.AdapterError(f"代码文件actions必须是JSON对象：{exc}") from exc
+        if not isinstance(group, dict) or not all(
+            isinstance(key, str) and isinstance(item_value, str)
+            for key, item_value in group.items()
+        ):
+            raise core.AdapterError("代码文件actions必须是字符串字段的JSON对象。")
+        groups.append(group)
+        index += 2
+    if not groups:
+        raise core.AdapterError("代码文件提交至少需要一个actions项。")
+    required = {"action", "content", "file_path", "previous_path"}
+    for group in groups:
+        path = group.get("file_path", "")
+        if set(group) != required or group.get("action") not in {"create", "update"}:
+            raise core.AdapterError("发布候选只允许create/update文件，不允许delete/move。")
+        if group.get("previous_path") or not path or path.startswith(("/", "\\")):
+            raise core.AdapterError("发布候选的文件路径无效。")
+        if "\\" in path or any(part == ".." for part in path.split("/")):
+            raise core.AdapterError("发布候选的文件路径不得越界。")
 
 
 def strip_pipeline_plugins(flow: str) -> str:
@@ -328,7 +418,7 @@ def execute_read(executable: str, call: dict[str, Any], outputs: list[Any] | Non
 
 
 def validate_plan(value: dict[str, Any]) -> dict[str, Any]:
-    assert_no_secrets(value)
+    assert_no_secrets(source_safe_plan(value))
     if value.get("schema") != PLAN_SCHEMA:
         raise core.AdapterError(f"计划schema必须为{PLAN_SCHEMA}。")
     authority = value.get("authority")
@@ -344,9 +434,18 @@ def validate_plan(value: dict[str, Any]) -> dict[str, Any]:
                      for item in value.get("verifications", [])]
     if not guards or not actions or not verifications:
         raise core.AdapterError("事务计划必须同时包含guards、actions和verifications。")
-    if any(item["operation"] == "codeup-delete-branch" for item in actions):
+    for action in actions:
+        if action["operation"] == "codeup-commit-multiple-files":
+            validate_codeup_file_commit(action, authority)
+        if action["operation"] != "projex-create-workitem":
+            continue
+        subject = flag_value(action["args"], "--subject") or ""
+        if subject.startswith("【发版】") and "--sprint" in action["args"]:
+            raise core.AdapterError("【发版】任务不得填写--sprint；迭代只可作为隐藏范围追溯。")
+    destructive_operations = {"codeup-delete-branch", "projex-delete-workitem-relation-record"}
+    if any(item["operation"] in destructive_operations for item in actions):
         if authority != "cleanup" or value.get("destructiveConfirmation") is not True:
-            raise core.AdapterError("删除分支必须使用cleanup权限并显式确认destructiveConfirmation=true。")
+            raise core.AdapterError("删除操作必须使用cleanup权限并显式确认destructiveConfirmation=true。")
     return {
         "schema": PLAN_SCHEMA,
         "label": str(value.get("label") or "Yunxiao CLI transaction"),
