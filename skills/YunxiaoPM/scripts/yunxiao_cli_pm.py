@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import html
 import hashlib
 import json
 import re
@@ -15,7 +16,17 @@ from typing import Any
 import yunxiao_cli_runtime as core
 
 
-SCHEMA = "oneos.yunxiao-pm-cli/v1"
+SCHEMA = "oneos.yunxiao-pm-cli/v2"
+PRODUCT_SNAPSHOT_SCHEMA = "oneos.product-handoff-snapshot/v1"
+MARKDOWN_PRODUCT_SNAPSHOT_RE = re.compile(
+    r"(?ms)^## 产品交棒快照\s*\n<!-- ONEOS_PRODUCT_HANDOFF_SNAPSHOT_START id=ps-[a-f0-9]{16} sha256=[a-f0-9]{64} -->.*?<!-- ONEOS_PRODUCT_HANDOFF_SNAPSHOT_END -->\s*"
+)
+HTML_PRODUCT_SNAPSHOT_RE = re.compile(
+    r"(?is)<h2>产品交棒快照</h2><!-- ONEOS_PRODUCT_HANDOFF_SNAPSHOT_START id=ps-[a-f0-9]{16} sha256=[a-f0-9]{64} -->.*?<!-- ONEOS_PRODUCT_HANDOFF_SNAPSHOT_END -->"
+)
+PRODUCT_SNAPSHOT_SECTIONS = (
+    "变更范围", "PRD版本", "原型版本", "页面与交互索引", "验收入口", "未决风险",
+)
 
 
 def canonical_hash(value: Any, excluded: set[str] | None = None) -> str:
@@ -42,6 +53,17 @@ def get_project(executable: str, project_id: str) -> dict[str, Any]:
     if str(value.get("logicalStatus") or "NORMAL").upper() != "NORMAL":
         raise core.AdapterError("项目不是正常状态。")
     return value
+
+
+def verified_project(executable: str, project_id: str,
+                     expected_name: str | None = None) -> tuple[dict[str, Any], str]:
+    project = get_project(executable, project_id)
+    live_name = str(project.get("name") or "").strip()
+    if not live_name:
+        raise core.AdapterError("项目名称无法官方回读。")
+    if expected_name and live_name != expected_name:
+        raise core.AdapterError("项目名称与ID不一致。")
+    return project, live_name
 
 
 def search_workitems(executable: str, project_id: str, category: str) -> list[dict[str, Any]]:
@@ -86,20 +108,29 @@ def snapshot_item(item: dict[str, Any] | None) -> dict[str, Any] | None:
         "id": str(item.get("id") or ""), "serialNumber": serial(item),
         "subject": item.get("subject"), "status": status_name(item),
         "ownerId": owner_id(item), "parentId": str(item.get("parentId") or ""),
-        "logicalStatus": item.get("logicalStatus"),
+        "logicalStatus": item.get("logicalStatus"), "gmtModified": item.get("gmtModified"),
+        "descriptionHash": hashlib.sha256(
+            str(item.get("description") or "").encode("utf-8")).hexdigest(),
     }
 
 
-def exact_member(executable: str, name: str) -> dict[str, str]:
+def exact_member(executable: str, name_or_id: str) -> dict[str, str]:
+    needle = name_or_id.strip()
+    if not needle:
+        raise core.AdapterError("负责人未明确；须由命令或项目配置提供姓名或userId。")
     value = rows(core.run_devops(executable, [
-        "base-search-members", "--query", name, "--page", "1", "--per-page", "100",
+        "base-search-members", "--query", needle, "--page", "1", "--per-page", "100",
     ]), "成员查询")
-    matches = [row for row in value if str(row.get("name") or "") == name
-               and (row.get("userId") or row.get("id"))]
+    matches = [row for row in value if (row.get("userId") or row.get("id")) and
+               needle in {str(row.get("name") or ""),
+                          str(row.get("userId") or row.get("id") or "")}]
     ids = {str(row.get("userId") or row.get("id")) for row in matches}
     if len(ids) != 1:
-        raise core.AdapterError(f"成员{name}无法唯一解析。")
-    return {"id": next(iter(ids)), "name": name}
+        raise core.AdapterError(f"成员{name_or_id}无法唯一解析。")
+    member_id = next(iter(ids))
+    member = next(row for row in matches
+                  if str(row.get("userId") or row.get("id")) == member_id)
+    return {"id": member_id, "name": str(member.get("name") or needle)}
 
 
 def exact_type(executable: str, project_id: str, category: str, name: str) -> dict[str, Any]:
@@ -213,10 +244,58 @@ def load_text(path: str) -> str:
     return value
 
 
+def load_product_snapshot(path: str) -> dict[str, str]:
+    source = Path(path).resolve()
+    if not source.is_file():
+        raise core.AdapterError("产品交棒快照文件不存在。")
+    content = source.read_text(encoding="utf-8").strip()
+    if len(content) < 240:
+        raise core.AdapterError("产品交棒快照内容过短，不能作为产品修改后的版本印记。")
+    missing = [name for name in PRODUCT_SNAPSHOT_SECTIONS if name not in content]
+    if missing:
+        raise core.AdapterError(f"产品交棒快照缺少必要章节：{'、'.join(missing)}。")
+    digest = hashlib.sha256(content.encode("utf-8")).hexdigest()
+    return {
+        "path": str(source), "content": content, "sha256": digest,
+        "snapshotId": f"ps-{digest[:16]}", "schema": PRODUCT_SNAPSHOT_SCHEMA,
+    }
+
+
+def managed_product_snapshot_description(
+        current: str | None, format_type: str | None,
+        snapshot: dict[str, str], requirement_serial: str,
+        delivery_serial: str) -> tuple[str, str]:
+    marker = (f"id={snapshot['snapshotId']} sha256={snapshot['sha256']}")
+    metadata = (
+        f"schema: {PRODUCT_SNAPSHOT_SCHEMA}\n"
+        f"快照编号: {snapshot['snapshotId']}\n"
+        f"需求: {requirement_serial}\n"
+        f"交付: {delivery_serial}\n\n"
+    )
+    if str(format_type or "").upper() == "RICHTEXT":
+        block = (
+            "<h2>产品交棒快照</h2>"
+            f"<!-- ONEOS_PRODUCT_HANDOFF_SNAPSHOT_START {marker} -->"
+            f"<pre>{html.escape(metadata + snapshot['content'])}</pre>"
+            "<!-- ONEOS_PRODUCT_HANDOFF_SNAPSHOT_END -->"
+        )
+        source = HTML_PRODUCT_SNAPSHOT_RE.sub("", current or "", count=1).rstrip()
+        updated = f"{source}{block}" if source else block
+        return updated, "RICHTEXT"
+    block = (
+        "## 产品交棒快照\n"
+        f"<!-- ONEOS_PRODUCT_HANDOFF_SNAPSHOT_START {marker} -->\n"
+        f"{metadata}{snapshot['content']}\n"
+        "<!-- ONEOS_PRODUCT_HANDOFF_SNAPSHOT_END -->"
+    )
+    source = MARKDOWN_PRODUCT_SNAPSHOT_RE.sub("", current or "", count=1).rstrip()
+    updated = f"{source}\n\n{block}" if source else block
+    return updated.rstrip(), "MARKDOWN"
+
+
 def build_scope(executable: str, args: argparse.Namespace) -> dict[str, Any]:
-    project = get_project(executable, args.space_id)
-    if str(project.get("name") or "") != args.project_name:
-        raise core.AdapterError("项目名称与ID不一致。")
+    project, project_name = verified_project(
+        executable, args.space_id, args.project_name)
     current = core.current_user(executable)
     delivery_owner = exact_member(executable, args.delivery_owner)
     stage_owner = exact_member(executable, args.stage_owner)
@@ -246,7 +325,7 @@ def build_scope(executable: str, args: argparse.Namespace) -> dict[str, Any]:
     if len(sprint_matches) > 1:
         raise core.AdapterError("同名迭代不唯一。")
     return {
-        "project": {"id": args.space_id, "name": args.project_name,
+        "project": {"id": args.space_id, "name": project_name,
                     "customCode": project.get("customCode")},
         "currentUser": current,
         "deliveryOwner": delivery_owner,
@@ -389,7 +468,7 @@ def cmd_preflight(args: argparse.Namespace) -> int:
     value = {
         "schema": SCHEMA, "command": "preflight-standard", "createdAt": core.now_utc(),
         "input": {
-            "spaceId": args.space_id, "projectName": args.project_name,
+            "spaceId": args.space_id, "projectName": scope["project"]["name"],
             "subject": args.subject, "descriptionFile": str(Path(args.description_file).resolve()),
             "deliveryFile": str(Path(args.delivery_file).resolve()), "priority": args.priority,
             "label": args.label, "deliveryOwner": args.delivery_owner,
@@ -579,6 +658,137 @@ def require_relation(executable: str, source_id: str, target_id: str, relation_t
         raise core.AdapterError(f"{label}正式关系缺失，拒绝执行。")
 
 
+def resolve_workitem(executable: str, project_id: str, category: str,
+                     identifier: str) -> dict[str, Any]:
+    matches = [row for row in search_workitems(executable, project_id, category)
+               if str(row.get("id") or "") == identifier or serial(row) == identifier]
+    matches = [row for row in matches
+               if str(row.get("logicalStatus") or "NORMAL").upper() == "NORMAL"]
+    if len(matches) != 1:
+        raise core.AdapterError(f"工作项{identifier}无法在项目中唯一解析。")
+    return get_workitem(executable, str(matches[0]["id"]))
+
+
+def build_product_snapshot_scope(executable: str, args: argparse.Namespace) -> dict[str, Any]:
+    _, project_name = verified_project(
+        executable, args.space_id, args.project_name)
+    requirement = resolve_workitem(
+        executable, args.space_id, "Req", args.requirement_id)
+    delivery = resolve_workitem(
+        executable, args.space_id, "Task", args.delivery_id)
+    if not str(delivery.get("subject") or "").startswith("【交付】"):
+        raise core.AdapterError("目标任务不是【交付】任务。")
+    if status_name(requirement) in {"已完成", "已取消"}:
+        raise core.AdapterError("已完成或已取消的需求不能刷新产品交棒快照。")
+    if status_name(delivery) in {"已完成", "已取消"}:
+        raise core.AdapterError("已完成或已取消的交付不能刷新产品交棒快照。")
+    require_relation(executable, str(delivery["id"]), str(requirement["id"]),
+                     "ASSOCIATED", "交付→需求")
+    return {
+        "project": {"id": args.space_id, "name": project_name},
+        "requirement": snapshot_reverse(requirement),
+        "delivery": snapshot_reverse(delivery),
+    }
+
+
+def cmd_preflight_product_snapshot(args: argparse.Namespace) -> int:
+    executable = core.find_aliyun()
+    core.require_auth_env()
+    snapshot = load_product_snapshot(args.snapshot_file)
+    scope = build_product_snapshot_scope(executable, args)
+    value = {
+        "schema": SCHEMA, "command": "preflight-product-snapshot",
+        "createdAt": core.now_utc(),
+        "input": {
+            "spaceId": args.space_id, "projectName": scope["project"]["name"],
+            "requirementId": args.requirement_id, "deliveryId": args.delivery_id,
+            "snapshotFile": snapshot["path"],
+        },
+        "productSnapshot": {
+            "schema": snapshot["schema"], "snapshotId": snapshot["snapshotId"],
+            "path": snapshot["path"], "sha256": snapshot["sha256"],
+        },
+        "liveScope": scope,
+    }
+    value["preflightHash"] = canonical_hash(value, {"preflightHash"})
+    output = Path(args.output) if args.output else core.output_dir() / "pm-product-snapshot-preflight.json"
+    core.write_json(output, value)
+    print(json.dumps({
+        "schema": SCHEMA, "ready": True, "preflightPath": str(output),
+        "preflightHash": value["preflightHash"],
+        "productSnapshot": value["productSnapshot"], "scope": scope,
+    }, ensure_ascii=False, indent=2))
+    return 0
+
+
+def cmd_apply_product_snapshot(args: argparse.Namespace) -> int:
+    executable = core.find_aliyun()
+    core.require_auth_env()
+    plan = json.loads(Path(args.preflight).read_text(encoding="utf-8"))
+    if plan.get("schema") != SCHEMA or plan.get("command") != "preflight-product-snapshot" \
+            or plan.get("preflightHash") != canonical_hash(plan, {"preflightHash"}):
+        raise core.AdapterError("产品快照预检文件格式或哈希无效。")
+    source = plan["input"]
+    params = argparse.Namespace(
+        space_id=source["spaceId"], project_name=source["projectName"],
+        requirement_id=source["requirementId"], delivery_id=source["deliveryId"],
+    )
+    snapshot = load_product_snapshot(source["snapshotFile"])
+    if snapshot["sha256"] != plan.get("productSnapshot", {}).get("sha256"):
+        raise core.AdapterError("产品交棒快照在预检后发生变化。")
+    scope = build_product_snapshot_scope(executable, params)
+    if canonical_hash(scope) != canonical_hash(plan.get("liveScope")):
+        raise core.AdapterError("产品快照预检后需求、交付、状态、负责人、关系或描述发生变化。")
+
+    requirement = get_workitem(executable, scope["requirement"]["id"])
+    delivery = get_workitem(executable, scope["delivery"]["id"])
+    operations: list[dict[str, Any]] = []
+    for label, item in (("requirement", requirement), ("delivery", delivery)):
+        updated_description, format_type = managed_product_snapshot_description(
+            description_text(item), item.get("formatType"), snapshot,
+            serial(requirement), serial(delivery))
+        if updated_description == description_text(item) and \
+                str(item.get("formatType") or "MARKDOWN").upper() == format_type:
+            operations.append({"operation": label, "result": "idempotent"})
+            continue
+        updated = update_item(executable, str(item["id"]), {
+            "description": updated_description, "formatType": format_type,
+        })
+        operations.append({"operation": label, "result": "updated",
+                           "serial": serial(updated)})
+
+    after_requirement = get_workitem(executable, str(requirement["id"]))
+    after_delivery = get_workitem(executable, str(delivery["id"]))
+    snapshot_marker = f"sha256={snapshot['sha256']}"
+    if snapshot_marker not in description_text(after_requirement) or \
+            snapshot_marker not in description_text(after_delivery):
+        raise core.AdapterError("产品交棒快照未在需求和交付中完整回读。")
+    if status_name(after_requirement) != scope["requirement"]["status"] or \
+            owner_id(after_requirement) != scope["requirement"]["ownerId"] or \
+            status_name(after_delivery) != scope["delivery"]["status"] or \
+            owner_id(after_delivery) != scope["delivery"]["ownerId"]:
+        raise core.AdapterError("刷新产品快照时意外改变了状态或负责人。")
+    require_relation(executable, str(after_delivery["id"]),
+                     str(after_requirement["id"]), "ASSOCIATED", "交付→需求")
+
+    receipt = {
+        "schema": SCHEMA, "command": "apply-product-snapshot",
+        "createdAt": core.now_utc(), "preflightHash": plan["preflightHash"],
+        "operations": operations,
+        "productSnapshot": {
+            "schema": snapshot["schema"], "snapshotId": snapshot["snapshotId"],
+            "sha256": snapshot["sha256"],
+        },
+        "requirement": snapshot_reverse(after_requirement),
+        "delivery": snapshot_reverse(after_delivery),
+    }
+    receipt["receiptHash"] = canonical_hash(receipt, {"receiptHash"})
+    output = Path(args.receipt) if args.receipt else core.output_dir() / "pm-product-snapshot-receipt.json"
+    core.write_json(output, receipt)
+    print(json.dumps({**receipt, "receiptPath": str(output)}, ensure_ascii=False, indent=2))
+    return 0
+
+
 def cancellation_marker(key: str) -> str:
     return f"oneos.pm.cancellation/{key}"
 
@@ -591,9 +801,8 @@ def reverse_statuses(executable: str, project_id: str) -> tuple[dict[str, str], 
 
 
 def build_cancel_scope(executable: str, args: argparse.Namespace) -> dict[str, Any]:
-    project = get_project(executable, args.space_id)
-    if str(project.get("name") or "") != args.project_name:
-        raise core.AdapterError("项目名称与ID不一致。")
+    _, project_name = verified_project(
+        executable, args.space_id, args.project_name)
     req, delivery, execution = (get_workitem(executable, value) for value in
                                 (args.requirement_id, args.delivery_id, args.execution_id))
     protected = [get_workitem(executable, value) for value in args.protected_id]
@@ -616,7 +825,7 @@ def build_cancel_scope(executable: str, args: argparse.Namespace) -> dict[str, A
         if status_name(item) == "已取消" and marker not in description_text(item):
             raise core.AdapterError(f"{label}已由其他流程取消，拒绝接管。")
     req_statuses, task_statuses = reverse_statuses(executable, args.space_id)
-    return {"project": {"id": args.space_id, "name": args.project_name}, "marker": marker,
+    return {"project": {"id": args.space_id, "name": project_name}, "marker": marker,
             "reason": args.reason, "requirement": snapshot_reverse(req), "delivery": snapshot_reverse(delivery),
             "execution": snapshot_reverse(execution), "protected": [snapshot_reverse(item) for item in protected],
             "statusIds": {"requirement": req_statuses, "task": task_statuses},
@@ -627,7 +836,7 @@ def cmd_preflight_cancel(args: argparse.Namespace) -> int:
     executable = core.find_aliyun(); core.require_auth_env()
     scope = build_cancel_scope(executable, args)
     value = {"schema": SCHEMA, "command": "preflight-cancel-downstream", "createdAt": core.now_utc(),
-             "input": {"spaceId": args.space_id, "projectName": args.project_name, "requirementId": args.requirement_id,
+             "input": {"spaceId": args.space_id, "projectName": scope["project"]["name"], "requirementId": args.requirement_id,
                        "deliveryId": args.delivery_id, "executionId": args.execution_id, "testTaskId": args.test_task_id,
                        "protectedIds": args.protected_id, "reason": args.reason, "idempotencyKey": args.idempotency_key},
              "liveScope": scope}
@@ -688,9 +897,8 @@ def rollback_marker(key: str) -> str:
 
 
 def build_rollback_scope(executable: str, args: argparse.Namespace) -> dict[str, Any]:
-    project = get_project(executable, args.space_id)
-    if str(project.get("name") or "") != args.project_name:
-        raise core.AdapterError("项目名称与ID不一致。")
+    _, project_name = verified_project(
+        executable, args.space_id, args.project_name)
     req, delivery, old_design = (get_workitem(executable, value) for value in (args.requirement_id, args.delivery_id, args.old_design_id))
     if {item_project_id(item) for item in (req, delivery, old_design)} != {args.space_id}:
         raise core.AdapterError("设计回退范围存在跨项目工作项。")
@@ -713,7 +921,7 @@ def build_rollback_scope(executable: str, args: argparse.Namespace) -> dict[str,
             raise core.AdapterError("已存在的新设计不在待处理，拒绝接续。")
     req_statuses, _ = reverse_statuses(executable, args.space_id)
     priority, label = requirement_priority_and_label(req)
-    return {"project": {"id": args.space_id, "name": args.project_name}, "marker": marker, "reason": args.reason,
+    return {"project": {"id": args.space_id, "name": project_name}, "marker": marker, "reason": args.reason,
             "requirement": snapshot_reverse(req), "delivery": {**snapshot_reverse(delivery), "plannedStart": planned_start(delivery)},
             "oldDesign": snapshot_reverse(old_design), "newDesign": snapshot_reverse(new_design) if new_design else None,
             "requirementStatuses": req_statuses, "creation": {"owner": owner_id(old_design), "priority": priority, "label": label, "oldSerial": old_serial,
@@ -722,7 +930,7 @@ def build_rollback_scope(executable: str, args: argparse.Namespace) -> dict[str,
 
 def cmd_preflight_rollback(args: argparse.Namespace) -> int:
     executable = core.find_aliyun(); core.require_auth_env(); scope = build_rollback_scope(executable, args)
-    value = {"schema": SCHEMA, "command": "preflight-rollback-to-design", "createdAt": core.now_utc(), "input": {"spaceId": args.space_id, "projectName": args.project_name, "requirementId": args.requirement_id, "deliveryId": args.delivery_id, "oldDesignId": args.old_design_id, "reason": args.reason, "idempotencyKey": args.idempotency_key}, "liveScope": scope}
+    value = {"schema": SCHEMA, "command": "preflight-rollback-to-design", "createdAt": core.now_utc(), "input": {"spaceId": args.space_id, "projectName": scope["project"]["name"], "requirementId": args.requirement_id, "deliveryId": args.delivery_id, "oldDesignId": args.old_design_id, "reason": args.reason, "idempotencyKey": args.idempotency_key}, "liveScope": scope}
     value["preflightHash"] = canonical_hash(value, {"preflightHash"})
     output = Path(args.output) if args.output else core.output_dir() / "pm-design-rollback-preflight.json"
     core.write_json(output, value); print(json.dumps({"ready": True, "preflightPath": str(output), "preflightHash": value["preflightHash"]}, ensure_ascii=False)); return 0
@@ -759,7 +967,7 @@ def parser() -> argparse.ArgumentParser:
     doctor = sub.add_parser("doctor")
     doctor.set_defaults(handler=cmd_doctor)
     preflight = sub.add_parser("preflight-standard")
-    for name, required in (("space-id", True), ("project-name", True), ("subject", True),
+    for name, required in (("space-id", True), ("project-name", False), ("subject", True),
                            ("description-file", True), ("delivery-file", True),
                            ("priority", True), ("label", True), ("delivery-owner", True),
                            ("stage-owner", True), ("sprint-name", True),
@@ -772,9 +980,20 @@ def parser() -> argparse.ArgumentParser:
     apply_cmd.add_argument("--preflight", required=True)
     apply_cmd.add_argument("--receipt")
     apply_cmd.set_defaults(handler=cmd_apply)
+    snapshot_preflight = sub.add_parser("preflight-product-snapshot")
+    for name in ("space-id", "requirement-id", "delivery-id", "snapshot-file"):
+        snapshot_preflight.add_argument(f"--{name}", required=True)
+    snapshot_preflight.add_argument("--project-name")
+    snapshot_preflight.add_argument("--output")
+    snapshot_preflight.set_defaults(handler=cmd_preflight_product_snapshot)
+    snapshot_apply = sub.add_parser("apply-product-snapshot")
+    snapshot_apply.add_argument("--preflight", required=True)
+    snapshot_apply.add_argument("--receipt")
+    snapshot_apply.set_defaults(handler=cmd_apply_product_snapshot)
     cancel_preflight = sub.add_parser("preflight-cancel-downstream")
-    for name in ("space-id", "project-name", "requirement-id", "delivery-id", "execution-id", "reason", "idempotency-key"):
+    for name in ("space-id", "requirement-id", "delivery-id", "execution-id", "reason", "idempotency-key"):
         cancel_preflight.add_argument(f"--{name}", required=True)
+    cancel_preflight.add_argument("--project-name")
     cancel_preflight.add_argument("--test-task-id")
     cancel_preflight.add_argument("--protected-id", action="append", default=[])
     cancel_preflight.add_argument("--output")
@@ -784,8 +1003,9 @@ def parser() -> argparse.ArgumentParser:
     cancel_apply.add_argument("--receipt")
     cancel_apply.set_defaults(handler=cmd_apply_cancel)
     rollback_preflight = sub.add_parser("preflight-rollback-to-design")
-    for name in ("space-id", "project-name", "requirement-id", "delivery-id", "old-design-id", "reason", "idempotency-key"):
+    for name in ("space-id", "requirement-id", "delivery-id", "old-design-id", "reason", "idempotency-key"):
         rollback_preflight.add_argument(f"--{name}", required=True)
+    rollback_preflight.add_argument("--project-name")
     rollback_preflight.add_argument("--output")
     rollback_preflight.set_defaults(handler=cmd_preflight_rollback)
     rollback_apply = sub.add_parser("apply-rollback-to-design")

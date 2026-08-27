@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""YunxiaoPM 极速真实建单 v5：快轨描述/计划/标签/工时 2+2/设计 ASSOCIATED 补挂。"""
+"""已停用的 YunxiaoPM Cookie 压测写入脚本；仅保留历史实现供审计。"""
 from __future__ import annotations
 
 import json
@@ -588,7 +588,10 @@ def build_fast(
     }
 
 
-def main() -> None:
+def _legacy_main_disabled() -> None:
+    raise RuntimeError(
+        "live_create_fast.py 已停用：固定项目/王冕/何斐并使用Cookie写入，禁止处理真实业务；请使用 yunxiao_cli_pm.py。"
+    )
     auth0 = time.perf_counter()
     load_auth()
     auth_s = round(time.perf_counter() - auth0, 3)
@@ -658,5 +661,15 @@ def main() -> None:
     print(json.dumps(out, ensure_ascii=False, indent=2))
 
 
+def main() -> int:
+    print(json.dumps({
+        "ok": False,
+        "error": "LEGACY_ENTRY_DISABLED",
+        "reason": "固定项目与固定人员的Cookie写入入口已停用",
+        "replacement": "skill-run yunxiao_cli_pm.py",
+    }, ensure_ascii=False, indent=2))
+    return 2
+
+
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

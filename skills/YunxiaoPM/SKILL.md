@@ -3,12 +3,12 @@ name: YunxiaoPM
 description: >-
   产品经理云效（Projex）自动化：记录需求（压缩点选 1a2b3a4d：类型仅新增/优化、项目、优先级、标签）、
   实时点选云效项目、推进 待处理→已确认→分析中→设计中→设计完成→待开发、开发后受控取消需求，
-  交付树【交付】ASSOCIATED /【分析】【设计】TASK_SUB，无单快轨与编号直推交棒何斐，
+  交付树【交付】ASSOCIATED /【分析】【设计】TASK_SUB，无单快轨与编号直推交棒到已明确且官方回读唯一的交付负责人，
   创建迭代并挂【交付】（不挂需求）。用户说 YunxiaoPM、需求任务、记录需求、受理确认、开始分析、
   开始设计、设计完成、交棒开发、快轨待开发、编号直推、创建迭代、关闭迭代、取消需求、拉取待验收需求、验收通过、验收不通过、验收续跑 时使用。
   全部云效读取和写入优先走官方 aliyun devops CLI/PAT；仅“关闭迭代”在已核实 CLI 缺少对应状态动作时，允许按受控视觉流程兜底，不依赖浏览器 Cookie。 不建【开发】/【测试】。
-  凡写云效先 Plan 再 apply；禁止对齐 yunxiao-requirement-lifecycle。
-  交棒后开发 Skill：仅【优化】类从需求 MD 精炼写「修改前规则」。
+  新建或扩大范围的写入先 Plan 再 apply；明确编号的同批幂等刷新、续跑和补回读不重复确认；禁止对齐 yunxiao-requirement-lifecycle。
+  交棒后开发 Skill：仅【优化】类从需求 MD 精炼写「修改前规则」；PM 修改 PRD/原型后生成并回读产品交棒快照。
 ---
 
 # 需求任务（YunxiaoPM）
@@ -23,31 +23,33 @@ description: >-
 ## 0. 本轮组装要点（速记）
 
 1. **类型只有** `【新增】` / `【优化】`（无【修复】前缀）
-2. **本 Skill 不建**【开发】/【测试】；交棒终点 = 待开发 +【交付】负责人何斐
+2. **本 Skill 不建**【开发】/【测试】；交棒终点 = 待开发 +【交付】负责人已由命令或项目配置明确并官方回读
 3. **生成【交付】非占位描述**：必须 **`$AutoRDO`** → 单独一章「规则对照」含 **修改前规则 + 修改后规则**（见 AutoRDO `delivery-rules-chapter.md`）
 4. **开发 Skill**【开发】描述：仅【优化】精炼写「修改前规则」（见 [dev-task-description.md](references/dev-task-description.md)）
 5. 碎片入库先 **`$AutoRDO`**；设计完成灌 PRD 用 **`$oneos-autoprd`**
-6. 凡写云效：**Plan → 确认 → 一口气 apply**；新建必 **PJ 点选项目**；记录需求默认 **`1a2b3a4d`**
-7. 云效执行只允许官方 `aliyun devops` CLI 与本 Skill 的 `yunxiao_cli_pm.py`；禁止 Cookie、XSRF、DOM 或网页内部接口回退。唯一例外为“关闭迭代”：先按 [iteration-close.md](references/iteration-close.md) 核验官方 CLI 与页面完整交互；CLI 缺少状态动作时才允许受控视觉兜底
+6. **产品交棒快照**：PRD/原型修改确认后生成；需求和【交付】都写入并回读同一快照编号/哈希；后续修改用`刷新产品快照`，不重推状态
+7. 写云效分级：建需求、批量推进、取消、验收、创建迭代仍须 **Plan → 确认 → apply**；同一已授权批次中，明确编号且不扩范围的幂等刷新、续跑、补回读不重复确认
+8. 云效执行只允许官方 `aliyun devops` CLI 与本 Skill 的 `yunxiao_cli_pm.py`；禁止 Cookie、XSRF、DOM 或网页内部接口回退。唯一例外为“关闭迭代”：先按 [iteration-close.md](references/iteration-close.md) 核验官方 CLI 与页面完整交互；CLI 缺少状态动作时才允许受控视觉兜底
 
 ## 官方 CLI 运行时（强制）
 
 1. 运行 `skill-run yunxiao_cli_pm.py doctor`，认证只读取本机环境变量中的 PAT、组织ID或 Region API 地址
-2. 写入前运行 `preflight-standard` 或对应命令的预检，冻结项目、人员、状态、关系、同名对象、文档哈希和幂等键
-3. 用户已通过 Plan 门禁后才运行 `apply-standard`；apply 必须重新读取守卫，发生漂移时零写入
+2. 写入前按命令分别预检：标准流程由 `preflight-standard` 冻结原有范围；产品快照由 `preflight-product-snapshot` 单独冻结快照哈希及目标需求/交付
+3. 需确认的事务在用户通过 Plan 门禁后运行 apply；同一已授权批次的幂等刷新、续跑、补回读可直接续行。两类 apply 都必须重新读取守卫，发生漂移时零写入
 4. 写入后按工作项内部ID回读状态、负责人、正式关系、迭代和文档；不得按标题猜测成功
 5. 旧 `list_projects.py`、`list_tags.py`、`live_create_fast.py` 和 Cookie API 仅属历史实现，不得执行
 
-## Plan 模式门禁（强制 · 凡写云效）
+## Plan 模式门禁（按写入风险分级）
 
-1. `SwitchMode` → **plan**
-2. **新建**依赖项目空间：按 [project-selection.md](references/project-selection.md) **实时拉列表并点选（PJ）**；禁止静默用 `runtime-ids.json` 默认 `spaceIdentifier`；口令对不上则**自动重拉项目列表一次**，仍失败则停
-3. Plan 写清：已选项目名+spaceId、需求/任务编号、将改状态、交付·分析·设计编号策略、迭代类型（若有）、§0.1① 占位风险（若有）、**不会做的事**（不建【开发】/【测试】、不按标题查重）。**记录需求**须给 [compact-select.md](references/compact-select.md) 1–4 题字母表，接受 `1a2b3a4d`
-4. 用户确认 / 批准 / 「执行」前禁止 apply；压缩串先解析回显再等「执行」
-5. 确认后切 Agent，**同一轮清单执行到底**，再校验回报
+1. **必须 Plan 并再次确认**：创建需求/任务树、批量推进、取消需求、产品验收、创建或关闭迭代，以及任何新增对象、扩大范围或改变既定责任人的动作。
+2. **项目选择分级**：命令明确给出项目 ID，且官方 `projex-get-project` 唯一回读同一 ID 与项目名时，直接锁定项目，不再人工点选；未给 ID、ID 无法唯一回读或存在多个候选时，按 [project-selection.md](references/project-selection.md) 实时点选（PJ）。禁止静默使用缓存默认值。
+3. Plan 写清：项目名+spaceId、需求/任务编号、将改状态、负责人及来源、交付·分析·设计编号策略、产品快照编号/哈希或占位缺失风险、迭代类型（若有）、**不会做的事**（不建【开发】/【测试】、不按标题查重）。记录需求仅对尚未由明确参数唯一锁定的项目/类型/优先级/标签展示 [compact-select.md](references/compact-select.md) 选择题。
+4. 用户确认 / 批准 / 「执行」前禁止执行第 1 类 apply；压缩串先解析回显再等「执行」。
+5. **无需重复确认**：同一已确认计划或同一幂等键下，目标项目和工作项编号均明确、操作只是在原范围内刷新产品快照、续跑未完成动作或补官方回读时，可重新预检后直接续行；任何对象、关系、负责人、状态边界或动作范围漂移，立即停止并重新 Plan。
+6. 执行后按内部 ID 回读项目、编号、状态、负责人和正式关系，再校验回报。
 
-**例外（可读可不进 Plan）：** 仅查状态 / 解释 / 给方案。  
-**禁止：** 以「参数已齐」跳过 Plan；关键参数（含 PJ）未点齐则「批准计划」仍不算过门禁。
+**只读例外：** 仅查状态 / 解释 / 给方案不进 Plan。
+**禁止：** 把“参数已齐”泛化成免确认；免确认只适用于上述明确编号、同范围、同幂等事务。
 
 ## 真相源模型
 
@@ -69,7 +71,7 @@ description: >-
 |---|---|
 | 清洗聊天/录音/台账 | **`$AutoRDO`** |
 | **生成/回填【交付】非占位描述** | **`$AutoRDO`** → 规则对照章（修改前+修改后）；见 AutoRDO `delivery-rules-chapter.md` |
-| 设计完成 PRD + 原型链接 | **`$oneos-autoprd`**（创建【交付】仍可占位；回填时规则对照章仍走 AutoRDO） |
+| 设计完成 PRD + 原型链接 | **`$oneos-autoprd`**；完成后按 [product-handoff-snapshot.md](references/product-handoff-snapshot.md) 生成产品快照（创建【交付】仍可占位；回填规则对照章仍走 AutoRDO） |
 | 人员/状态/字段；项目 catalog 仅缓存 | [assets/runtime-ids.json](assets/runtime-ids.json) |
 | PJ 项目点选 | [project-selection.md](references/project-selection.md) · 官方 `projex-search-projects` |
 | 压缩点选 | [compact-select.md](references/compact-select.md) · 官方 `projex-list-labels` |
@@ -103,6 +105,7 @@ description: >-
 | 记录需求元字段 | [record-meta-fields.md](references/record-meta-fields.md) |
 | 验收 / 回报 | [acceptance.md](references/acceptance.md) |
 | 交接契约（开发入口） | [handoff-contract.md](references/handoff-contract.md) |
+| 产品修改后的交棒快照 | [product-handoff-snapshot.md](references/product-handoff-snapshot.md) |
 | 【开发】描述（仅【优化】） | [dev-task-description.md](references/dev-task-description.md) |
 | CLI 实写与回读 | [live-api.md](references/live-api.md) · [scripts/yunxiao_cli_pm.py](scripts/yunxiao_cli_pm.py) |
 | 跨平台脚本启动器 | [runtime-launcher.md](references/runtime-launcher.md) |
@@ -113,14 +116,15 @@ description: >-
 ## 口令速查
 
 ```text
-记录需求：…；项目=（Plan 点选）；交付端=Web|小程序|共用服务；优先级=紧急|高|中|低；标签=…；提交部门=…；提交人=…；推进至=暂不推进|已确认|分析中|设计中|设计完成|待开发|待开发(快轨)
+记录需求：…；项目ID=…或项目=（未给ID时Plan点选）；交付端=Web|小程序|共用服务；优先级=紧急|高|中|低；标签=…；提交部门=…；提交人=…；交付负责人=姓名或userId；推进至=暂不推进|已确认|分析中|设计中|设计完成|待开发|待开发(快轨)
 受理确认：ONEOS-xx
 开始分析：ONEOS-xx
 开始设计：ONEOS-xx；交付任务=…；分析任务=…
 设计完成：ONEOS-xx；设计任务=…；原型=…
-交棒开发：ONEOS-xx；交付任务=…
-快轨待开发：ONEOS-xx
-编号直推：分析任务=ONEOS-b / 设计任务=ONEOS-c / 交付任务=ONEOS-a
+刷新产品快照：需求=ONEOS-xx；交付任务=ONEOS-a；快照文件=…
+交棒开发：ONEOS-xx；交付任务=…；[交付负责人=姓名或userId]
+快轨待开发：ONEOS-xx；[交付负责人=姓名或userId]
+编号直推：分析任务=ONEOS-b / 设计任务=ONEOS-c / 交付任务=ONEOS-a；[交付负责人=姓名或userId]
 回退设计：需求=ONEOS-xx；交付=TASK-xx；原设计=TASK-xx；原因=…
 创建迭代：交付端=Web|小程序；版本类型=主|副|子；交付任务=ONEOS-a,ONEOS-b,…；名称前缀=…
 关闭迭代：迭代ID=…
@@ -137,7 +141,7 @@ description: >-
 
 ## 本 Skill 的两个边界
 
-1. 开发前：交棒完成（需求=待开发；【交付】负责人=何斐）→「请技术经理使用开发 Skill」。
+1. 开发前：交棒完成（需求=待开发；【交付】负责人来自命令或项目配置且已官方回读；非占位交棒已回读产品快照编号/哈希）→「请技术经理使用开发 Skill」。
 2. 生产后：按发版任务执行产品验收（**不以**发布生产证据区块为前置硬门；范围支持发版→需求或发版→【交付】→需求）；通过后逐项、幂等地关闭需求、交付容器和发版任务，部分成功时重试只续跑未完成对象；不通过则记录统一证据、尝试将发版任务标为发布失败并正式交给测试侧发起修复回流。
 
 例外：交棒后「创建迭代并关联交付」仍属本 Skill。

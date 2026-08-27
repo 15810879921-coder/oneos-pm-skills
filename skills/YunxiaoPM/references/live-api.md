@@ -20,11 +20,11 @@ skill-run yunxiao_cli_pm.py doctor
 
 ## 标准生命周期事务
 
-Plan 门禁通过后，先预检：
+需确认的标准生命周期事务在 Plan 门禁通过后先预检；同一已授权幂等批次的续跑可直接重做预检，不重复要求确认：
 
 ```text
 skill-run yunxiao_cli_pm.py preflight-standard \
-  --space-id <项目ID> --project-name <项目名> \
+  --space-id <项目ID> --project-name <官方回读项目名> \
   --subject <需求标题> --description-file <需求说明MD> \
   --delivery-file <交付规则MD> --priority <紧急|高|中|低> \
   --label <标签> --delivery-owner <交付负责人> --stage-owner <阶段负责人> \
@@ -32,9 +32,9 @@ skill-run yunxiao_cli_pm.py preflight-standard \
   --idempotency-key <稳定业务键> --output <预检JSON>
 ```
 
-预检冻结项目、当前PAT用户、人员、工作项类型、优先级、标签、状态ID、同一幂等键下已有对象、迭代和文档哈希。任何对象不唯一或字段无法解析时零写入。
+项目 ID 若由命令明确给出，先用官方`projex-get-project`唯一回读名称与状态，不再人工点选。预检冻结项目、当前PAT用户、人员、工作项类型、优先级、标签、状态ID、同一幂等键下已有对象、迭代和需求/交付文档哈希。交付负责人参数来自命令或项目配置，可为姓名或userId，但必须官方唯一解析；任何对象不唯一或字段无法解析时零写入。
 
-确认预检后执行：
+首次或扩范围事务确认预检后执行；同一幂等键、同一范围的续跑在守卫无漂移时直接执行：
 
 ```text
 skill-run yunxiao_cli_pm.py apply-standard --preflight <预检JSON> --receipt <回执JSON>
@@ -49,7 +49,23 @@ apply 必须重新读取全部守卫并比对哈希。通过后按顺序创建�
 5. 创建或复用迭代，只把`【交付】`挂入迭代；
 6. 按内部ID回读状态、负责人、关系、迭代和幂等回执。
 
-相同幂等键只能对应一套对象；多条匹配时阻塞，不按标题或最新时间自动选择。部分失败后必须重新预检，由幂等键复用已创建对象并只补未完成动作。
+相同幂等键只能对应一套对象；多条匹配时阻塞，不按标题或最新时间自动选择。部分失败后必须重新预检，由幂等键复用已创建对象并只补未完成动作；该续跑和补官方回读不重复确认。项目、对象、关系、负责人或动作范围变化时不属于续跑，必须重新Plan。
+
+## 产品修改后刷新快照
+
+PRD/原型修改并确认后，生成符合[product-handoff-snapshot.md](product-handoff-snapshot.md)的快照文件，再独立执行；该命令不改变标准生命周期命令的参数和行为：
+
+```text
+skill-run yunxiao_cli_pm.py preflight-product-snapshot \
+  --space-id <项目ID> --project-name <项目名> \
+  --requirement-id ONEOS-xx --delivery-id ONEOS-a \
+  --snapshot-file <产品快照MD> --output <预检JSON>
+
+skill-run yunxiao_cli_pm.py apply-product-snapshot \
+  --preflight <预检JSON> --receipt <回执JSON>
+```
+
+预检按编号唯一解析需求和【交付】，验证`ASSOCIATED→需求`，冻结两者状态、负责人、描述哈希和快照哈希。明确编号的刷新属于幂等写入：同一已授权范围内不重复确认；apply只替换`## 产品交棒快照`受管区块，随后回读两边快照编号/哈希，并证明状态、负责人和正式关系未变化。已完成或已取消对象不得刷新。
 
 ## 官方 CLI 操作映射
 
@@ -78,5 +94,5 @@ apply 必须重新读取全部守卫并比对哈希。通过后按顺序创建�
 - 执行 `live_create_fast.py` 等硬编码压测脚本处理真实业务；
 - 因 CLI 受限而切换浏览器补点；
 - 用标题查重或选择“最新一条”；
-- 在一个未经 Plan 确认的事务中扩大项目、需求或迭代范围；
+- 借幂等续跑扩大项目、需求、负责人或迭代范围；
 - 未回读即声称创建、流转、关联或挂迭代成功。

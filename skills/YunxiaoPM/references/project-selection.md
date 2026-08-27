@@ -1,17 +1,25 @@
-# 门禁 PJ · 云效项目选择（强制点选）
+# 门禁 PJ · 项目唯一回读或人工点选
 
-凡 **新建需求 / 新建任务树 / 创建迭代 / 其它写入依赖 `spaceIdentifier`** 的操作，项目必须由用户从云效实时列表**点选**。禁止静默使用 `runtime-ids.json` 里的默认 `project.spaceIdentifier`。
+凡写入依赖 `spaceIdentifier` 时，项目必须先锁定。命令明确给出项目 ID，且官方 `projex-get-project` 唯一回读同一 ID、名称和正常状态时，可直接锁定，不再要求人工点选；未给 ID 或回读不能唯一确认时，才由用户从实时项目列表点选。禁止静默使用 `runtime-ids.json` 缓存默认值。
 
 ## 何时触发
 
 | 场景 | 是否必须选项目 |
 |---|---|
-| 记录需求 / 无单快轨新建 | **必须** |
-| 创建迭代（新挂项目空间） | **必须**（与需求同项目时沿用已锁定项，仍须在 Plan 写出项目名+ID） |
+| 记录需求 / 无单快轨新建 | 已给项目 ID 且官方唯一回读时免点选；否则**必须点选** |
+| 创建迭代（新挂项目空间） | 已给项目 ID或可由交付编号唯一反查项目时免点选；否则**必须点选** |
 | 仅推进已有编号（受理确认、开始分析…） | **不必重选**；以该编号所在项目为准，Plan 写出项目名 |
 | 只读查询 | 不强制 |
 
 ## 执行顺序（建单前）
+
+### A. 命令已给项目 ID
+
+1. 调用官方 `projex-get-project --id <项目ID>`。
+2. 只接受返回对象 ID 与命令一致、项目名称唯一且 `logicalStatus=NORMAL`；将官方名称、customCode、spaceId写入预检。
+3. 满足后不展示 PJ 点选，也不要求用户再次确认项目；后续 apply 仍须按同一 ID 回读。失败则进入 B，不猜测替代项目。
+
+### B. 未给项目 ID或无法唯一回读
 
 1. **实时拉取**云效项目列表，只用官方 CLI：
 
@@ -50,8 +58,8 @@ aliyun devops projex-search-projects --page 1 --per-page 100 --order-by gmtCreat
 
 ## 禁止
 
-- 未询问就写入 `project.spaceIdentifier`（即便 catalog 标了 `suggested`）
-- 按口令里的「统一运营管理平台」字符串静默映射而不展示列表点选（口令仅作**预填建议**，仍须用户确认点选）
+- 未提供项目 ID且未点选时写入 `project.spaceIdentifier`（即便 catalog 标了 `suggested`）
+- 仅凭项目名称或别名静默映射；只有明确项目 ID 经官方唯一回读才可免点选
 - API 失败时擅自沿用上次默认；应展示 `projects_catalog` 缓存并标明「离线缓存，请确认」，仍须点选；用户确认后若仍无法对应 → 走上一节「自动重拉一次」
 - 多项目并行建单却共用一个未确认的 spaceId
 - 「无法对应」时循环重拉超过 1 次，或跳过点选直接建单
@@ -62,8 +70,8 @@ aliyun devops projex-search-projects --page 1 --per-page 100 --order-by gmtCreat
 记录需求：…；项目=01_ONEOS；…
 ```
 
-若口令已含项目名/编号前缀且在实时列表中**唯一命中**：Plan 可预勾该选项，但仍须用户确认；0 命中或多命中 → **先自动重拉一次**再匹配；仍 0/多 → 不预勾，只展示最新列表。
+若口令含项目 ID并通过官方唯一回读：直接锁定并回显，不再生成项目选择题。仅含项目名/编号前缀时仍只是预填建议；0命中或多命中先自动重拉一次，仍失败则展示最新列表点选。
 
 ## 执行入口
 
-项目点选查询直接使用官方 `projex-search-projects`；标准生命周期由 `skill-run yunxiao_cli_pm.py preflight-standard` 再次回读并冻结项目ID与名称。旧 `list_projects.py` 不再执行。
+项目 ID回读使用官方 `projex-get-project`，项目点选查询使用官方 `projex-search-projects`；标准生命周期由 `skill-run yunxiao_cli_pm.py preflight-standard` 再次冻结项目ID与官方名称。旧 `list_projects.py` 不再执行。

@@ -73,12 +73,12 @@
     "wangmian": {
       "displayName": "王冕",
       "identifier": "6811df000601d2fea60144a9",
-      "role": "产品创建人/默认负责人"
+      "role": "历史成员缓存；不得作为默认负责人"
     },
     "hefei": {
       "displayName": "何斐",
       "identifier": "695f0400562f09713f9c3a93",
-      "role": "待开发交棒【交付】负责人"
+      "role": "历史成员缓存；仅在命令或项目配置明确命中时使用"
     }
   },
   "tags": {
@@ -193,9 +193,11 @@
     }
   },
   "assignee_rules": {
-    "待开发_交付任务": "hefei",
-    "分析中_交付与分析": "creator",
-    "设计中_设计": "creator"
+    "待开发_交付任务": "command_or_project_config",
+    "分析中_交付与分析": "command_or_current_user_or_project_config",
+    "设计中_设计": "command_or_current_user_or_project_config",
+    "require_official_unique_readback": true,
+    "forbid_fixed_person_fallback": true
   },
   "relation": {
     "delivery_to_req": "ASSOCIATED",
