@@ -74,9 +74,15 @@ skill-run yunxiao_cli_test_lifecycle.py complete --space-id <项目ID> `
   --test-sn ONEOS-343 --req-sn ONEOS-300 `
   --evidence-manifest C:\evidence\ONEOS-343.json `
   --idempotency-key qa-ONEOS-343-v1
+
+# “完成测试；人工确认通过=是”的内部分支（完整业务口令本身即授权）
+skill-run yunxiao_cli_test_lifecycle.py manual-complete --space-id <项目ID> `
+  --test-sn ONEOS-343 --req-sn ONEOS-300 `
+  --reason '测试人员确认通过' `
+  --idempotency-key qa-manual-complete-ONEOS-343 --apply
 ```
 
-`create_bug.py` / `transit_bug.py` / `yunxiao_cli_test_lifecycle.py` 为写操作：须先走 YunxiaoQA **Plan 门禁**，用户确认后再加`--apply`或去掉旧脚本的`--dry-run`执行。`close_test_task.py`始终拒绝写入。
+`create_bug.py` / `transit_bug.py` / `yunxiao_cli_test_lifecycle.py` 为写操作：通常须先走 YunxiaoQA **Plan 门禁**，用户确认后再加`--apply`或去掉旧脚本的`--dry-run`执行。完整的`完成测试：测试任务=...；需求=...；人工确认通过=是`命令本身即本次`manual-complete --apply`授权，不重复索要确认。`manual-complete`是内部分支，不是对外独立口令。`close_test_task.py`始终拒绝写入。
 **禁止**用浏览器 DOM 点击改云效状态。
 
 ### `create_bug.py` 退出码

@@ -128,6 +128,29 @@ skill-run yunxiao_cli_test_lifecycle.py complete `
 
 默认完成后只回读当前【测试】=`已完成`、需求保持`测试中`。仅最后一个范围在预检证明确无未完成关联开发/测试范围时加`--aggregate-complete`，才回读需求=`测试完成`。
 
+## 完成测试（人工确认分支）
+
+当测试人员明确决定人工放行时，仍使用“完成测试”口令，不能把普通“测完了”自动解释成特批：
+
+```text
+$YunxiaoQA
+完成测试：测试任务=ONEOS-xx；需求=ONEOS-yy；人工确认通过=是；[说明=测试人员确认通过]
+```
+
+该完整命令本身就是本次写入授权，不再要求第二次确认。内部执行：
+
+```powershell
+skill-run yunxiao_cli_test_lifecycle.py manual-complete `
+  --space-id <项目ID> `
+  --test-sn ONEOS-xx `
+  --req-sn ONEOS-yy `
+  --reason '测试人员确认通过' `
+  --idempotency-key 'qa-manual-complete-ONEOS-xx' `
+  --apply
+```
+
+这条路径跳过test部署、TestHub测试计划/用例结果、QA manifest、未关闭缺陷和需求范围聚合业务门禁，直接推进【测试】=`已完成`、需求=`测试完成`。但仍必须满足：项目与编号唯一、测试任务正式`PARENT/ASSOCIATED`关系正确、状态在允许边界内、确认人可由当前PAT用户回读、关联缺陷快照已记录，写入后两侧状态和`oneos.qa-manual-complete/v1`审计区块可回读。脚本不关闭、不改状态也不删除任何Bug，不把人工确认伪造成普通QA证据；该结果标记为非正式发布候选。
+
 ## 发布候选交接
 
 ```text

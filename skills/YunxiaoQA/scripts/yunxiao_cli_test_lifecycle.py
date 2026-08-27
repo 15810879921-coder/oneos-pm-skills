@@ -19,10 +19,13 @@ from yunxiao_cli_testhub import normalize_status, read_plan_case
 
 SCHEMA = "oneos.yunxiao-qa-lifecycle-cli/v1"
 QA_SCHEMA = "oneos.qa-evidence/v1"
+MANUAL_COMPLETE_SCHEMA = "oneos.qa-manual-complete/v1"
 DEPLOY_SCHEMA = "oneos.test-deployment/v1"
 SKIP_PIPELINE_ENDS = {"小程序"}
 QA_START = "<!-- YUNXIAOQA_TEST_EVIDENCE_START -->"
 QA_END = "<!-- YUNXIAOQA_TEST_EVIDENCE_END -->"
+MANUAL_COMPLETE_START = "<!-- YUNXIAOQA_MANUAL_COMPLETE_START -->"
+MANUAL_COMPLETE_END = "<!-- YUNXIAOQA_MANUAL_COMPLETE_END -->"
 DEPLOY_START = "<!-- ONEOS_TEST_DEPLOYMENT_EVIDENCE_START -->"
 DEPLOY_END = "<!-- ONEOS_TEST_DEPLOYMENT_EVIDENCE_END -->"
 BUG_RETEST_START = "<!-- YUNXIAOQA_BUG_RETEST_EVIDENCE_START -->"
@@ -45,6 +48,13 @@ def get_workitem(executable: str, workitem_id: str) -> dict[str, Any]:
     ]))
     if not isinstance(value, dict) or not value.get("id"):
         raise core.AdapterError(f"工作项{workitem_id}回读失败。")
+    return value
+
+
+def current_user(executable: str) -> dict[str, Any]:
+    value = core.unwrap(core.run_devops(executable, ["base-get-user-by-token"]))
+    if not isinstance(value, dict) or not value.get("id"):
+        raise core.AdapterError("PAT用户回读失败，无法记录人工确认人。")
     return value
 
 
@@ -364,6 +374,12 @@ def managed_block(payload: dict[str, Any]) -> str:
         f" -->\n{QA_END}"
 
 
+def manual_complete_block(payload: dict[str, Any]) -> str:
+    return f"{MANUAL_COMPLETE_START}\n<!-- " + \
+        html.escape(json.dumps(payload, ensure_ascii=False, sort_keys=True)) + \
+        f" -->\n{MANUAL_COMPLETE_END}"
+
+
 def deployment_block(payload: dict[str, Any]) -> str:
     return f"{DEPLOY_START}\n<!-- " + \
         html.escape(json.dumps(payload, ensure_ascii=False, sort_keys=True)) + \
@@ -375,6 +391,14 @@ def replace_block(content: str, block: str) -> str:
     end = content.find(QA_END)
     if start >= 0 and end >= start:
         return content[:start] + block + content[end + len(QA_END):]
+    return content + ("\n" if content.strip() else "") + block
+
+
+def replace_manual_complete_block(content: str, block: str) -> str:
+    start = content.find(MANUAL_COMPLETE_START)
+    end = content.find(MANUAL_COMPLETE_END)
+    if start >= 0 and end >= start:
+        return content[:start] + block + content[end + len(MANUAL_COMPLETE_END):]
     return content + ("\n" if content.strip() else "") + block
 
 
@@ -415,6 +439,124 @@ def update_item(executable: str, workitem_id: str,
     return get_workitem(executable, workitem_id)
 
 
+def run_manual_complete(args: argparse.Namespace, executable: str, auth: dict[str, Any],
+                        test: dict[str, Any], req: dict[str, Any], before: dict[str, Any],
+                        parents: list[str], associated: list[str]) -> int:
+    allowed_test = {"待处理", "处理中", "已完成"}
+    allowed_req = {"开发中", "开发完成", "待测试", "测试中", "测试完成"}
+    if status_name(test) not in allowed_test or status_name(req) not in allowed_req:
+        raise core.AdapterError(f"人工确认状态边界失败：{before}")
+    user = current_user(executable)
+    bugs = collect_bugs(
+        executable, args.space_id, str(test["id"]), "", match_version=False,
+    )
+    bug_snapshot = [{
+        "id": bug["id"], "serialNumber": bug["serialNumber"],
+        "subject": bug["subject"], "status": bug["status"],
+    } for bug in bugs]
+    confirmed_at = datetime.now(ZoneInfo("Asia/Shanghai")).isoformat(timespec="seconds")
+    try:
+        existing = parse_json_block(
+            str(test.get("description") or ""),
+            MANUAL_COMPLETE_START, MANUAL_COMPLETE_END,
+        )
+        if existing.get("idempotencyKey") == args.idempotency_key and \
+                str((existing.get("confirmedBy") or {}).get("id") or "") == str(user.get("id")) and \
+                valid_ref(existing.get("confirmedAt")):
+            confirmed_at = str(existing["confirmedAt"])
+    except (core.AdapterError, ValueError, json.JSONDecodeError):
+        pass
+    payload = {
+        "schemaVersion": MANUAL_COMPLETE_SCHEMA,
+        "projectId": args.space_id,
+        "requirementId": str(req["id"]),
+        "requirementSerial": args.req_sn,
+        "testTaskId": str(test["id"]),
+        "testTaskSerial": args.test_sn,
+        "decision": "passed",
+        "reason": args.reason or "测试人员人工确认通过",
+        "confirmedBy": {"id": str(user.get("id")), "name": str(user.get("name") or "")},
+        "confirmedAt": confirmed_at,
+        "bypassedBusinessGates": [
+            "testDeploymentEvidence", "testPlanAndCases", "qaManifest",
+            "unclosedDefects", "requirementScopeAggregation",
+        ],
+        "bugSnapshot": bug_snapshot,
+        "bugSnapshotSha256": hashlib.sha256(json.dumps(
+            bug_snapshot, ensure_ascii=False, sort_keys=True,
+        ).encode("utf-8")).hexdigest(),
+        "bugsModified": False,
+        "releaseCandidate": {"formal": False, "classification": "non-formal"},
+        "idempotencyKey": args.idempotency_key,
+    }
+    description = replace_manual_complete_block(
+        str(test.get("description") or ""), manual_complete_block(payload),
+    )
+    actions = [
+        {"operation": "projex-update-workitem", "target": args.test_sn,
+         "fields": ["oneos.qa-manual-complete/v1"]},
+        {"operation": "projex-update-workitem", "target": args.test_sn,
+         "status": "已完成"},
+        {"operation": "projex-update-workitem", "target": args.req_sn,
+         "status": "测试完成"},
+    ]
+    receipt: dict[str, Any] = {
+        "schemaVersion": SCHEMA,
+        "mode": "apply" if args.apply else "preflight",
+        "command": "manual-complete",
+        "organizationId": auth["organizationId"],
+        "projectId": args.space_id,
+        "before": before,
+        "relations": {"parentIds": parents, "associatedIds": associated},
+        "manualComplete": payload,
+        "plannedActions": actions,
+        "verified": False,
+    }
+    if args.apply:
+        if description != str(test.get("description") or ""):
+            test = update_item(executable, str(test["id"]), {
+                "description": description,
+                "formatType": str(test.get("formatType") or "MARKDOWN"),
+            })
+        reread = parse_json_block(
+            str(test.get("description") or ""),
+            MANUAL_COMPLETE_START, MANUAL_COMPLETE_END,
+        )
+        if reread.get("idempotencyKey") != args.idempotency_key or \
+                str((reread.get("confirmedBy") or {}).get("id") or "") != str(user.get("id")) or \
+                reread.get("bugSnapshotSha256") != payload["bugSnapshotSha256"]:
+            raise core.AdapterError("人工确认记录写入后回读失败。")
+        if status_name(test) != "已完成":
+            test = update_item(executable, str(test["id"]), {
+                "status": status_id(executable, args.space_id, test, "已完成")
+            })
+        if status_name(req) != "测试完成":
+            req = update_item(executable, str(req["id"]), {
+                "status": status_id(executable, args.space_id, req, "测试完成")
+            })
+        receipt["after"] = {"test": item_snapshot(test), "requirement": item_snapshot(req)}
+        receipt["manualCompleteReadback"] = reread
+        receipt["verified"] = status_name(test) == "已完成" and \
+            status_name(req) == "测试完成"
+        if not receipt["verified"]:
+            raise core.AdapterError("人工确认测试通过后状态回读失败。")
+    target = Path(args.output) if args.output else core.output_dir() / \
+        f"qa-lifecycle-{args.test_sn.lower()}-manual-complete.json"
+    core.write_json(target, receipt)
+    print(json.dumps({
+        "mode": receipt["mode"], "command": "manual-complete",
+        "testTask": receipt.get("after", before)["test"],
+        "requirement": receipt.get("after", before)["requirement"],
+        "confirmedBy": payload["confirmedBy"],
+        "bypassedBusinessGates": payload["bypassedBusinessGates"],
+        "bugSnapshot": payload["bugSnapshot"],
+        "bugsModified": False,
+        "releaseCandidate": payload["releaseCandidate"],
+        "verified": receipt["verified"], "receipt": str(target),
+    }, ensure_ascii=False, indent=2))
+    return 0
+
+
 def run(args: argparse.Namespace) -> int:
     executable = core.find_aliyun()
     auth = core.require_auth_env()
@@ -425,6 +567,10 @@ def run(args: argparse.Namespace) -> int:
     associated = relation_ids(executable, str(test["id"]), "ASSOCIATED")
     if len(parents) != 1 or str(req["id"]) not in associated:
         raise core.AdapterError("测试任务正式PARENT/ASSOCIATED关系不完整。")
+    if args.command == "manual-complete":
+        return run_manual_complete(
+            args, executable, auth, test, req, before, parents, associated,
+        )
     if args.command == "start":
         if status_name(test) not in {"待处理", "处理中"} or \
                 status_name(req) not in {"开发中", "开发完成", "待测试", "测试中"}:
@@ -626,13 +772,14 @@ def run(args: argparse.Namespace) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("command", choices=("start", "record", "complete"))
+    parser.add_argument("command", choices=("start", "record", "complete", "manual-complete"))
     parser.add_argument("--space-id", required=True)
     parser.add_argument("--test-sn", required=True)
     parser.add_argument("--req-sn", required=True)
     parser.add_argument("--evidence-manifest")
     parser.add_argument("--deployment-evidence")
     parser.add_argument("--risk-approval", action="append", default=[])
+    parser.add_argument("--reason", help="人工确认测试通过的说明；仅manual-complete使用")
     parser.add_argument("--aggregate-complete", action="store_true",
                         help="仅当本需求所有关联开发/测试范围均已闭环时推进需求测试完成")
     parser.add_argument("--idempotency-key", required=True)

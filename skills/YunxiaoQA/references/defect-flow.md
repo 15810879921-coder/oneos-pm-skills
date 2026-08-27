@@ -68,9 +68,9 @@ flowchart TB
 5. 【测试】正式`TASK_SUB→【交付】`且`ASSOCIATED→需求`；需求当前为`测试中`。
 6. 【测试】中的`oneos.test-deployment/v1`按端侧核验：**Web**为test环境成功终态，项目、迭代、需求、测试任务和待测版本均与QA证据一致；**小程序**为`deliveryEnd=小程序`+`testPipeline=skipped`+`status=skipped`且含`reason`，项目、迭代、需求、测试任务一致。
 
-满足后：`完成测试`先写入并回读证据，再将【测试】`处理中→已完成`、需求`测试中→测试完成`，并输出发布候选交接。
+满足后：`完成测试`先写入并回读证据，再将【测试】`处理中→已完成`、需求`测试中→测试完成`，并输出发布候选交接。测试人员在同一命令显式给出`人工确认通过=是`时可跳过业务证据门禁，但必须保留人工审计和缺陷快照、不得修改Bug，并标记非正式发布候选。
 
-**唯一完整写入口**：`scripts/yunxiao_cli_test_lifecycle.py complete ... --evidence-manifest <证据清单.json>`（先预检，确认后加`--apply`，官方CLI写入 + 两侧回读）。
+**唯一完整写入口**：普通路径为`scripts/yunxiao_cli_test_lifecycle.py complete ... --evidence-manifest <证据清单.json>`；“完成测试”的人工分支在内部使用同脚本`manual-complete ... --apply`。两条路径都必须使用官方CLI写入并回读，禁止浏览器补写；`manual-complete`不是对外独立口令。
 **禁止**浏览器点「已完成」。
 
 `scripts/close_test_task.py`已停用并始终拒绝写入，防止绕过部署、QA清单或逐Bug复测门禁。
