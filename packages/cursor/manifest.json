@@ -31,14 +31,14 @@
   },
   {
     "client": "cursor",
-    "skill": "development-brain",
-    "archive": "development-brain.zip",
-    "sha256": "ec70b5398350920cad5507783b935db92e664f47a8f1511c3d3b31c6a3bd5370"
-  },
-  {
-    "client": "cursor",
     "skill": "yunxiao-development-delivery",
     "archive": "yunxiao-development-delivery.zip",
     "sha256": "90780589a8e688ec0f72ec759aee1fa09dd1f93da7b714103f4afd7460f48054"
+  },
+  {
+    "client": "cursor",
+    "skill": "development-brain",
+    "archive": "development-brain.zip",
+    "sha256": "b5ff2f489fbd69edc615932c9308c208dc087924089cc26caf0316c8f317c127"
   }
 ]

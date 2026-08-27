@@ -34,7 +34,7 @@ $contracts = @(
         Metadata = 'skills\development-brain\agents\openai.yaml'
         Routing = 'skills\development-brain\references\semantic-evolution.md'
         Selector = '$development-brain'
-        Required = @('主动识别', '开发开始', '开发结束', '自动进化', '自动确认', '进化未落盘', '$development-brain')
+        Required = @('主动识别', '开发开始', '开发结束', '自动进化', '自动确认', '进化未落盘', 'Skill 功能变更', 'Skill 开发默认不产生大脑知识候选', '自身治理规则', '$development-brain')
     }
 )
 $onlineInstallPage = Join-Path $RepositoryRoot 'docs\index.html'
