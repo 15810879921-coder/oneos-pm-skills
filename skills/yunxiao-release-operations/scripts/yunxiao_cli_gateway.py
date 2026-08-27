@@ -54,6 +54,22 @@ SECRET_RE = re.compile(
     r"(?i)(access[_-]?token|authorization|password|secret|access[_-]?key|private[_-]?key|cookie)"
 )
 TOKEN_RE = re.compile(r"^\$\{action\.(\d+)\.([A-Za-z0-9_.-]+)\}$")
+RELEASE_COMMENT_SCHEMAS = {
+    "【发布受管数据】": "oneos.release-batch/v2",
+    "【发布尝试账本】": "oneos.release-attempt-ledger/v1",
+    "【生产发布证据】": "oneos.release-production/v1",
+    "【发布事故记录】": "oneos.release-incident/v1",
+}
+RELEASE_DESCRIPTION_FORBIDDEN = (
+    "YUNXIAO_RELEASE_BATCH_START",
+    "YUNXIAO_RELEASE_BATCH_END",
+    "YUNXIAO_RELEASE_ATTEMPTS_START",
+    "YUNXIAO_RELEASE_PRODUCTION_EVIDENCE_START",
+    "YUNXIAO_RELEASE_INCIDENT_START",
+    *RELEASE_COMMENT_SCHEMAS.values(),
+    '"scopeHash"',
+    '"idempotencyKey"',
+)
 
 
 def stable_hash(value: Any) -> str:
@@ -92,10 +108,15 @@ def validate_args(args: Any, allow_source_content: bool = False) -> list[str]:
     if not isinstance(args, list) or not all(isinstance(v, str) for v in args):
         raise core.AdapterError("CLI args必须是字符串数组。")
     for index, value in enumerate(args):
+        previous = args[index - 1] if index > 0 else ""
         is_source_content = allow_source_content and (
             value.startswith("content=") or (index > 0 and args[index - 1] == "--actions")
         )
-        if "\x00" in value or "\r" in value or ("\n" in value and not is_source_content):
+        is_description = previous == "--description"
+        if "\x00" in value or (
+            ("\r" in value or "\n" in value)
+            and not (is_source_content or is_description)
+        ):
             raise core.AdapterError("CLI参数不得包含换行或NUL。")
         if SECRET_RE.search(value) and not is_source_content:
             raise core.AdapterError("计划/回执不得包含凭据或敏感参数；请使用云效受保护变量。")
@@ -174,6 +195,85 @@ def flag_value(args: list[str], name: str) -> str | None:
         if args[index] == name:
             return args[index + 1]
     return None
+
+
+def description_payload(action: dict[str, Any]) -> tuple[str | None, str | None]:
+    operation = action["operation"]
+    args = action["args"]
+    if operation == "projex-create-workitem":
+        return flag_value(args, "--description"), flag_value(args, "--format-type")
+    if operation != "projex-update-workitem":
+        return None, None
+    raw_body = flag_value(args, "--biz-body")
+    if raw_body is None:
+        return None, None
+    try:
+        body = json.loads(raw_body)
+    except json.JSONDecodeError as exc:
+        raise core.AdapterError("projex-update-workitem的--biz-body必须是JSON对象。") from exc
+    if not isinstance(body, dict):
+        raise core.AdapterError("projex-update-workitem的--biz-body必须是JSON对象。")
+    if "description" not in body:
+        return None, None
+    return str(body.get("description") or ""), str(body.get("formatType") or "")
+
+
+def validate_release_description(action: dict[str, Any]) -> None:
+    description, format_type = description_payload(action)
+    if description is None:
+        return
+    if any(marker in description for marker in RELEASE_DESCRIPTION_FORBIDDEN):
+        raise core.AdapterError(
+            "发版任务描述只能写业务更新日志；发布范围和机器JSON必须写入【发布受管数据】评论。"
+        )
+    if "<!--" in description or "-->" in description or "<pre>" in description:
+        raise core.AdapterError("发版任务描述中不得写HTML注释或可见技术区块。")
+    if "更新日志：" not in description:
+        return
+    if str(format_type or "").upper() != "MARKDOWN":
+        raise core.AdapterError("发版更新日志必须使用MARKDOWN格式。")
+    if "\n" not in description:
+        raise core.AdapterError("发版更新日志必须保留真实换行，禁止压成单行。")
+    lines = description.splitlines()
+    heading_indexes = [
+        index for index, line in enumerate(lines)
+        if line.strip() in {"【新功能】", "【Bug修复】"}
+    ]
+    if not heading_indexes:
+        raise core.AdapterError("发版更新日志缺少独立成行的【新功能】或【Bug修复】分组。")
+
+
+def managed_release_comment(action: dict[str, Any]) -> tuple[str, str] | None:
+    if action["operation"] != "projex-create-workitem-comment":
+        return None
+    content = flag_value(action["args"], "--content") or ""
+    prefix = next((item for item in RELEASE_COMMENT_SCHEMAS if content.startswith(item)), None)
+    if prefix is None:
+        return None
+    raw_payload = content[len(prefix):].strip()
+    try:
+        payload = json.loads(raw_payload)
+    except json.JSONDecodeError as exc:
+        raise core.AdapterError(f"{prefix}评论必须包含单个合法JSON对象。") from exc
+    if not isinstance(payload, dict):
+        raise core.AdapterError(f"{prefix}评论必须包含JSON对象。")
+    expected_schema = RELEASE_COMMENT_SCHEMAS[prefix]
+    if payload.get("schemaVersion") != expected_schema:
+        raise core.AdapterError(f"{prefix}schemaVersion必须为{expected_schema}。")
+    required = ["releaseTaskId"]
+    if prefix == "【发布受管数据】":
+        required = ["scopeHash", "idempotencyKey"]
+    elif prefix == "【发布尝试账本】":
+        required.append("attempts")
+    elif prefix == "【生产发布证据】":
+        required.append("idempotencyKey")
+    elif prefix == "【发布事故记录】":
+        required.append("detectedAt")
+    for key in required:
+        value = payload.get(key)
+        if value is None or value == "" or value == []:
+            raise core.AdapterError(f"{prefix}缺少{key}。")
+    return prefix, str(flag_value(action["args"], "--id") or "")
 
 
 def source_safe_plan(value: dict[str, Any]) -> dict[str, Any]:
@@ -434,14 +534,28 @@ def validate_plan(value: dict[str, Any]) -> dict[str, Any]:
                      for item in value.get("verifications", [])]
     if not guards or not actions or not verifications:
         raise core.AdapterError("事务计划必须同时包含guards、actions和verifications。")
-    for action in actions:
+    release_create_indexes: list[int] = []
+    managed_comment_targets: set[str] = set()
+    for index, action in enumerate(actions):
+        validate_release_description(action)
+        managed = managed_release_comment(action)
+        if managed and managed[0] == "【发布受管数据】":
+            managed_comment_targets.add(managed[1])
         if action["operation"] == "codeup-commit-multiple-files":
             validate_codeup_file_commit(action, authority)
         if action["operation"] != "projex-create-workitem":
             continue
         subject = flag_value(action["args"], "--subject") or ""
+        if subject.startswith("【发版】"):
+            release_create_indexes.append(index)
         if subject.startswith("【发版】") and "--sprint" in action["args"]:
-            raise core.AdapterError("【发版】任务不得填写--sprint；迭代只可作为隐藏范围追溯。")
+            raise core.AdapterError("【发版】任务不得填写--sprint；迭代只可写入受管评论追溯。")
+    for index in release_create_indexes:
+        expected_target = f"${{action.{index}.id}}"
+        if expected_target not in managed_comment_targets:
+            raise core.AdapterError(
+                "创建【发版】任务时必须同时写入绑定该任务的【发布受管数据】评论。"
+            )
     destructive_operations = {"codeup-delete-branch", "projex-delete-workitem-relation-record"}
     if any(item["operation"] in destructive_operations for item in actions):
         if authority != "cleanup" or value.get("destructiveConfirmation") is not True:

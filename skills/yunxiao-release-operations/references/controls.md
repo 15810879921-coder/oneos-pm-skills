@@ -36,12 +36,10 @@
 {"schemaVersion":"oneos.release-attempt/v1","releaseTaskId":"TASK-900","attemptNo":1,"attemptType":"initial|re_release","releaseAttemptId":"ATTEMPT-1","previousAttemptId":null,"authorizedCommand":"执行发布|重新发布","productionExecutionId":"EXEC-1-or-null","status":"已创建|执行中|生产验证中|成功|失败","idempotencyKey":"release-attempt-..."}
 ```
 
-在发版任务描述中维护唯一、追加式账本区块；更新当前尝试时保留全部历史尝试，禁止覆盖、删除或重排尝试号：
+在发版任务评论中维护追加式账本；更新当前尝试时追加一条新的完整快照，保留全部历史尝试，禁止覆盖、删除或重排尝试号：
 
-```html
-<!-- YUNXIAO_RELEASE_ATTEMPTS_START -->
-<pre>{"schemaVersion":"oneos.release-attempt-ledger/v1","releaseTaskId":"TASK-900","attempts":[{"attemptNo":1,"attemptType":"initial","releaseAttemptId":"ATTEMPT-1","previousAttemptId":null,"authorizedCommand":"执行发布","productionExecutionId":"EXEC-1","status":"失败","idempotencyKey":"release-attempt-1"}]}</pre>
-<!-- YUNXIAO_RELEASE_ATTEMPTS_END -->
+```text
+【发布尝试账本】{"schemaVersion":"oneos.release-attempt-ledger/v1","releaseTaskId":"TASK-900","attempts":[{"attemptNo":1,"attemptType":"initial","releaseAttemptId":"ATTEMPT-1","previousAttemptId":null,"authorizedCommand":"执行发布","productionExecutionId":"EXEC-1","status":"失败","idempotencyKey":"release-attempt-1"}]}
 ```
 
 - 首次`执行发布`在全部门禁通过、生产提交前创建`attemptNo=1`、`attemptType=initial`。同一命令重入只能接续该尝试；记录已创建但执行ID为空时，必须先以幂等键核验平台未提交，才能补做唯一一次提交。
@@ -67,7 +65,7 @@
 | Y11 | 主任务/需求进入发布中 | 发版任务、迭代、需求范围与完整组件矩阵有效 |
 | Y12 | 主任务/需求进入发布完成 | Web：全部冻结组件流水线成功，且每行逻辑prod环境、冻结范围与执行ID回读一致；小程序：执行发布捷径校验通过（跳过流水线，默认发布完成） |
 | Y13 | 主任务/需求进入发布失败 | 生产失败证据有效并保存原因 |
-| Y33 | 提交发版任务 | 顶层`【发版】`只正式关联本批多个源【交付】及同一冻结范围内无关联单据且已完成/已关闭的Bug；标准迭代或例外来源、需求和测试任务只保留为隐藏追溯与门禁证据 |
+| Y33 | 提交发版任务 | 顶层`【发版】`只正式关联本批多个源【交付】及同一冻结范围内无关联单据且已完成/已关闭的Bug；标准迭代或例外来源、需求和测试任务只保留在`【发布受管数据】`评论账本中 |
 | Y34 | 生产发布成功 | 逻辑环境、执行ID、范围、终态成功和幂等均有效；仅实际使用回调时校验签名/时间戳 |
 | Y35 | 生产发布失败 | 流水线失败或生产验证失败证据有效，保存原因和影响范围 |
 | A08 | 准备发布、创建发版任务和更新说明 | 标准入口迭代名称唯一，或例外入口需求/交付ID、项目、关系方向和原因唯一；顶层关系唯一；查重、幂等。C/D缺口在身份安全时允许保存`准备不通过`草稿，只有A非空且C/D为空可执行发布 |
@@ -176,7 +174,7 @@ $yunxiao-release-operations
 
 `执行发布：发版任务=ID`必须先读取真实状态，并按**每条源交付**分区。下表和其中的生产流水线/执行ID条件只适用于每个`Web`组件；每条`小程序`源交付只校验顶层关系、冻结范围、当前状态和幂等账本，并写入成功的`miniprogram_skip_pipeline`记录。混合批次须在全部Web组件成功或被人工执行收尾唯一绑定后，连同全部小程序记录一次性推进`发布完成`。
 
-任何状态判断、生产执行、回滚、重新发布和产品交接前，必须先回读并校验发版任务为顶层任务，且其直接关系仅包含多个源【交付】与冻结范围内无关联单据已完成Bug，并与隐藏受管的标准迭代或例外来源、A类需求、测试门禁和冻结范围一致。发版任务若是任何【交付】的`TASK_SUB`子项、关系缺失或冲突、范围不一致或任务不唯一时阻塞；既有迭代字段不作为阻塞且不得被本Skill改写；对已有生产尝试的历史任务不得重挂或扩容。
+任何状态判断、生产执行、回滚、重新发布和产品交接前，必须先回读并校验发版任务为顶层任务，且其直接关系仅包含多个源【交付】与冻结范围内无关联单据已完成Bug，并与最新有效`【发布受管数据】`评论中的标准迭代或例外来源、A类需求、测试门禁和冻结范围一致。发版任务若是任何【交付】的`TASK_SUB`子项、关系缺失或冲突、范围不一致或任务不唯一时阻塞；既有迭代字段不作为阻塞且不得被本Skill改写；对已有生产尝试的历史任务不得重挂或扩容。
 
 用户明确声明`流水线发布已人工操作`时，不得再提交或重试任何流水线。仅可逐Web组件回读已有执行的流水线ID、执行ID、源提交/制品锚点、逻辑prod环境、终态成功与冻结范围；每项均唯一匹配后绑定到本次尝试，再继续生产证据、账本、状态与产品交接收尾。任一组件缺失、多匹配、运行中、失败或锚点/范围不一致时零状态写入并报告，不得猜测绑定。
 
@@ -196,12 +194,10 @@ $yunxiao-release-operations
 2. 记录可读取的生产Tag、Commit或不可变制品摘要；读取不到时写`未获取`。
 3. 执行当前可用的生产检查；只允许只读探针，或已经审批且可清理/可回滚的合成业务动作。无自动化入口的检查写`未自动验证`。
 4. 可用检查记录检查ID、目标、实际值、时间、证据来源和结果；可选检查缺失或无观察窗口不阻断技术发布完成。
-5. 在发版任务描述中幂等写入并回读以下受管区块；不可读取的可选字段使用明确状态，不得伪造：
+5. 在发版任务评论中追加并回读以下生产证据；不可读取的可选字段使用明确状态，不得伪造：
 
-```html
-<!-- YUNXIAO_RELEASE_PRODUCTION_EVIDENCE_START -->
-<pre>{"schemaVersion":"oneos.release-production/v1","releaseTaskId":"TASK-900","executionId":"EXEC-1","environment":"prod","pipelineStatus":"成功","scope":["REQ-1"],"immutableAnchor":"tag/commit/artifact-or-未获取","callbackVerified":"true|not_used","verificationStatus":"通过|失败|未自动验证","verificationEvidence":[],"idempotencyKey":"release-..."}</pre>
-<!-- YUNXIAO_RELEASE_PRODUCTION_EVIDENCE_END -->
+```text
+【生产发布证据】{"schemaVersion":"oneos.release-production/v1","releaseTaskId":"TASK-900","executionId":"EXEC-1","environment":"prod","pipelineStatus":"成功","scope":["REQ-1"],"immutableAnchor":"tag/commit/artifact-or-未获取","callbackVerified":"true|not_used","verificationStatus":"通过|失败|未自动验证","verificationEvidence":[],"idempotencyKey":"release-..."}
 ```
 
 6. 生产流水线终态成功且逻辑prod环境、执行ID和冻结范围回读一致后，发版任务和本批需求进入真实`发布完成`；生产检查缺失形成风险提示，产品/业务验收继续负责最终确认。
@@ -218,12 +214,10 @@ $yunxiao-release-operations
 6. 已触发回滚时跟踪终态并保存原执行ID、回滚执行ID、回滚前后版本、时间、操作者和证据。
 7. 无论是否具备自动回滚条件，发版任务都保持真实`发布失败`；需求状态不凭空回退。
 
-失败识别后必须在发版任务描述中幂等写入并回读问题区块；敏感日志只保存脱敏片段或安全链接：
+失败识别后必须在发版任务评论中追加并回读问题记录；敏感日志只保存脱敏片段或安全链接：
 
-```html
-<!-- YUNXIAO_RELEASE_INCIDENT_START -->
-<pre>{"releaseTaskId":"TASK-900","triggerType":"pipeline_failure|production_validation_failure|manual_rollback","detectedAt":"ISO-8601","symptom":"...","failedStageOrCheck":"...","evidence":["ID-or-URL"],"diagnosisConfidence":"confirmed|likely|symptom_only","impact":{"requirements":["REQ-1"],"services":["service"],"users":"known-or-unknown"},"productionExecutionId":"EXEC-1","deployedVersion":"version","rollbackExecutionId":"ROLLBACK-1-or-null","rollbackStatus":"未开始|执行中|成功|失败|阻塞","restoredVersion":"version-or-null","recoveryVerification":["CHECK-ID"],"residualRisk":"...","owner":"...","nextAction":"..."}</pre>
-<!-- YUNXIAO_RELEASE_INCIDENT_END -->
+```text
+【发布事故记录】{"schemaVersion":"oneos.release-incident/v1","releaseTaskId":"TASK-900","triggerType":"pipeline_failure|production_validation_failure|manual_rollback","detectedAt":"ISO-8601","symptom":"...","failedStageOrCheck":"...","evidence":["ID-or-URL"],"diagnosisConfidence":"confirmed|likely|symptom_only","impact":{"requirements":["REQ-1"],"services":["service"],"users":"known-or-unknown"},"productionExecutionId":"EXEC-1","deployedVersion":"version","rollbackExecutionId":"ROLLBACK-1-or-null","rollbackStatus":"未开始|执行中|成功|失败|阻塞","restoredVersion":"version-or-null","recoveryVerification":["CHECK-ID"],"residualRisk":"...","owner":"...","nextAction":"..."}
 ```
 
 ### 执行发布的失败分支与自动回滚
@@ -299,8 +293,8 @@ $yunxiao-release-operations
 `【发版】`任务必须：
 
 1. 标题精确前缀，且为顶层任务；本Skill不填写或改变迭代字段。复用历史任务时即使已有迭代字段，只要项目和冻结范围一致也继续并记录该字段，不把它当阻塞。
-2. 直接正式关系只包含本批源【交付】和同一冻结范围内无关联单据且已完成/已关闭Bug；标准迭代或例外来源、需求和测试任务只保留为隐藏门禁与追溯数据。
-3. 隐藏范围中的本批需求均测试完成，且迭代、发版范围和受管范围哈希一致；测试计划与其他QA材料有则记录。
+2. 直接正式关系只包含本批源【交付】和同一冻结范围内无关联单据且已完成/已关闭Bug；标准迭代或例外来源、需求和测试任务只保留在`【发布受管数据】`评论账本中。
+3. 最新有效受管评论中的本批需求均测试完成，且迭代、发版范围和受管范围哈希一致；测试计划与其他QA材料有则记录。
 4. **Web**以全部源交付和纳入Bug为`releaseCodeItems`，组件矩阵覆盖其全部代码锚点、变更仓库和部署组件，`validate_release_component_matrix.py`必须返回`passed`，且每个组件有唯一活动生产流水线；负责人、审批、窗口、回滚方案和生产验证计划允许标记为`未配置`，不得伪造为已就绪，也不得因此阻断正常首次发布。**小程序**不要求任何云效流水线、执行ID、逻辑生产环境、Codeup代码锚点、生产验证、监控或外部发布证据。
 
 查重键：
