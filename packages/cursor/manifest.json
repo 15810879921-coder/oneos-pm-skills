@@ -19,12 +19,6 @@
   },
   {
     "client": "cursor",
-    "skill": "yunxiao-development-delivery",
-    "archive": "yunxiao-development-delivery.zip",
-    "sha256": "8b7615799d54983b5d3676f364d861f93cc1c111cd7676a8b377a45bddc51768"
-  },
-  {
-    "client": "cursor",
     "skill": "development-brain",
     "archive": "development-brain.zip",
     "sha256": "18bfc1e6024c3130f33a4c752da2ebd33484486c1b8d5b81e9701bbfa276c366"
@@ -40,5 +34,11 @@
     "skill": "yunxiao-release-operations",
     "archive": "yunxiao-release-operations.zip",
     "sha256": "2214e80352309b59b6b834eed6890e37f681415b8c07af5b7621804460eab5f8"
+  },
+  {
+    "client": "cursor",
+    "skill": "yunxiao-development-delivery",
+    "archive": "yunxiao-development-delivery.zip",
+    "sha256": "048530f9d295a0d01dcc0dd7233ab523999ecf21199d8e733f3cf2e8271bebcd"
   }
 ]

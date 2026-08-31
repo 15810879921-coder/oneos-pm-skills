@@ -96,7 +96,7 @@ $yunxiao-development-delivery
 提交代码
 ```
 
-提交前按[branch-submit-release-ledger.md](branch-submit-release-ledger.md)核对当前仓库、分支、改动摘要、已有MR与云效事项。唯一且一致时自动提交、推送、创建/更新MR并写`【代码交付记录】`评论；不一致、零候选或多候选时零写入，输出本地信息与云效候选的对照，等待`确认关联：<事项编号>`后重新预检。
+提交前按[branch-submit-release-ledger.md](branch-submit-release-ledger.md)核对当前仓库、分支、改动摘要、已有MR与云效事项。唯一且一致时先创建本地提交；若本次修改触发[API包受控预发布](api-artifact-publish.md)，必须先完成测试 SNAPSHOT API 包的 deploy、消费者重新解析和`【API包发布记录】`回读，才可推送、创建/更新MR并写`【代码交付记录】`评论。未触发时直接按原流程推送。分支不一致、零候选、多候选、API 包预发布失败或流水线刷新门禁未通过时，按对应门禁停止受影响动作并输出对照，等待`确认关联：<事项编号>`或补齐明确缺口后重新预检。
 
 完成阶段分别使用：
 
