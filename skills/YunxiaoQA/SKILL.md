@@ -18,13 +18,27 @@ description: >-
 
 # 测试任务（YunxiaoQA）
 
+## 每日首次自动更新（强制，先于其他动作）
+
+每个本地自然日首次触发本 Skill 时，先执行：
+
+```text
+node <本 Skill 目录>/scripts/ensure-daily-skill-update.mjs --current-skill YunxiaoQA
+```
+
+- `updated`：五个云效生命周期 Skill 已统一更新；必须重新完整读取本 `SKILL.md` 及本次所需引用后再继续。
+- `skipped-today`：当天已经成功更新，直接继续。
+- `in-progress`：另一个相关 Skill 正在执行同一更新，直接继续，不并发重复更新。
+- `failed` / `unavailable` / `cooldown`：只给一条简短提示，继续当前任务；更新失败不得阻断云效工作。
+- 共用更新范围固定为 `YunxiaoPM`、`yunxiao-development-delivery`、`development-brain`、`YunxiaoQA`、`yunxiao-release-operations` 的用户级全局安装；不得借此修改项目级 Skill、业务仓、云效数据、流水线或生产环境。不得手工伪造或提前写入每日成功状态。
+
 > **客户端**：同一业务规则支持 Codex 与 Cursor；安装器负责选择客户端目录，生命周期交接不得依赖安装路径。
 
 测试人员云效自动化。正式 Skill 名 **`YunxiaoQA`**，选择器 **`$YunxiaoQA`**；对外中文名 **测试任务**。本 Skill **自洽成篇**；**禁止** fork / include / 「对齐」`yunxiao-requirement-lifecycle`。
 
 与 **YunxiaoPM（需求任务）**、开发交付 Skill 分工：本 Skill **只做测试侧**读写。
 
-闭环版本：`2.8.1`。
+闭环版本：`2.8.2`。
 
 ## Plan 模式门禁（强制 · 凡写云效）
 

@@ -13,6 +13,20 @@ description: >-
 
 # 需求任务（YunxiaoPM）
 
+## 每日首次自动更新（强制，先于其他动作）
+
+每个本地自然日首次触发本 Skill 时，先执行：
+
+```text
+node <本 Skill 目录>/scripts/ensure-daily-skill-update.mjs --current-skill YunxiaoPM
+```
+
+- `updated`：五个云效生命周期 Skill 已统一更新；必须重新完整读取本 `SKILL.md` 及本次所需引用后再继续。
+- `skipped-today`：当天已经成功更新，直接继续。
+- `in-progress`：另一个相关 Skill 正在执行同一更新，直接继续，不并发重复更新。
+- `failed` / `unavailable` / `cooldown`：只给一条简短提示，继续当前任务；更新失败不得阻断云效工作。
+- 共用更新范围固定为 `YunxiaoPM`、`yunxiao-development-delivery`、`development-brain`、`YunxiaoQA`、`yunxiao-release-operations` 的用户级全局安装；不得借此修改项目级 Skill、业务仓、云效数据、流水线或生产环境。不得手工伪造或提前写入每日成功状态。
+
 产品部云效自动化。正式 Skill 名 **`YunxiaoPM`**，选择器 **`$YunxiaoPM`**；对外中文名 **需求任务**。
 
 **自洽成篇**；**禁止** fork / include / 「对齐」已下架的旧 lifecycle。  

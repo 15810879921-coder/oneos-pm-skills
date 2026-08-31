@@ -10,7 +10,21 @@ description: >-
 
 # Yunxiao Development Delivery
 
-Operate development tasks and Codeup assets without using code activity as a substitute for real work state. Suite version: `9.8.0`.
+## 每日首次自动更新（强制，先于其他动作）
+
+每个本地自然日首次触发本 Skill 时，先执行：
+
+```text
+node <本 Skill 目录>/scripts/ensure-daily-skill-update.mjs --current-skill yunxiao-development-delivery
+```
+
+- `updated`：五个云效生命周期 Skill 已统一更新；必须重新完整读取本 `SKILL.md` 及本次所需引用后再继续，然后再调用 `development-brain` 做开发预检。
+- `skipped-today`：当天已经成功更新，直接继续。
+- `in-progress`：另一个相关 Skill 正在执行同一更新，直接继续，不并发重复更新。
+- `failed` / `unavailable` / `cooldown`：只给一条简短提示，继续当前任务；更新失败不得阻断开发工作。
+- 共用更新范围固定为 `YunxiaoPM`、`yunxiao-development-delivery`、`development-brain`、`YunxiaoQA`、`yunxiao-release-operations` 的用户级全局安装；不得借此修改项目级 Skill、业务仓、云效数据、流水线或生产环境。不得手工伪造或提前写入每日成功状态。
+
+Operate development tasks and Codeup assets without using code activity as a substitute for real work state. Suite version: `9.9.1`.
 
 ## Load the required references
 
@@ -47,7 +61,7 @@ Own these outcomes:
 2. Allocate one or more `【开发】` child tasks with developer, planned dates, and estimated hours. Copy and read back the source `【交付】` priority when present; when it is absent, leave the child priority unset (or accept a project-native default only when the platform applies it deterministically) and record a warning instead of blocking creation. Then move the source `【交付】` task from `待处理` to `已分配`.
 3. On explicit start, create or reuse the isolated branch, bind it to exactly one item, perform the read-only dependency-reuse check, write/read back an immutable `【研发启动】` comment, then move the development child, source `【交付】` task, and requirement into development. Starting a branch never downloads, installs, copies, or rebuilds dependencies.
 4. Let developers code independently after start. Before every commit/push/MR, compare the current repository, branch, change summary, and existing MR with the unique Yunxiao item; auto-submit only on a match, otherwise stop for explicit item confirmation.
-5. In `完成开发`, classify validation before running it: an `新增` requirement with one exact formal TestHub plan and a configured current-end scope executes only that scope's real test cases for completion verification; every other case (优化、无计划新增、计划无法匹配或端侧范围未配置) runs the ordinary developer-side completion validation. Never mark a TestHub case without real execution evidence. Reuse an already pushed commit, merged MR, or trusted integration revision when it uniquely matches the task; create no duplicate commit or MR merely because completion is being run later or from another machine. If there are local changes, invoke the guarded `提交代码` node first. Normal mode requires an already integrated or newly merged revision; the explicitly enabled isolated rapid mode may use the verified remote source commit after a review-only merge rejection. Actual-effort writeback is best-effort: write and read it back only when start, duration, operator and precision are auditable; otherwise record `工时无可核验来源` without inventing values, and continue task closure, scope handoff and state read-back. After all completion actions and read-backs finish, retrospect the task-owned changes and their evidence-backed reasons.
+5. In `完成开发`, classify validation before running it: an `新增` requirement with one exact formal TestHub plan and a configured current-end scope executes only that scope's real test cases for completion verification; every other case (优化、无计划新增、计划无法匹配或端侧范围未配置) runs the ordinary developer-side completion validation. Never mark a TestHub case without real execution evidence. Reuse an already pushed commit, merged MR, or trusted integration revision when it uniquely matches the task; create no duplicate commit or MR merely because completion is being run later or from another machine. If there are local changes, invoke the guarded `提交代码` node first. Normal mode requires an already integrated or newly merged revision; the explicitly enabled isolated rapid mode may use the verified remote source commit after a review-only merge rejection. Maintain an automatic incremental Codex task-segment index during development; completion queries that index by development-task ID, then performs only bounded asset/time-window metadata lookup and targeted deep reads. Never full-scan all conversations in the normal path and never ask the developer to select or confirm a conversation. Actual-effort writeback is best-effort: write and read it back only when start, duration, operator and precision are auditable; otherwise record `工时无可核验来源` without inventing values, and continue task closure, scope handoff and state read-back. After all completion actions and read-backs finish, retrospect the task-owned changes and their evidence-backed reasons.
 6. Support `开始修复bug` and `完成修复bug` as separate traceable nodes. Keep `修复bug:<BUG-ID>` as the one-click orchestrator that executes start, repair/verify, guarded submit, and completion; it pauses for explicit confirmation on any branch-to-item mismatch. **Web** also deploys to test before `已修复`; **小程序** records `testPipeline=skipped` instead of a Flow deploy. Preserve `验证人/验证者` exactly as created by `YunxiaoQA`.
 7. After each development task gets a trusted version, classify its requirement test mode immediately; never wait for sibling development tasks or their effort evidence. `优化` and `新增` without an exact formal TestHub plan normally write lightweight verification and do not create a formal test task. Do not take that shortcut when an existing same-scope formal `【测试】` task is found or the user explicitly requires QA handoff/evidence landing for this scope: create/reuse the test child with `testMode=qa-requested-exception`, do not invent a TestHub plan, and never advance the requirement directly to `测试完成`. Otherwise, once all lightweight scopes are closed, advance the requirement to `测试完成` through the real workflow, recording `oneos.lightweight-verification/v1`. `新增` with a plan creates/reuses one `【测试】` child for this delivery scope, associates it with the requirement, and assigns the unique `测试主管`. The first testable scope may move the requirement through `开发完成→待测试`; a later or post-hoc scope may continue when the requirement is already `待测试` or `测试中`, without rolling it back. Resolve the exact requirement plan and end-tagged directories with `yunxiao_cli_test_scope.py`; never title-match. Only real application/API/automation execution may update selected TestHub cases. Do not require an iteration for code delivery or scope-task creation; resolve it only for a formal test handoff.
 8. Hand manual-case execution, retest, Bug closure, scope evidence, and requirement-level test completion to `YunxiaoQA`. A completed scope never by itself proves the whole requirement is test-complete.
@@ -234,7 +248,8 @@ All Yunxiao Projex, Codeup, Flow, and AppStack discovery, state reads, relation 
 - Do not set a Bug to `已修复` without code verification, MR evidence, and proof that the test environment contains the fixed version. Do not close a Bug; retest and closure belong to `YunxiaoQA`.
 - Actual-effort evidence is independent from code delivery and lifecycle closure. Write and read an effort record only when its source data are auditable; otherwise record `工时无可核验来源`, leave the effort record absent, and continue the current task's verified closure and test handoff.
 - Use the latest applicable MR `merged_at` as the precise completion timestamp in normal mode, or the trusted remote delivery-commit time in isolated rapid mode; do not use the command execution time, first commit time, first MR merge time, or the date-only work range as a substitute.
-- Count only Codex tasks or per-item segments with an exact, auditable relation to the development task. Deduplicate by Codex task ID plus segment ID and never assign an unsegmented multi-task conversation in full to more than one development task.
+- Automatically maintain `oneos.codex-task-segment/v1` whenever a unique development-task context is established, even when the user did not use a standard command. At completion, query by development-task ID, then use formal Bug/MR/commit/branch relations and the bounded start-to-completion metadata window to repair only missing links; deep-read only metadata hits and never full-scan all conversations in the normal path.
+- Count only Codex tasks or per-item segments with a unique, auditable relation to the development task. Deduplicate by Codex task ID plus segment ID and never assign an unsegmented multi-task conversation in full to more than one development task. Conflicting or indivisible shared segments become `未归属`; do not ask the developer to select, classify or confirm them.
 - Sum raw active elapsed seconds first, then round once to minutes. Convert with `计算工时 = 总分钟数 ÷ 60`, using half-up rounding to two decimals as the source value. Write that value to the effort record; if Yunxiao deterministically normalizes it to the project's configured precision (for example `0.28 → 0.3`), preserve both the calculated value and the read-back value in the work description and accept only the read-back value as the platform record. Preserve the integer minutes and unrounded calculation in the audit evidence.
 - If active elapsed duration, association evidence, effort-record precision, work-date range, precise timestamp description, operator, or read-back cannot be verified, skip the effort write and report the missing evidence. Never substitute first-message-to-last-message wall-clock duration or planned hours, and never use the gap to block unrelated code, task-state or test-handoff actions.
 - Every generated next-stage command must start with an explicit `$<skill-name>` selector.
@@ -253,6 +268,7 @@ All Yunxiao Projex, Codeup, Flow, and AppStack discovery, state reads, relation 
 实际完成时间：
 工作日期/工作日志ID：
 Codex关联任务/分段：
+Codex查找范围/分段结果：
 Codex总时长（分钟）：
 实际工时（小时）：
 仓库/分支/MR：

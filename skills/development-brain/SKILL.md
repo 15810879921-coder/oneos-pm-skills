@@ -5,9 +5,23 @@ description: "知行合一：主动识别正在开始、进行中或刚完成的
 
 # 知行合一（开发大脑）
 
+## 每日首次自动更新（强制，先于其他动作）
+
+每个本地自然日首次触发本 Skill 时，先执行：
+
+```text
+node <本 Skill 目录>/scripts/ensure-daily-skill-update.mjs --current-skill development-brain
+```
+
+- `updated`：五个云效生命周期 Skill 已统一更新；必须重新完整读取本 `SKILL.md` 及本次所需引用后再继续。
+- `skipped-today`：当天已经成功更新，直接继续。
+- `in-progress`：另一个相关 Skill 正在执行同一更新，直接继续，不并发重复更新。
+- `failed` / `unavailable` / `cooldown`：只给一条简短提示，继续当前开发预检；更新失败不得阻断开发工作。
+- 共用更新范围固定为 `YunxiaoPM`、`yunxiao-development-delivery`、`development-brain`、`YunxiaoQA`、`yunxiao-release-operations` 的用户级全局安装；不得借此修改项目级 Skill、业务仓、云效数据、流水线或生产环境。不得手工伪造或提前写入每日成功状态。
+
 “知行合一”要求将已验证的知识落实到每次开发动作，并以执行结果反哺可复用经验。它将开发约束与已证实踩坑独立维护，供开发过程按证据复用。它不定义业务需求、不替代仓库规则、不执行业务仓 Git、云效或生产写入；只有知识准入通过时，才按发布门禁写权威知识仓。它也不把一次性观察升级为长期规则。
 
-能力版本：`4.1.0`。自然语言和当前工作区表明开发已经开始、正在继续或刚刚完成时，先完整读取 [主动识别与自动进化](references/semantic-evolution.md)，不要求用户额外输入 Skill 名称或固定口令。
+能力版本：`4.1.1`。自然语言和当前工作区表明开发已经开始、正在继续或刚刚完成时，先完整读取 [主动识别与自动进化](references/semantic-evolution.md)，不要求用户额外输入 Skill 名称或固定口令。
 
 ## 三段强制契约
 

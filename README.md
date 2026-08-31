@@ -326,6 +326,12 @@ npx skills add 15810879921-coder/oneos-pm-skills --skill yunxiao-development-del
 npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoQA -a cursor -a codex -g -y
 ```
 
+### 每日首次触发自动更新
+
+安装包含本能力的新版本后，每个本地自然日第一次触发 `YunxiaoPM`、`yunxiao-development-delivery`、`development-brain`、`YunxiaoQA` 或 `yunxiao-release-operations` 中的任意一个，都会先统一更新这五个用户级全局 Skill；当天后续触发直接复用成功状态，不重复联网。更新失败会进入 30 分钟冷却并继续当前工作，不修改项目级 Skill、业务仓、云效数据、流水线或生产环境。
+
+旧版本无法自行获得更新器，因此需要先手工全局安装或更新一次带本能力的新版本；此后才进入每日自动更新。
+
 ---
 
 ## development-brain · 知行合一

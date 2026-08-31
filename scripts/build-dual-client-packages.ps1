@@ -8,6 +8,13 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $globalCommandCheck = Join-Path $PSScriptRoot 'check-global-skill-commands.ps1'
 & $globalCommandCheck -RepositoryRoot $repoRoot
+$dailyUpdateCheck = Join-Path $PSScriptRoot 'check-daily-skill-update.ps1'
+& $dailyUpdateCheck -RepositoryRoot $repoRoot
+$dailyUpdateTest = Join-Path $PSScriptRoot 'test-daily-skill-update.mjs'
+& node $dailyUpdateTest
+if ($LASTEXITCODE -ne 0) {
+    throw "每日首次 Skill 更新行为测试失败，退出码：$LASTEXITCODE"
+}
 $semanticRoutingCheck = Join-Path $PSScriptRoot 'check-semantic-routing.ps1'
 & $semanticRoutingCheck -RepositoryRoot $repoRoot
 if ([string]::IsNullOrWhiteSpace($OutputRoot)) {

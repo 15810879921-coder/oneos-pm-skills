@@ -3,42 +3,42 @@
     "client": "codex",
     "skill": "AutoRDO",
     "archive": "AutoRDO.zip",
-    "sha256": "f467a5b848e28ec83d29b32b8d55620b32b4a494a66b03fd32bd8278955bc2fa"
+    "sha256": "a06bada73628fa230c07c5bce074fe91a833fff67fdd5f24550c25c36f70effa"
   },
   {
     "client": "codex",
     "skill": "oneos-autoprd",
     "archive": "oneos-autoprd.zip",
-    "sha256": "6f81e1f3af63ce1a0a43c17eec79ef4ba2e003723a75c7f8e0044ddd33de6f68"
+    "sha256": "318ac561106426d295ad5a854096bb1bb5c2e144efcfc83800246e63c1f09d40"
   },
   {
     "client": "codex",
     "skill": "YunxiaoPM",
     "archive": "YunxiaoPM.zip",
-    "sha256": "62f7b837110b9dc6568668c4292c456b421fcc5332f853ffd791677182749bee"
-  },
-  {
-    "client": "codex",
-    "skill": "YunxiaoQA",
-    "archive": "YunxiaoQA.zip",
-    "sha256": "4d49f225e305c167607a555ba4021de26f8f90d19b8389dcdfc2c91836968163"
+    "sha256": "660a3dfc9aae08a02e988aa776e72b0a6cb0f25a2b139e768bc044b0184009b7"
   },
   {
     "client": "codex",
     "skill": "yunxiao-development-delivery",
     "archive": "yunxiao-development-delivery.zip",
-    "sha256": "e33469d027fe0da86232d69f230fd0cb0c8f97dd0798dda3ffba19c11f6c2d05"
-  },
-  {
-    "client": "codex",
-    "skill": "yunxiao-release-operations",
-    "archive": "yunxiao-release-operations.zip",
-    "sha256": "2f3322184982535bc2e81b199ec37c3d92c9fea381edb8ee7b2fb062f5bf3d7f"
+    "sha256": "f783db7aeef120e70473327a53eaef1d4f77f0cc2b098986f95036137b6b9bcd"
   },
   {
     "client": "codex",
     "skill": "development-brain",
     "archive": "development-brain.zip",
-    "sha256": "9cb1d9d7d0637ae5c8ef7a3cf7153b9758c729f3286d5be98828d54d00aa6e3f"
+    "sha256": "07c32b4b6d7aee98587b5da03964f13efe79db6673ea512bfdceef63d5cc9c33"
+  },
+  {
+    "client": "codex",
+    "skill": "YunxiaoQA",
+    "archive": "YunxiaoQA.zip",
+    "sha256": "4a4a596503073824b873aadcbd831af94d941c9cea857853fc98eb0b1dac47de"
+  },
+  {
+    "client": "codex",
+    "skill": "yunxiao-release-operations",
+    "archive": "yunxiao-release-operations.zip",
+    "sha256": "d1f2c67cc1852620f28f2734e1f01d26ffef637929e03b0c92b64d502d9f2d3c"
   }
 ]
