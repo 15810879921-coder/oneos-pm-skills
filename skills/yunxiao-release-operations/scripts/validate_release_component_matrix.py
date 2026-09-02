@@ -24,6 +24,14 @@ def _load(path: Path) -> dict[str, Any]:
 
 def validate(data: dict[str, Any]) -> tuple[list[str], dict[str, Any]]:
     errors: list[str] = []
+    suite_version = _text(data.get("suiteVersion"))
+    new_contract = bool(suite_version)
+    if new_contract and suite_version != "10.0.0":
+        errors.append("suiteVersion must be 10.0.0 for the delivery-ledger contract")
+    if new_contract:
+        ledger_validation = data.get("ledgerValidation")
+        if not isinstance(ledger_validation, dict) or ledger_validation.get("status") != "passed":
+            errors.append("ledgerValidation.status must be passed for suiteVersion 10.0.0")
     scope_items = data.get("releaseCodeItems") or []
     anchors = data.get("codeAnchors") or []
     components = data.get("componentMatrix") or []
@@ -64,6 +72,16 @@ def validate(data: dict[str, Any]) -> tuple[list[str], dict[str, Any]]:
         source_branch = _text(anchor.get("sourceBranch"))
         changed_paths = anchor.get("changedPaths") or []
         waived = bool(anchor.get("codeAnchorWaived"))
+
+        if new_contract:
+            for field in ("deliveryUnitId", "branchInstanceId", "ledgerEventId"):
+                if not _text(anchor.get(field)):
+                    errors.append(f"codeAnchors[{index}].{field} is required for suiteVersion 10.0.0")
+            exact_commits = anchor.get("exactCommitIds") or []
+            if not isinstance(exact_commits, list) or not exact_commits:
+                errors.append(f"codeAnchors[{index}].exactCommitIds is required for suiteVersion 10.0.0")
+            elif commit and commit not in {str(value) for value in exact_commits}:
+                errors.append(f"codeAnchors[{index}].commit must be included in exactCommitIds")
 
         if item_id not in web_item_ids:
             errors.append(f"code anchor references non-Web or unknown item: {item_id or index}")
@@ -149,6 +167,7 @@ def validate(data: dict[str, Any]) -> tuple[list[str], dict[str, Any]]:
 
     result = {
         "schemaVersion": "oneos.release-component-matrix-validation/v1",
+        "suiteVersion": suite_version or "legacy-compatible",
         "status": "blocked" if errors else "passed",
         "webReleaseCodeItems": sorted(web_item_ids),
         "coveredWebItems": sorted(item_id for item_id in web_item_ids if anchors_by_item.get(item_id)),

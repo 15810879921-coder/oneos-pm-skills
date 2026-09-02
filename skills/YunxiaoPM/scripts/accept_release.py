@@ -349,6 +349,7 @@ def acceptance_block(
     scope: list[str],
     production_execution_id: str,
     standalone_completed_bugs: list[str],
+    component_scope: list[dict[str, Any]] | None = None,
 ) -> str:
     when = datetime.now(ZoneInfo("Asia/Shanghai")).isoformat(timespec="seconds")
     conclusion = "通过" if args.action == "pass" else "不通过"
@@ -362,15 +363,51 @@ def acceptance_block(
         "evidence": args.evidence,
         "reason": reason,
         "acceptedScope": scope,
+        "componentScope": component_scope or [],
+        "scopeMode": "component" if component_scope else "full_release",
         "standaloneCompletedBugs": standalone_completed_bugs,
         "recordedAt": when,
         "idempotencyKey": key,
     }
+    if component_scope:
+        start = f"<!-- YUNXIAOPM_COMPONENT_ACCEPTANCE:{key}:START -->"
+        end = f"<!-- YUNXIAOPM_COMPONENT_ACCEPTANCE:{key}:END -->"
+    else:
+        start, end = ACCEPT_START, ACCEPT_END
     return (
-        f"{ACCEPT_START}<h2>生产后产品验收（YunxiaoPM）</h2><pre>"
+        f"{start}<h2>生产后产品验收（YunxiaoPM）</h2><pre>"
         + html.escape(json.dumps(payload, ensure_ascii=False, sort_keys=True))
-        + f"</pre>{ACCEPT_END}"
+        + f"</pre>{end}"
     )
+
+
+def read_component_scope(path: Path | None) -> list[dict[str, Any]]:
+    if path is None:
+        return []
+    value = json.loads(path.read_text(encoding="utf-8"))
+    rows = value.get("components") if isinstance(value, dict) else value
+    if not isinstance(rows, list) or not rows:
+        raise RuntimeError("范围清单必须是非空数组或包含非空components数组")
+    required = ("deliveryUnitId", "componentId", "deploymentTargetId", "productionVersion")
+    result: list[dict[str, Any]] = []
+    seen: set[tuple[str, str, str]] = set()
+    for index, row in enumerate(rows, start=1):
+        if not isinstance(row, dict):
+            raise RuntimeError(f"范围清单第{index}项不是对象")
+        missing = [name for name in required if not str(row.get(name) or "").strip()]
+        if missing:
+            raise RuntimeError(f"范围清单第{index}项缺少字段：{','.join(missing)}")
+        normalized = {name: str(row[name]).strip() for name in required}
+        branches = row.get("branchInstanceIds") or []
+        if not isinstance(branches, list):
+            raise RuntimeError(f"范围清单第{index}项branchInstanceIds必须是数组")
+        normalized["branchInstanceIds"] = sorted({str(item).strip() for item in branches if str(item).strip()})
+        identity = (normalized["deliveryUnitId"], normalized["componentId"], normalized["deploymentTargetId"])
+        if identity in seen:
+            raise RuntimeError(f"范围清单存在重复组件/目标：{identity}")
+        seen.add(identity)
+        result.append(normalized)
+    return sorted(result, key=lambda item: (item["deliveryUnitId"], item["componentId"], item["deploymentTargetId"]))
 
 
 def main() -> None:
@@ -381,6 +418,7 @@ def main() -> None:
     parser.add_argument("--acceptor", required=True)
     parser.add_argument("--evidence", required=True)
     parser.add_argument("--reason", default="")
+    parser.add_argument("--scope-file", type=Path, help="可选组件/部署目标范围；提供后只记录局部验收，不关闭整批")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
     if args.action == "fail" and not args.reason.strip():
@@ -402,13 +440,14 @@ def main() -> None:
                 f"发版任务状态={release_status}，期望{sorted(allowed_release_states)}"
             )
         # 产品验收不再硬依赖 oneos.release-production/v1 受管生产证据区块
-        key_source = "|".join(
-            [
-                args.release_id,
-                args.action,
-                args.evidence.strip(),
-            ]
-        )
+        component_scope = read_component_scope(args.scope_file)
+        component_scope_hash = hashlib.sha256(
+            json.dumps(component_scope, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        ).hexdigest()
+        key_parts = [args.release_id, args.action, args.evidence.strip()]
+        if component_scope:
+            key_parts.append(component_scope_hash)
+        key_source = "|".join(key_parts)
         key = "accept-" + hashlib.sha256(key_source.encode("utf-8")).hexdigest()[:20]
 
         requirements, deliveries, standalone_bugs = resolve_acceptance_scope(
@@ -490,6 +529,7 @@ def main() -> None:
             actual_scope,
             "n/a",
             [serial(item) for item in standalone_bugs],
+            component_scope,
         )
         requirement_transitions = [
             serial(item) for item in requirements if not is_acceptance_done(item)
@@ -506,6 +546,8 @@ def main() -> None:
             "standaloneCompletedBugs": [serial(item) for item in standalone_bugs],
             "conclusion": "通过" if args.action == "pass" else "不通过",
             "idempotencyKey": key,
+            "scopeMode": "component" if component_scope else "full_release",
+            "componentScope": component_scope,
             "wouldTransit": (
                 {
                     "requirements": requirement_transitions,
@@ -520,6 +562,31 @@ def main() -> None:
         }
         if args.dry_run:
             print(json.dumps(plan, ensure_ascii=False, indent=2))
+            return
+
+        if component_scope:
+            if args.action != "pass":
+                raise RuntimeError("局部范围仅支持验收通过；验收不通过仍按整批失败回流记录")
+            current_document = document(release)
+            if key not in current_document:
+                set_document(session, args.release_id, current_document + block)
+            reread = document(get_item(session, args.release_id))
+            if key not in reread:
+                raise RuntimeError("局部验收事件写入后回读失败")
+            cleanup_candidates = [
+                {
+                    "deliveryUnitId": item["deliveryUnitId"],
+                    "componentId": item["componentId"],
+                    "deploymentTargetId": item["deploymentTargetId"],
+                    "productionVersion": item["productionVersion"],
+                    "branchInstanceIds": item["branchInstanceIds"],
+                    "eligibility": "COMPONENT_ACCEPTED_BRANCH_NOT_YET_DELETABLE",
+                }
+                for item in component_scope
+            ]
+            print(json.dumps(plan | {"dryRun": False, "cleanupCandidates": cleanup_candidates,
+                                     "stateTransitions": "none_for_partial_acceptance"},
+                             ensure_ascii=False, indent=2))
             return
 
         targets_by_id = {

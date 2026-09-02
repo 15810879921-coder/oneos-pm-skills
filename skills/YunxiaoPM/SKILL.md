@@ -28,6 +28,7 @@ node <本 Skill 目录>/scripts/ensure-daily-skill-update.mjs --current-skill Yu
 - 共用更新范围固定为 `YunxiaoPM`、`yunxiao-development-delivery`、`development-brain`、`YunxiaoQA`、`yunxiao-release-operations` 的用户级全局安装；不得借此修改项目级 Skill、业务仓、云效数据、流水线或生产环境。不得手工伪造或提前写入每日成功状态。
 
 产品部云效自动化。正式 Skill 名 **`YunxiaoPM`**，选择器 **`$YunxiaoPM`**；对外中文名 **需求任务**。
+云效生命周期套件版本：`10.0.0`。
 
 **自洽成篇**；**禁止** fork / include / 「对齐」已下架的旧 lifecycle。  
 产品经理会话**不要**同时挂载旧 lifecycle Skill。
@@ -138,6 +139,7 @@ node <本 Skill 目录>/scripts/ensure-daily-skill-update.mjs --current-skill Yu
 刷新产品快照：需求=ONEOS-xx；交付任务=ONEOS-a；快照文件=…
 交棒开发：ONEOS-xx；交付任务=…；[交付负责人=姓名或userId]
 快轨待开发：ONEOS-xx；[交付负责人=姓名或userId]
+补建技术改进：标题=…；问题/目标=…；影响范围=…；验收口径=…；交付端=Web|小程序|共用服务；交付负责人=姓名或userId；来源交付单元=TEMPDEV-ID
 编号直推：分析任务=ONEOS-b / 设计任务=ONEOS-c / 交付任务=ONEOS-a；[交付负责人=姓名或userId]
 回退设计：需求=ONEOS-xx；交付=TASK-xx；原设计=TASK-xx；原因=…
 创建迭代：交付端=Web|小程序；版本类型=主|副|子；交付任务=ONEOS-a,ONEOS-b,…；名称前缀=…
@@ -156,7 +158,7 @@ node <本 Skill 目录>/scripts/ensure-daily-skill-update.mjs --current-skill Yu
 ## 本 Skill 的两个边界
 
 1. 开发前：交棒完成（需求=待开发；【交付】负责人来自命令或项目配置且已官方回读；非占位交棒已回读产品快照编号/哈希）→「请技术经理使用开发 Skill」。
-2. 生产后：按发版任务执行产品验收（**不以**发布生产证据区块为前置硬门；范围支持发版→需求或发版→【交付】→需求）；通过后逐项、幂等地关闭需求、交付容器和发版任务，部分成功时重试只续跑未完成对象；不通过则记录统一证据、尝试将发版任务标为发布失败并正式交给测试侧发起修复回流。
+2. 生产后：按发版任务执行产品验收（**不以**发布生产证据区块为前置硬门；范围支持发版→需求或发版→【交付】→需求）。未指定子范围时验收冻结清单全部范围；指定组件/部署目标时只写该子范围验收事件，不关闭整批需求/交付/发版任务，并输出精确分支清理候选。全部范围通过后逐项、幂等地关闭需求、交付容器和发版任务；部分成功时重试只续跑未完成对象；不通过则记录统一证据、尝试将发版任务标为发布失败并正式交给测试侧发起修复回流。
 
 例外：交棒后「创建迭代并关联交付」仍属本 Skill。
 
@@ -167,5 +169,9 @@ node <本 Skill 目录>/scripts/ensure-daily-skill-update.mjs --current-skill Yu
 3. **编号真相源**在「工作项编号（系统）」；新建后立即 PATCH  
 4. **无单快轨**：【设计】描述同步需求；计划起止=当日；SUB→交付后补 ASSOCIATED→需求；交付描述手工或 AutoPRD；同标签；设计当日完成态  
 5. **描述双段**不互相覆盖；迭代只挂【交付】；`共用服务` 双端交付分别挂入对应端侧迭代；回退重做设计则新开设计编号，交付计划开始不改  
+
+## TEMPDEV补建正式技术改进
+
+自然语言已表明代码先行且没有正式事项时，`补建技术改进`复用“记录优化需求 → 快轨待开发”的既有受控事务：创建一条中文优化需求及对应端侧【交付】，至少保存问题/目标、影响范围、负责人、验收口径和`sourceDeliveryUnitId`。不创建或修改Git分支、提交、MR，也不伪造【开发】任务；随后把正式需求/交付编号交给`$yunxiao-development-delivery`，由开发侧创建/关联【开发】并追加同一`adoptionId`的`DELIVERY_ADOPTED`。接口暂不可用时输出同字段的最小补单材料；只阻止生产认领，不阻止TEMPDEV继续编码和test验证。
 
 细则见各 references。

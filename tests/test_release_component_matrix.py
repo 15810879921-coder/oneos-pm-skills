@@ -68,6 +68,23 @@ class ReleaseComponentMatrixTests(unittest.TestCase):
         errors, _ = MODULE.validate(value)
         self.assertIn("componentMatrix[0] pipeline repository mismatch", errors)
 
+    def test_new_contract_requires_valid_ledger_and_bidirectional_anchor_fields(self):
+        value = matrix()
+        value["suiteVersion"] = "10.0.0"
+        value["ledgerValidation"] = {"status": "passed"}
+        value["codeAnchors"][0].update(
+            deliveryUnitId="DU-1",
+            branchInstanceId="BR-1",
+            ledgerEventId="EVT-1",
+            exactCommitIds=["abc123"],
+        )
+        errors, result = MODULE.validate(value)
+        self.assertEqual(errors, [])
+        self.assertEqual(result["suiteVersion"], "10.0.0")
+        del value["codeAnchors"][0]["branchInstanceId"]
+        errors, _ = MODULE.validate(value)
+        self.assertIn("codeAnchors[0].branchInstanceId is required for suiteVersion 10.0.0", errors)
+
 
 if __name__ == "__main__":
     unittest.main()

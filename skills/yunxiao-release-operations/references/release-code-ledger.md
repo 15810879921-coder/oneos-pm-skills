@@ -1,5 +1,34 @@
 # 发布代码清单补录
 
+## V2 交付台账与合并计划（新写入规范）
+
+新流程以 `oneos.delivery-ledger/v1` 为唯一新增事实源，旧 `【代码交付记录】` 仅作兼容读取。每条台账事件必须保留 `deliveryUnitId`、`branchInstanceId`、仓库、分支、提交、MR、时间、前序事件和内容哈希；发布准备用 `yunxiao_cli_delivery_ledger.py validate|summary` 校验完整链。旧评论缺字段时，继续按本文的 Codeup 反查规则补齐，再以 `EXTERNAL_COMMIT_DISCOVERED` 或 `SUBMISSION_RECORDED` 事件写回新台账，不能改写旧评论。
+
+任务后置时，`TEMPDEV_CREATED`、`TEST_DEPLOYED` 等事件仍属于原 `deliveryUnitId`。正式单据唯一匹配并经过关系回读后追加 `DELIVERY_ADOPTED`，只改变归属映射，不重命名分支、不改写提交历史。多个独立 Bug 后来归入一个开发任务时，逐 Bug 追加 `DEVELOPMENT_TASK_AGGREGATED`；开发任务评论保存全部来源 Bug、仓库、分支、提交和 MR。发版读取聚合结果，但仍按精确提交去重，不能把开发任务分支名称当作代码范围。
+
+对已核验的跨仓依赖，先运行 `resolve_release_dependency_groups.py` 生成依赖组。只有 API、制品、包、数据、配置或流水线依赖的官方证据存在时才分组；标题相似和提交时间接近不算依赖。依赖组决定共同发布边界，但每个仓库仍单独预检、合并、记录和重试。
+
+每次准备发布必须生成不可变的 `oneos.release-merge-plan/v1`：
+
+- `MERGE_SOURCE_BRANCH`：源分支只包含本次冻结范围，可以通过已核验 MR 合并。
+- `BUILD_CLEAN_CANDIDATE`：源分支混有范围外提交，从目标分支基线只重放冻结提交，创建干净候选和 MR。
+- `ALREADY_CONTAINED`：冻结提交已经全部包含在目标分支，只记录包含证据，不重复合并。
+- `BLOCKED`：缺少精确提交、目标分支、检查结果或范围存在歧义，仅阻塞对应依赖组；其他无依赖组可以继续准备，但不能被漏出发布范围。
+
+`mergePlan` 必须含 `mergePlanVersion`、范围哈希、组件矩阵哈希、依赖组、每仓库精确提交、源/目标分支、目标基线 SHA、动作、MR、流水线和生产部署目标。执行过的版本不得原地修改；冲突、目标漂移或范围修正必须生成下一版本并追加 `MERGE_PLAN_REVISED`，写明原因和替代关系。
+
+## 部分合并与发布续跑
+
+`执行发布`先用 `execute_release_merge_plan.py init` 创建一个 `releaseMergeAttemptId`，然后在任何合并前一次性预检全部仓库。每个成功合并都立即记录目标新 SHA；后续仓库失败时进入 `PARTIAL_TARGET_MERGE`：
+
+1. 已成功仓库标为“已占用生产目标、尚未部署”，不得重复合并或自动回滚。
+2. 未成功仓库保留 `PENDING/FAILED` 和证据；修复后只续跑这些仓库，但必须重新回读所有目标 HEAD。
+3. 若决定取消本次发布，使用新的、可审查的 revert MR 恢复每个已占用目标；全部回读成功后记录 `REVERTED`。禁止强推和删除证据。
+4. 只有所有仓库达到 `TARGETS_READY` 才能启动生产流水线。启动前记录 `MERGED_NOT_DEPLOYED`；流水线失败或暂停时保持该状态，后续只续跑缺失/失败组件，不重复已成功组件。
+5. 所有生产组件成功且环境、范围、提交均回读一致后才记录 `DEPLOYED`。因此“代码已合入生产目标分支”与“已经生产部署”始终是两个事实。
+
+上述可恢复状态不得被设计成死门禁：身份、范围、精确提交或目标无法唯一确定时只阻塞受影响仓库/依赖组；权限、审批、网络和平台暂时不可用时保留续跑点；只有生产范围完整性受损时才阻止整批生产执行。
+
 ## 目标
 
 本清单只适用于 **Web**。Web 的`准备发布`必须为本批每个 A 类需求及纳入 Bug 取得可追溯的远端代码锚点。优先复用事项评论中的 `【代码交付记录】`；评论缺失或字段不完整时，主动通过正式关系和官方 Codeup CLI 反查并补录，不要求开发人员手工回填。**小程序**不要求、查询、补录或阻塞于云效/Codeup 代码锚点；其代码发布链路不可由云效观测时记录`codeTrace=external_unmanaged`即可。

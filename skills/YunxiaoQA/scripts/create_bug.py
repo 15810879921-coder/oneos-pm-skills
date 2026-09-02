@@ -21,6 +21,7 @@
 from __future__ import annotations
 
 import argparse
+import html as html_lib
 import json
 import sys
 from pathlib import Path
@@ -99,6 +100,21 @@ def append_req_trace(html: str, req_meta: dict) -> str:
 def append_test_case_trace(html: str, test_case: str) -> str:
     """记录测试用例来源；不伪造未验证的正式工作项关系。"""
     return html + f"<h2>测试用例来源</h2><p>{test_case}</p>"
+
+
+def append_development_trace(html: str, development_meta: dict | None, delivery_unit: str | None) -> str:
+    """记录开发归属候选；不创建或伪造正式关系。"""
+    if not development_meta and not delivery_unit:
+        return html
+    parts: list[str] = []
+    if development_meta:
+        parts.append(
+            f"开发任务提示：{html_lib.escape(str(development_meta.get('serialNumber') or ''))} "
+            f"{html_lib.escape(str(development_meta.get('subject') or ''))}（非正式关系）"
+        )
+    if delivery_unit:
+        parts.append(f"交付单元ID：{html_lib.escape(delivery_unit)}")
+    return html + "<h2>开发归属提示</h2><p>" + "<br>".join(parts) + "</p>"
 
 
 def _user_meta(value: object) -> tuple[str, str] | None:
@@ -208,6 +224,9 @@ def main() -> None:
     ap.add_argument("--test-task-id", default=None)
     ap.add_argument("--delivery", default=None, help="仅用于辅助追溯；不能替代测试任务")
     ap.add_argument("--delivery-id", default=None)
+    ap.add_argument("--development-task", default=None, help="可选【开发】任务编号；只写描述追溯，不创建关系")
+    ap.add_argument("--development-task-id", default=None)
+    ap.add_argument("--delivery-unit", default=None, help="可选 deliveryUnitId，供任务后置认领")
     ap.add_argument(
         "--req",
         default=None,
@@ -252,6 +271,7 @@ def main() -> None:
 
     test_meta = None
     req_meta = None
+    development_meta = None
     need_test = args.mode == "本期" or not args.allow_no_test
 
     if need_test:
@@ -285,6 +305,17 @@ def main() -> None:
         html = append_req_trace(html, req_meta)
     if args.test_case:
         html = append_test_case_trace(html, args.test_case)
+    if args.development_task or args.development_task_id:
+        development_meta = resolve_target(
+            s,
+            space,
+            sn=args.development_task,
+            wid=args.development_task_id,
+            categories=("Task",),
+        )
+        if not str(development_meta.get("subject") or "").startswith("【开发】"):
+            raise SystemExit("开发任务提示必须唯一指向【开发】任务；不会据此创建正式关系")
+    html = append_development_trace(html, development_meta, args.delivery_unit)
 
     payload: dict = {
         "subject": args.title,
@@ -331,6 +362,8 @@ def main() -> None:
         "severity": args.severity,
         "testAssociated": test_meta,
         "reqTrace": req_meta,
+        "developmentTaskHint": development_meta,
+        "deliveryUnitId": args.delivery_unit,
         "relationRule": "ASSOCIATED→【测试】；需求仅描述追溯（不做 API 第二挂）",
         "dryRun": args.dry_run,
     }

@@ -21,6 +21,7 @@ from typing import Any
 
 
 SCHEMA = "oneos.yunxiao-cli-bug-batch/v1"
+PLAN_SCHEMA = "oneos.yunxiao-cli-bug-batch-plan/v2"
 DEFAULT_ACTIONABLE = ("待确认", "待处理", "处理中", "再次打开", "重新打开")
 TERMINAL_OR_QA = {"已修复", "已关闭", "已取消", "关闭", "取消", "待复测", "验证中"}
 EXTERNAL_RELATION_CATEGORIES = (
@@ -488,6 +489,125 @@ def cmd_set_status(args: argparse.Namespace) -> int:
     return 2 if blocked else 0
 
 
+def cmd_build_plan(args: argparse.Namespace) -> int:
+    """按已解析的开发关系和仓库分支生成可续跑的批量修复计划。"""
+    snapshot = load_snapshot(args.snapshot)
+    resolution_data = json.loads(Path(args.resolutions).read_text(encoding="utf-8"))
+    rows = resolution_data.get("resolutions") if isinstance(resolution_data, dict) else resolution_data
+    test_pipeline = resolution_data.get("testPipeline") if isinstance(resolution_data, dict) else None
+    if not isinstance(rows, list) or not rows:
+        raise AdapterError("resolutions必须是非空数组或包含resolutions数组的对象。")
+    snapshot_bugs = {str(item.get("serialNumber")): item for item in snapshot.get("bugs") or [] if isinstance(item, dict)}
+    groups: dict[tuple[str, str, str], list[dict[str, Any]]] = {}
+    seen: set[tuple[str, str]] = set()
+    for index, row in enumerate(rows):
+        if not isinstance(row, dict):
+            raise AdapterError(f"resolutions[{index}]必须是对象。")
+        bug = str(row.get("bugSerialNumber") or "")
+        repository_id = str(row.get("repositoryId") or "")
+        source_branch = str(row.get("sourceBranch") or "")
+        target_branch = str(row.get("targetBranch") or "")
+        branch_instance = str(row.get("branchInstanceId") or "")
+        association_mode = str(row.get("associationMode") or "")
+        if bug not in snapshot_bugs:
+            raise AdapterError(f"resolutions[{index}]引用了快照外Bug：{bug}")
+        if not all((repository_id, source_branch, target_branch, branch_instance)):
+            raise AdapterError(f"resolutions[{index}]缺少仓库或分支身份。")
+        if association_mode not in {"development_task", "independent_bug"}:
+            raise AdapterError(f"resolutions[{index}].associationMode必须来自开发关系解析结果。")
+        development_task = str(row.get("developmentTaskId") or "")
+        if association_mode == "development_task" and not development_task:
+            raise AdapterError(f"Bug {bug}选择开发任务分支但缺少developmentTaskId。")
+        identity = (bug, repository_id)
+        if identity in seen:
+            raise AdapterError(f"Bug与仓库解析重复：{bug}/{repository_id}")
+        seen.add(identity)
+        item = {
+            "bugSerialNumber": bug,
+            "bugWorkitemId": snapshot_bugs[bug].get("id"),
+            "associationMode": association_mode,
+            "developmentTaskId": development_task or None,
+            "deliveryUnitId": str(row.get("deliveryUnitId") or ""),
+            "repositoryId": repository_id,
+            "branchInstanceId": branch_instance,
+            "sourceBranch": source_branch,
+            "sourceHead": row.get("sourceHead"),
+            "targetBranch": target_branch,
+            "baseBranch": row.get("baseBranch"),
+            "baseCommit": row.get("baseCommit"),
+            "baseEvidenceId": row.get("baseEvidenceId"),
+            "retestIdentity": "BUG-RETEST-" + hashlib.sha256(
+                f"{bug}|{repository_id}|{branch_instance}".encode("utf-8")
+            ).hexdigest()[:16],
+        }
+        groups.setdefault((repository_id, source_branch, target_branch), []).append(item)
+    if not isinstance(test_pipeline, dict):
+        raise AdapterError("resolutions必须提供待预检的testPipeline对象。")
+    grouped: list[dict[str, Any]] = []
+    for key, raw_group_items in sorted(groups.items()):
+        items = sorted(raw_group_items, key=lambda item: item["bugSerialNumber"])
+        association_modes = {item["associationMode"] for item in items}
+        development_tasks = {str(item.get("developmentTaskId") or "") for item in items}
+        delivery_units = {str(item.get("deliveryUnitId") or "") for item in items}
+        branch_instances = {str(item.get("branchInstanceId") or "") for item in items}
+        base_branches = {str(item.get("baseBranch") or "") for item in items}
+        base_commits = {str(item.get("baseCommit") or "") for item in items}
+        base_evidence_ids = {str(item.get("baseEvidenceId") or "") for item in items}
+        if any(len(values) != 1 or not next(iter(values)) for values in
+               (association_modes, delivery_units, branch_instances, base_branches, base_commits, base_evidence_ids)):
+            raise AdapterError(f"提交组{key}的归属、分支实例或基线不一致，必须拆组。")
+        association_mode = next(iter(association_modes))
+        if association_mode == "development_task" and (len(development_tasks) != 1 or not next(iter(development_tasks))):
+            raise AdapterError(f"开发任务分支组{key}必须唯一指向同一【开发】任务。")
+        if association_mode == "independent_bug" and development_tasks != {""}:
+            raise AdapterError(f"独立Bug分支组{key}不得携带开发任务。")
+        if association_mode == "independent_bug" and len(items) != 1:
+            raise AdapterError(f"独立Bug分支组{key}只能包含一个Bug。")
+        bug_serials = [item["bugSerialNumber"] for item in items]
+        group_seed = {"key": key, "bugs": bug_serials, "branch": next(iter(branch_instances))}
+        group_id = "BUGGROUP-" + hashlib.sha256(
+            json.dumps(group_seed, ensure_ascii=False, sort_keys=True).encode("utf-8")
+        ).hexdigest()[:16]
+        grouped.append({
+            "groupId": group_id,
+            "repositoryId": key[0],
+            "sourceBranch": key[1],
+            "targetBranch": key[2],
+            "bugSerials": bug_serials,
+            "associationMode": (
+                "associated-development-branch" if association_mode == "development_task"
+                else "unassociated-fix"
+            ),
+            "developmentTaskId": next(iter(development_tasks)) or None,
+            "reuseExisting": association_mode == "development_task",
+            "deliveryUnitId": next(iter(delivery_units)),
+            "branchInstanceId": next(iter(branch_instances)),
+            "baseBranch": next(iter(base_branches)),
+            "baseCommit": next(iter(base_commits)),
+            "baseEvidence": {"verified": True, "evidenceId": next(iter(base_evidence_ids))},
+            "expectedSourceCommit": items[0].get("sourceHead"),
+            "mrTitle": f"fix({','.join(bug_serials)}): 修复批次缺陷",
+            "mrDescription": "按冻结Bug范围完成修复并保留逐Bug复测身份。",
+            "items": items,
+        })
+    seed = {"snapshotHash": snapshot.get("snapshotHash"), "groups": grouped}
+    plan = {
+        "schema": "oneos.yunxiao-cli-bug-delivery-plan/v2",
+        "suiteVersion": "10.0.0",
+        "bugBatchId": "BUGBATCH-" + hashlib.sha256(
+            json.dumps(seed, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        ).hexdigest()[:20],
+        "snapshotHash": snapshot.get("snapshotHash"),
+        "snapshotPath": str(Path(args.snapshot).resolve()),
+        "createdAt": now_utc(),
+        "groups": grouped,
+        "testPipeline": test_pipeline,
+    }
+    write_json(Path(args.output), plan)
+    print(json.dumps(plan, ensure_ascii=False, indent=2))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Official aliyun devops CLI adapter for batch Bug repair")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -508,6 +628,11 @@ def build_parser() -> argparse.ArgumentParser:
     status.add_argument("--workers", type=int, default=4)
     status.add_argument("--receipt")
     status.set_defaults(func=cmd_set_status)
+    plan = sub.add_parser("build-plan", help="按开发关系和仓库分支生成批量Bug修复计划")
+    plan.add_argument("--snapshot", required=True)
+    plan.add_argument("--resolutions", required=True)
+    plan.add_argument("--output", required=True)
+    plan.set_defaults(func=cmd_build_plan)
     return parser
 
 

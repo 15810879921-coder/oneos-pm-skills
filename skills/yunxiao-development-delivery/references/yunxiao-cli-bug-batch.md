@@ -55,9 +55,17 @@ skill-run yunxiao_cli_bug_batch.py snapshot --space-id <项目ID> [--space-id <�
 
 代码写入前生成交付计划JSON：
 
+先把正式开发关系和逐仓库分支解析结果写成`resolutions`文件，并执行：
+
+```text
+skill-run yunxiao_cli_bug_batch.py build-plan --snapshot <快照文件> --resolutions <解析结果JSON> --output <批次计划JSON>
+```
+
+解析结果JSON必须同时含`resolutions`和待CLI核验的`testPipeline`。脚本生成可直接交给`yunxiao_cli_bug_delivery.py preflight`的v2计划、稳定`bugBatchId`，按`仓库+源分支+目标分支`分组，并为每个Bug保留独立`retestIdentity`。`associationMode=development_task`必须带唯一开发任务；`associationMode=independent_bug`表示没有开发任务关系。测试任务、需求或交付关系不能把它改判为开发任务分支。
+
 ```json
 {
-  "schema": "oneos.yunxiao-cli-bug-delivery-plan/v1",
+  "schema": "oneos.yunxiao-cli-bug-delivery-plan/v2",
   "snapshotPath": "<冻结快照>",
   "groups": [
     {
@@ -67,6 +75,11 @@ skill-run yunxiao_cli_bug_batch.py snapshot --space-id <项目ID> [--space-id <�
       "targetBranch": "develop",
       "bugSerials": ["ONEOS-123"],
       "associationMode": "unassociated-fix",
+      "deliveryUnitId": "DU-ONEOS-123",
+      "branchInstanceId": "BR-6316668-ONEOS-123",
+      "baseBranch": "develop",
+      "baseCommit": "40位提交ID",
+      "baseEvidence": {"verified": true, "evidenceId": "test-deployment-or-integration-readback"},
       "reuseExisting": false,
       "mrTitle": "fix(ONEOS-123): <摘要>",
       "mrDescription": "<修复和验证摘要>"
@@ -88,7 +101,8 @@ skill-run yunxiao_cli_bug_delivery.py preflight --plan <计划JSON>
 预检必须证明：
 
 - 每个Bug来自同一冻结快照且只属于一个提交组；
-- 每组必须声明`associationMode`：`associated-development-branch`表示关联Bug复用已验证开发分支，`unassociated-fix`表示经正式关系证明无关联项的独立Bug。前者必须`reuseExisting=true`且源分支在预检时已存在；后者只能包含一个无关联Bug，源分支必须为`fix/<BUG-ID>`；
+- 每组必须声明`associationMode`：`associated-development-branch`表示Bug唯一关联【开发】并复用已验证开发分支，`unassociated-fix`表示没有开发任务关系的独立Bug。前者必须`reuseExisting=true`且源分支在预检时已存在；后者只能包含一个独立Bug，源分支必须为`fix/<BUG-ID>`。Bug关联【测试】、需求或交付不改变此判断；
+- v2计划必须记录`deliveryUnitId/branchInstanceId/baseBranch/baseCommit/baseEvidence`。测试发现Bug优先使用真实被测提交作为基线；无法核验时不得伪造证据，转入临时修复并要求重新部署复测；
 - Codeup数字仓库ID、读写权限、目标分支和提交基线可回读；
 - 已有源分支仅在`reuseExisting=true`且提交一致时复用；
 - 未提供流水线ID时，从组织现有流水线中按代码源和目标分支唯一发现；提供ID时只用于缩小范围，仍必须回读验证；

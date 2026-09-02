@@ -9,11 +9,15 @@ $YunxiaoPM
 $YunxiaoPM
 验收通过：发版任务=TASK-900；验收人=王经理；证据=ACCEPTANCE-ID或URL
 
+局部验收：发版任务=TASK-900；验收人=王经理；证据=ACCEPTANCE-ID或URL；范围清单=<JSON文件>
+
 $YunxiaoPM
 验收不通过：发版任务=TASK-900；验收人=王经理；原因=...；证据=ID或URL
 ```
 
 `发版任务`是唯一锚点；不接受单个需求编号替代，不按标题猜范围。
+
+未给`范围清单`时默认验收发版冻结清单全部范围。给出时，每项必须含`deliveryUnitId、componentId、deploymentTargetId、productionVersion`，可选`branchInstanceIds`；脚本只向发版任务追加该组件/目标的`ACCEPTED`事件并输出分支清理候选，不把整批需求、交付或发版任务推进完成。其余组件保持`PENDING_ACCEPTANCE`。同一分支仍承载未验收范围时只能成为组件候选，不能删除分支。
 
 ## 通过门禁
 
@@ -34,6 +38,8 @@ skill-run accept_release.py pass `
   --evidence 'ACCEPTANCE-ID-or-URL' `
   --dry-run
 ```
+
+局部验收增加`--scope-file <JSON>`；先dry-run再执行。局部验收不流转工作项状态，全部范围验收仍按原流程收口。
 
 去掉`--dry-run`后，脚本先向发版任务、每条需求、每个源【交付】和本批无交付已完成Bug写入同一`oneos.product-acceptance/v1`验收区块并回读，再依次推进本批需求`发布完成→已完成`、对应源`【交付】处理中→已完成`、发版任务`发布完成→已完成`。无交付已完成Bug只写证据并回读，不改变其已完成状态。每个对象均按真实下一状态动态解析，不使用本地硬编码ID。
 

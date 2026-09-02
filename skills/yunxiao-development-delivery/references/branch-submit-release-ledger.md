@@ -1,5 +1,67 @@
 # 分支、提交与发布清单记录
 
+## V2交付台账协议
+
+生命周期套件`10.0.0`以`oneos.delivery-ledger/v1`追加事件为主记录。旧`【研发启动】`、`【代码交付记录】`和`【研发完成】`继续只读兼容；新写入统一为云效评论中的单行：
+
+```text
+【交付台账事件】{"schemaVersion":"oneos.delivery-ledger/v1",...}
+```
+
+正式台账归属在一个工作项评论中，只追加、不覆盖。TEMPDEV尚无正式工作项时，同格式事件先保存在当前机器的受管交付台账文件；正式事项补齐后追加`DELIVERY_ADOPTED`并把完整事件链写入正式事项。不得伪造历史云效评论时间，原本地时间放`occurredAt`，迁入时间由评论平台回读。
+
+新台账云效写入有套件开关：只有五个生命周期Skill的用户级安装版本都经官方列表/文件回读为`10.0.0`，并生成`oneos.lifecycle-suite-state/v1`且`verified=true`，`yunxiao_cli_delivery_ledger.py append --transaction-plan ... --suite-state ...`才允许产生评论事务。未对齐时继续兼容读取旧评论和维护本地TEMPDEV台账，不向云效混写新格式；这只延迟台账迁入，不阻止编码、本地提交或test验证。
+
+每条事件至少包含：
+
+```text
+schemaVersion / suiteVersion / eventId / idempotencyKey
+previousEventId / previousPayloadHash / payloadHash
+deliveryUnitId / ledgerOwnerItemId / eventType / occurredAt
+repositoryId / branchInstanceId / sourceCommitIds[] / payload{}
+```
+
+事件类型以`scripts/yunxiao_cli_delivery_ledger.py`白名单为准。常用链路为：
+
+```text
+DEVELOPMENT_STARTED
+→ COMMIT_RECORDED（可多次）
+→ MR_RECORDED / MR_MERGED
+→ TEST_DEPLOYMENT_RECORDED / ITEM_TEST_RESULT_RECORDED
+→ DEVELOPMENT_COMPLETED
+→ RELEASE_SCOPE_FROZEN
+→ PRODUCTION_MERGE_RECORDED / PRODUCTION_RELEASED
+→ ACCEPTANCE_COMPLETED / CLEANUP_AUTHORIZED / CLEANUP_COMPLETED
+```
+
+后置认领与补录使用`DELIVERY_ADOPTED`、`DEVELOPMENT_TASK_AGGREGATED`、`EXTERNAL_COMMIT_DISCOVERED`或`DELIVERY_MAPPING_CORRECTED`；撤销提交使用`COMMIT_REVERTED`，不得删除旧事件。评论写入失败时保留Git事实并标记`证据待补`，下一次提交、完成开发或准备发布时从Codeup/Flow恢复后追加`LEDGER_REPAIRED`。
+
+执行器：
+
+```text
+skill-run yunxiao_cli_delivery_ledger.py validate --events <ledger.json>
+skill-run yunxiao_cli_delivery_ledger.py append --existing <ledger.json> --event <event.json> --output <new-ledger.json> --comment-output <comment.txt> --transaction-plan <plan.json> --work-item-id <内部ID> --serial-number <ONEOS-ID>
+skill-run yunxiao_cli_delivery_ledger.py summary --events <ledger.json>
+```
+
+生成的事务计划必须再交`yunxiao_cli_gateway.py preflight/apply`执行并通过官方评论回读；脚本本身不绕过Plan、权限或漂移门禁。读取器先兼容旧/新记录；只有五个生命周期Skill均回读`suiteVersion=10.0.0`时才允许新格式写入，版本不一致时保持只读。
+
+## 分支实例与基线
+
+一个交付单元可跨多个仓库，每个仓库各有`branchInstanceId`。第一次业务代码写入前必须运行`resolve_branch_base.py`：
+
+- 正式开发或TEMPDEV从该仓库已核验的开发集成分支创建；
+- 测试发现Bug从真实test部署提交创建；无法取得时只能创建`retestRequired=true`的临时修复；
+- 生产热修从已核验生产基线创建；无法取得时不得直接生产；
+- 当前分支仅在已经属于同一交付单元且HEAD与基线一致时复用；否则忽略当前分支；
+- 混合脏改动只暂停该仓库，绝不自动stash、reset或强切分支。
+
+TEMPDEV命名为`tempdev/<deliveryUnitId>`，允许在明确“先上测试”时提交到自身非保护远端分支并部署test。它始终标记`UNADOPTED`，不能合入生产目标分支。后补任务/Bug时只追加认领事件，保留原分支、提交、MR和测试历史。
+
+## 多仓库提交检查点
+
+每次提交使用`scripts/yunxiao_cli_submission_attempt.py`建立`oneos.delivery-submission-attempt/v1`。各仓库独立记录`PENDING/RUNNING/SUCCEEDED/FAILED/BLOCKED`、最后检查点、提交ID和MR。一仓失败不得回滚或重做其他已成功仓库；续跑从失败仓库最近检查点继续。
+
 ## 适用口令
 
 - `开始开发:任务=<开发任务编号>`：只建立开工追溯。
@@ -36,13 +98,13 @@
 
 提交前只读收集本地 `仓库、当前分支、HEAD、脏文件摘要、拟提交说明、已有MR`，并读取云效事项及其已有受管评论。
 
-自动提交必须同时满足：
+正式事项自动提交必须同时满足：
 
 1. 当前分支可唯一关联到同一开发任务或 Bug；
-2. 改动摘要与事项标题/描述不冲突；语义匹配只作补偿，不得单独作为自动提交依据；
+2. 改动摘要与事项标题/描述不冲突；语义匹配只作补偿，不得单独作为正式归属依据；
 3. 事项处于可开发状态，且没有其他事项已占用该分支的受管记录。
 
-通过时，先创建本地 commit。若当前变更命中[API包受控预发布](api-artifact-publish.md)，必须在 push 前完成受控 SNAPSHOT deploy、消费者重新解析和`【API包发布记录】`回读；发布失败时不 push、不创建/更新MR，也不触发依赖该包的流水线。未命中时按原顺序执行 push、创建或更新 MR。随后在**对应开发任务或 Bug 评论**追加 `【代码交付记录】`：
+通过时，先创建中文commit说明；`changeSummary`的`修改内容、修改原因、影响范围、验证情况`四项都必须是有效中文说明，允许保留类名、接口、文件路径和规范前缀，但不能只写英文或“调整代码”。若当前变更命中[API包受控预发布](api-artifact-publish.md)，必须在 push 前完成受控 SNAPSHOT deploy、消费者重新解析和`【API包发布记录】`回读；发布失败时不 push、不创建/更新MR，也不触发依赖该包的流水线。未命中时按原顺序执行 push、创建或更新 MR。随后在**对应开发任务或 Bug 评论**追加`COMMIT_RECORDED/MR_RECORDED`事件；下列旧`【代码交付记录】`仅作为兼容读取格式：
 
 ```text
 仓库：<名称或URL>
@@ -62,7 +124,7 @@ MR：<编号/URL/当前状态>
 
 `【API包发布记录】`的字段、一次提交一次记录的幂等键、消费者重新解析和流水线 SNAPSHOT 刷新门禁均以[API包受控预发布](api-artifact-publish.md)为准。它只记录测试 SNAPSHOT 包发布事实；不得把它写成生产发布、release 包发布或流水线成功证据。
 
-任一核对不通过时，禁止提交、推送、MR 或云效写入；输出“本地代码信息 / 云效候选事项 / 不一致原因”，等待开发人员明确输入 `确认关联：<事项编号>`。确认后重新读取工作区和云效快照；任何漂移都要求重新确认。
+正式事项存在冲突或多个候选时，禁止受影响仓库提交、推送、MR或云效写入；输出“本地代码信息 / 云效候选事项 / 不一致原因”，接受开发人员自然语言确认其中一个事项。确认后重新读取工作区和云效快照；任何漂移都要求重新确认。若确实没有正式事项，则走TEMPDEV：允许提交到自身临时分支和test验证，不要求开发人员虚构编号，但仍禁止合并生产。
 
 ## 完成记录与一键修复
 
@@ -72,6 +134,6 @@ MR：<编号/URL/当前状态>
 
 ## 发布使用方式
 
-`准备发布`读取本次范围内任务/缺陷的 `【代码交付记录】` 评论，汇总已有仓库、源/目标分支、提交、MR 和可选流水线信息到 `【发版】`任务的 `【发布代码清单】` 评论。评论仅缩短范围收集，不替代正式关系和实时 Codeup/Flow 回读。
+`准备发布`优先读取本次范围内任务/缺陷的`oneos.delivery-ledger/v1`事件，兼容读取旧`【代码交付记录】`。它必须反查未认领TEMPDEV、后置开发任务聚合的独立Bug分支、仓库、源/目标分支、提交、MR和可选流水线信息，并写入`【发版】`任务的冻结代码清单。评论仅缩短范围收集，不替代正式关系和实时Codeup/Flow回读。
 
 `执行发布`直接消费冻结的发布代码清单，不重复全量搜寻；仅复核其中分支、提交、MR、流水线和目标环境是否仍一致。缺失的可选流水线信息可实时补查，但评论缺失本身不得阻塞准备发布。

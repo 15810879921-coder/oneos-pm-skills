@@ -14,7 +14,22 @@ from typing import Any
 import yunxiao_cli_bug_batch as core
 
 
-PLAN_SCHEMA = "oneos.yunxiao-cli-bug-delivery-plan/v1"
+PLAN_SCHEMA = "oneos.yunxiao-cli-bug-delivery-plan/v2"
+LEGACY_PLAN_SCHEMA = "oneos.yunxiao-cli-bug-delivery-plan/v1"
+
+
+def relation_subjects(value: Any) -> list[str]:
+    subjects: list[str] = []
+    if isinstance(value, dict):
+        for key, child in value.items():
+            if key in {"subject", "relatedWorkitemSubject"} and isinstance(child, str):
+                subjects.append(child)
+            elif isinstance(child, (dict, list)):
+                subjects.extend(relation_subjects(child))
+    elif isinstance(value, list):
+        for child in value:
+            subjects.extend(relation_subjects(child))
+    return subjects
 PREFLIGHT_SCHEMA = "oneos.yunxiao-cli-bug-delivery-preflight/v1"
 BRANCH_SCHEMA = "oneos.yunxiao-cli-bug-delivery-branches/v1"
 MR_SCHEMA = "oneos.yunxiao-cli-bug-delivery-mrs/v1"
@@ -306,7 +321,7 @@ def validate_pipeline(executable: str, pipeline_spec: dict[str, Any],
 
 def load_plan(path: str, executable: str) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
     plan = load_json(path)
-    if plan.get("schema") != PLAN_SCHEMA:
+    if plan.get("schema") not in {PLAN_SCHEMA, LEGACY_PLAN_SCHEMA}:
         raise core.AdapterError("交付计划格式不受支持。")
     validate_safe_params(plan, "plan")
     snapshot_path = str(plan.get("snapshotPath") or "")
@@ -342,25 +357,46 @@ def load_plan(path: str, executable: str) -> tuple[dict[str, Any], dict[str, Any
         duplicate = [item for item in bug_serials if item in assigned]
         if unknown or duplicate:
             raise core.AdapterError(f"提交组{group_id}包含快照外或重复Bug：{unknown + duplicate}")
+        development_relations_by_bug: dict[str, list[dict[str, Any]]] = {}
+        for bug_serial in bug_serials:
+            relations = snapshot_bugs[bug_serial].get("relations")
+            relation_rows = relations if isinstance(relations, list) else []
+            development_relations_by_bug[bug_serial] = [
+                relation for relation in relation_rows
+                if isinstance(relation, dict)
+                and any(subject.startswith("【开发】") for subject in relation_subjects(relation))
+            ]
         if association_mode == "associated-development-branch":
             if not group.get("reuseExisting", False):
                 raise core.AdapterError(f"关联Bug必须复用已验证开发分支：{group_id}")
             for bug_serial in bug_serials:
-                relations = snapshot_bugs[bug_serial].get("relations")
-                if not isinstance(relations, list) or not relations:
+                if len(development_relations_by_bug[bug_serial]) != 1:
                     raise core.AdapterError(
-                        f"关联开发分支组缺少可回读的正式关联项：{group_id}/{bug_serial}")
+                        f"关联开发分支组必须回读到唯一【开发】任务：{group_id}/{bug_serial}")
+                development_task_id = str(group.get("developmentTaskId") or "")
+                if not development_task_id or development_task_id not in json.dumps(
+                    development_relations_by_bug[bug_serial][0], ensure_ascii=False
+                ):
+                    raise core.AdapterError(
+                        f"关联开发分支组与回读【开发】任务不一致：{group_id}/{bug_serial}")
         else:
             if len(bug_serials) != 1:
                 raise core.AdapterError(f"无关联Bug必须独立使用一个fix分支：{group_id}")
             bug_serial = bug_serials[0]
-            relations = snapshot_bugs[bug_serial].get("relations")
-            if not isinstance(relations, list) or relations:
+            if development_relations_by_bug[bug_serial]:
                 raise core.AdapterError(
-                    f"仅正式关系为空的Bug可创建fix分支：{group_id}/{bug_serial}")
+                    f"存在【开发】任务关系的Bug不得创建独立fix分支：{group_id}/{bug_serial}")
             if source != f"fix/{bug_serial}":
                 raise core.AdapterError(
                     f"无关联Bug的源分支必须为fix/{bug_serial}：{group_id}")
+        if plan.get("schema") == PLAN_SCHEMA:
+            for field in ("deliveryUnitId", "branchInstanceId", "baseBranch", "baseCommit"):
+                if not str(group.get(field) or "").strip():
+                    raise core.AdapterError(f"提交组{group_id}缺少{field}。")
+            base_evidence = group.get("baseEvidence")
+            if not isinstance(base_evidence, dict) or base_evidence.get("verified") is not True \
+                    or not str(base_evidence.get("evidenceId") or "").strip():
+                raise core.AdapterError(f"提交组{group_id}缺少已核验baseEvidence。")
         group_ids.add(group_id)
         assigned.update(bug_serials)
     return plan, snapshot, user
@@ -392,6 +428,11 @@ def cmd_preflight(args: argparse.Namespace) -> int:
             "sourceExisted": bool(source), "sourceCommit": branch_commit(source),
             "reuseExisting": bool(spec.get("reuseExisting", False)),
             "associationMode": association_mode,
+            "deliveryUnitId": spec.get("deliveryUnitId"),
+            "branchInstanceId": spec.get("branchInstanceId"),
+            "baseBranch": spec.get("baseBranch"),
+            "baseCommit": spec.get("baseCommit"),
+            "baseEvidence": spec.get("baseEvidence"),
             "bugSerials": [str(item) for item in spec["bugSerials"]],
             "mrTitle": str(spec.get("mrTitle") or ""),
             "mrDescription": str(spec.get("mrDescription") or ""),

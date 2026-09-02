@@ -150,10 +150,10 @@ $yunxiao-development-delivery
 批量命令不得在循环中调用完整的单Bug提交/发布流程。代码写入前一次性完成：
 
 1. 解析目标代码库；不读取创建人来推导或写入验证者。
-2. Bug有正式关联项时，沿关联项查找其下需求，并查找该需求或其开发任务正式关联的同仓库开发分支。恰好一个远程分支仍存在、可写、可安全同步且关系可回读时复用。
-3. Bug有正式关联项但没有唯一有效需求开发分支、候选不唯一或关系冲突时，阻塞该Bug且零写入；不得按标题或分支名相似度猜测，更不得创建`fix/<BUG-ID>`。只有正式关系为空的Bug才从仓库真实集成分支创建/复用独立的`fix/<BUG-ID>`。
-4. 按`仓库ID + 目标分支`形成提交组。同组Bug可共享一个受控worktree，但必须记录逐Bug基线和diff边界；不同组、开发任务和批次外改动不得混入。
-5. 生成`oneos.yunxiao-cli-bug-delivery-plan/v1`，通过`yunxiao_cli_bug_delivery.py preflight`校验每个Codeup数字仓库ID、写权限、源/目标分支及提交基线，并唯一解析一个能覆盖全部提交组的test Flow。
+2. 只解析 Bug 是否正式关联唯一【开发】任务；【测试】、需求、交付或其他关联项都不等于开发分支关系。唯一开发任务在同仓库已有可写、可安全同步且关系可回读的开发分支时复用。
+3. Bug关联多个开发任务或唯一开发任务存在多个冲突分支时，只阻塞该Bug/仓库并列出候选；不得按标题或分支名猜测。Bug没有任何开发任务关系时，从真实基线创建/复用独立`fix/<BUG-ID>`，即使它已经关联【测试】、需求或交付也一样。后补开发任务只做`DEVELOPMENT_TASK_AGGREGATED`，原Bug分支不搬迁。
+4. 运行`yunxiao_cli_bug_batch.py build-plan --snapshot ... --resolutions ...`生成`bugBatchId`，按`仓库ID + 源分支 + 目标分支`形成提交组。同组Bug可共享一个受控worktree，但每个Bug保留独立`retestIdentity`、基线和diff边界；不同组、开发任务和批次外改动不得混入。
+5. 先按每个仓库运行`resolve_branch_base.py`，再生成`oneos.yunxiao-cli-bug-delivery-plan/v2`；计划必须带交付单元、分支实例、基线提交及证据。通过`yunxiao_cli_bug_delivery.py preflight`校验每个Codeup数字仓库ID、写权限、源/目标分支及提交基线，并唯一解析一个能覆盖全部提交组的test Flow。
 6. 明确流水线执行模式：`manual-cli`要求目标分支没有自动触发；`auto-after-merge`要求相关代码源恰好一个`push`或`merge_request/merged`事件。两者同时存在会产生重复发布风险，必须在代码写入前阻塞。
 7. 通过`ensure-branches`创建或复用精确Codeup分支并回读。若需要多条流水线、多个不兼容环境、目标分支已漂移或无法证明一次发布覆盖全部制品，则整个批次零代码写入，并输出建议拆分的兼容批次。
 

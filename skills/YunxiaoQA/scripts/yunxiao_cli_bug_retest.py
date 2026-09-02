@@ -22,6 +22,16 @@ START = "<!-- YUNXIAOQA_BUG_RETEST_EVIDENCE_START -->"
 END = "<!-- YUNXIAOQA_BUG_RETEST_EVIDENCE_END -->"
 
 
+def build_retest_ids(test_id: str, plan_id: str, case_id: str, execution_id: str,
+                     version: str, bug_id: str) -> tuple[str, str]:
+    test_cycle_source = "|".join([test_id, plan_id, version])
+    key_source = "|".join([bug_id, case_id, execution_id, version])
+    return (
+        "test-cycle-" + hashlib.sha256(test_cycle_source.encode("utf-8")).hexdigest()[:20],
+        "retest-" + hashlib.sha256(key_source.encode("utf-8")).hexdigest()[:20],
+    )
+
+
 def rows(value: Any, label: str) -> list[dict[str, Any]]:
     value = core.unwrap(value)
     if not isinstance(value, list):
@@ -154,8 +164,13 @@ def main() -> int:
     if not execution_id:
         raise core.AdapterError("TestHub复测结果缺少执行ID。")
     key_source = "|".join([str(bug["id"]), args.testcase_id, execution_id, deployment["version"]])
+    test_cycle_id, retest_attempt_id = build_retest_ids(
+        str(test["id"]), args.test_plan_id, args.testcase_id, execution_id,
+        deployment["version"], str(bug["id"])
+    )
     payload = {"schemaVersion": RETEST_SCHEMA, "bugId": args.bug_sn, "testTaskId": str(test["id"]),
                "testTaskSerial": args.test_sn, "testPlanId": args.test_plan_id, "caseId": args.testcase_id,
+               "testCycleId": test_cycle_id, "retestAttemptId": retest_attempt_id,
                "testExecutionId": execution_id, "environment": "test", "deployedVersion": deployment["version"],
                "deploymentExecutionId": deployment["executionId"], "result": "passed",
                "verifiedBy": {"id": user.get("id"), "name": user.get("name")},

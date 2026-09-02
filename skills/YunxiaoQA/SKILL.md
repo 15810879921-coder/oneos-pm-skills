@@ -38,7 +38,7 @@ node <本 Skill 目录>/scripts/ensure-daily-skill-update.mjs --current-skill Yu
 
 与 **YunxiaoPM（需求任务）**、开发交付 Skill 分工：本 Skill **只做测试侧**读写。
 
-闭环版本：`2.8.2`。
+云效生命周期套件版本：`10.0.0`。
 
 ## Plan 模式门禁（强制 · 凡写云效）
 
@@ -62,6 +62,7 @@ node <本 Skill 目录>/scripts/ensure-daily-skill-update.mjs --current-skill Yu
 ```text
 【测试】= 交付子项（TASK_SUB→【交付】）；由开发 Skill 在提测时创建（本 Skill 不建）
 缺陷     = Bug；**必须** ASSOCIATED→【测试】（关联项，非父子）；产品需求写入描述追溯（本期不做需求 ASSOCIATED API）
+开发归属 = Bug 与【测试】的关系只证明测试范围，不决定代码分支。Bug 可先创建、后补【开发】；已唯一关联【开发】的 Bug 回到对应开发分支，无开发归属的 Bug 才由开发侧建立独立 `fix/<Bug编号>` 分支
 验证者   = workitem.verifier；所有测试侧建单路径均=当前登录测试用户，禁止口令覆盖
 本期负责人=同交付【开发】负责人
 缺陷打开态 = 待确认（禁止再用「待处理」指缺陷）
@@ -131,8 +132,8 @@ node <本 Skill 目录>/scripts/ensure-daily-skill-update.mjs --current-skill Yu
 拉取测试任务：状态=待处理|处理中；[项目=…]
 开始测试：测试任务=ONEOS-xx；[需求=ONEOS-yy]
 记录测试证据：测试任务=ONEOS-xx；证据清单=<JSON文件>
-发起缺陷：标题=…；描述=…；测试任务=ONEOS-xx；[需求=ONEOS-yy]；[负责人=…]；[证据=…]
-从测试用例发起缺陷：测试用例=CASE-xx；标题=…；描述=…；测试任务=ONEOS-xx；[需求=ONEOS-yy]；[负责人=…]；[证据=…]
+发起缺陷：标题=…；描述=…；测试任务=ONEOS-xx；[需求=ONEOS-yy]；[开发任务=ONEOS-zz]；[交付单元=ID]；[负责人=…]；[证据=…]
+从测试用例发起缺陷：测试用例=CASE-xx；标题=…；描述=…；测试任务=ONEOS-xx；[需求=ONEOS-yy]；[开发任务=ONEOS-zz]；[交付单元=ID]；[负责人=…]；[证据=…]
 发起缺陷(非本期)：标题=…；描述=…；负责人=…；[测试任务=…]；[项目=…]
 # 无测试任务的非本期须显式声明，默认仍要求挂测试子项+需求
 拉取待验缺陷：状态=已修复|暂不修复；[测试任务=…]；[负责人=…]
@@ -166,6 +167,7 @@ node <本 Skill 目录>/scripts/ensure-daily-skill-update.mjs --current-skill Yu
 6. **关联**：
    - **硬门禁**：缺陷 **create 时**挂 `ASSOCIATED→【测试】`（关联项；**禁止** TASK_SUB/父子）；回读 ASSOCIATED 校验，失败退出码 3。
    - **需求**：点选/追溯后写入描述「追溯需求」段；**不做** Cookie 事后 `ASSOCIATED→需求`（不告警、不伪造成功）。口令 `需求=` / `--req` 可覆盖。
+   - **开发归属提示**：若已存在唯一【开发】任务，可把其编号和 `deliveryUnitId` 写入描述追溯段，供开发侧选分支；这不是正式关系，不存在时不阻止建 Bug。开发任务后置时由开发/产品侧补正式关系，再以交付台账回填 `DEVELOPMENT_TASK_AGGREGATED`。
 7. Plan 回显 → 确认 → apply（`create_bug.py`）→ 回读当前用户=验证者及【测试】关联 → 回报；任一校验失败须停
 
 ## 测试完成硬门禁
@@ -200,6 +202,7 @@ node <本 Skill 目录>/scripts/ensure-daily-skill-update.mjs --current-skill Yu
 - [ ] 拉【测试】：仅待处理/处理中（或口令指定）
 - [ ] 开始测试：【测试】待处理→处理中；需求待测试→测试中；两侧均回读
 - [ ] 发起缺陷（独立/测试用例）：验证者=当前登录用户且已回读；负责人/关联正确；走过查重+模板
+- [ ] Bug 分支提示：测试关系未被误当作开发归属；有唯一开发任务则保留提示，无开发任务仍正常建 Bug
 - [ ] 再次打开：仅自「已修复」且有复现说明；负责人未误改
 - [ ] 批量关闭：逐Bug复测证据已写入并回读；仅「已修复」→「已关闭」
 - [ ] 并入迭代：仅「已关闭」；迭代已存在（未新建）
