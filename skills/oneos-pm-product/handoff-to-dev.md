@@ -1,7 +1,7 @@
 # 言出法随 → 明镜止水 · 交棒出口（handoff-to-dev）
 
 > **升档才读**：本尊要「交棒开发 / 明镜止水落地 / C 轨双轨模拟」、正式可点原型+真码任务收口交开发时。  
-> 激活禁止默认读。配对明镜 [`../mingjingzhishui/handoff-from-pm.md`](../mingjingzhishui/handoff-from-pm.md)。
+> 激活禁止默认读。配对明镜 [`../oneos-dev-delivery/handoff-from-pm.md`](../oneos-dev-delivery/handoff-from-pm.md)。
 
 ## 0. 分家口径（v1.4.74）
 

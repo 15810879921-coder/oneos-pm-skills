@@ -76,7 +76,7 @@ description: >-
 
 ## 6. 相关路径
 
-- 运行时深技能仍在：`../yanchufasui/` · `../fayanruju/` · `../mingjingzhishui/`  
+- 运行时深技能已并入用途名：`../oneos-pm-product/` · `../oneos-biz-rules/` · `../oneos-dev-delivery/`  
 - 可打印速查：[`SKILL-MAP.md`](SKILL-MAP.md)  
 - **人设圣经**：[`references/skill-persona-bible.md`](references/skill-persona-bible.md)  
 - **定妆交棒 Gemini（七卡全量现代职装重绘）**：[`references/gemini-avatar-handoff.md`](references/gemini-avatar-handoff.md)  

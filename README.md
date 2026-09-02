@@ -18,19 +18,18 @@ OneOS 产品团队自用的 AI Agent Skills 合集，支持 `npx skills` 一键�
 | `oneos-autoprd`（展示名 OneOS-AutoPRD） | 整模块 AutoPRD + 标注目录；**需求定稿**写功能变更；云效描述「需求说明/更新内容」 | 见下方 |
 | `AutoRDO` | 清洗为标题+描述；自动识别类型/优先级/标签/提交部门/提交人；多行拆多条；有待确认则强制 Plan | 见下方 |
 | `AutoVUL` | 按云效迭代名生成 PC 版本更新日志 | 见下方 |
-| **`yanchufasui`**（言出法随） | 王冕驱动产品分身：落需求 / 改原型；写云效先确认 | 见下方「王冕驱动三 skill」 |
-| **`fayanruju`**（法眼如炬） | 口径裁决；完整 KB 在 oneos-v2 工作区 | 见下方「王冕驱动三 skill」 |
-| **`mingjingzhishui`**（明镜止水） | AI 开发分身：只吃交棒包；双轨本机模拟（原型→真仓） | 见下方「王冕驱动三 skill」 |
 | **`oneos-wave-router`**（任务指路） | 只指路不办事：下一步喊哪个 Skill | 见下方「七 Skill 用途名」 |
-| **`oneos-pm-product`**（产品交付） | AI 产品经理一号位；运行时→言出法随 | 见下方「七 Skill 用途名」 |
-| **`oneos-biz-rules`**（业务口径） | 规则一号位；运行时→法眼如炬 | 见下方「七 Skill 用途名」 |
-| **`oneos-dev-delivery`**（开发落地） | AI 开发经理一号位；运行时→明镜止水 | 见下方「七 Skill 用途名」 |
+| **`oneos-pm-product`**（产品交付） | AI 产品经理一号位（旧花名言出法随已并入） | 见下方「七 Skill 用途名」 |
+| **`oneos-biz-rules`**（业务口径） | 规则一号位（旧花名法眼如炬已并入） | 见下方「七 Skill 用途名」 |
+| **`oneos-dev-delivery`**（开发落地） | AI 开发经理一号位（旧花名明镜止水已并入） | 见下方「七 Skill 用途名」 |
 | **`oneos-qa-verify`**（测试验收） | 测试一号位；云效工具层→YunxiaoQA | 见下方「七 Skill 用途名」 |
 | **`oneos-ux-guide`**（体验规范） | 体验一号位；UI/AI 交互原则 | 见下方「七 Skill 用途名」 |
 | **`oneos-release-gate`**（上线守闸） | 发布一号位【一期休眠】 | 见下方「七 Skill 用途名」 |
 
 > **已下架：** `yunxiao-requirement-lifecycle`（旧全生命周期 Skill）已从本仓库删除。产品侧云效**只**用 `YunxiaoPM`；`oneos-autoprd` **只**写 PRD/标注/描述，**不**建同名阶段任务。本机若仍有旧包请卸载：  
-> `npx skills remove yunxiao-requirement-lifecycle -g -y -a cursor -a codex`
+> `npx skills remove yunxiao-requirement-lifecycle -g -y -a cursor -a codex`  
+> **已下架：** `yanchufasui` / `fayanruju` / `mingjingzhishui` 已更名为 `oneos-pm-product` / `oneos-biz-rules` / `oneos-dev-delivery`。本机旧目录请卸载：  
+> `npx skills remove yanchufasui fayanruju mingjingzhishui -g -y -a cursor -a codex`
 
 ---
 
@@ -79,57 +78,31 @@ npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-autoprd -a cursor
 npx skills update YunxiaoPM AutoRDO oneos-autoprd -g -y
 ```
 
-### 王冕驱动三 skill（言出法随 + 法眼如炬 + 明镜止水）
+### 旧花名已下架（言出法随 / 法眼如炬 / 明镜止水）
 
-与 YunxiaoPM 同一套 `npx skills`。同事安装页：https://15810879921-coder.github.io/oneos-pm-skills/
-
-```bash
-# 曾装过旧版：先卸再装（没有可忽略报错）
-npx skills remove yanchufasui -g -y -a cursor -a codex
-npx skills remove fayanruju -g -y -a cursor -a codex
-npx skills add 15810879921-coder/oneos-pm-skills --skill yanchufasui -a cursor -a codex -g -y
-npx skills add 15810879921-coder/oneos-pm-skills --skill fayanruju -a cursor -a codex -g -y
-npx skills add 15810879921-coder/oneos-pm-skills --skill mingjingzhishui -a cursor -a codex -g -y
-```
-
-更新：
+已更名为用途名，不要再装这三个旧目录。本机若还在，先卸：
 
 ```bash
-npx skills update yanchufasui fayanruju mingjingzhishui -g -y
-```
-
-装完请 **新开 Chat**。完整知识库与改原型请打开 **oneos-v2** 工作区；真仓本机根 `~/oneos-prod`。本机若已把 `~/.cursor/skills/{yanchufasui,fayanruju,mingjingzhishui}` 软链到 oneos-v2，不要用 `-g` 覆盖。
-
-丢进 AI：
-
-```text
-请帮我全局安装王冕驱动三 skill 到 Cursor + Codex：
-
-先卸旧版（若曾装过言出法随/法眼；没有可忽略报错）：
 npx skills remove yanchufasui -g -y -a cursor -a codex
 npx skills remove fayanruju -g -y -a cursor -a codex
-
-再安装：
-npx skills add 15810879921-coder/oneos-pm-skills --skill yanchufasui -a cursor -a codex -g -y
-npx skills add 15810879921-coder/oneos-pm-skills --skill fayanruju -a cursor -a codex -g -y
-npx skills add 15810879921-coder/oneos-pm-skills --skill mingjingzhishui -a cursor -a codex -g -y
-
-装完请新开 Chat。口令：言出法随 / $yanchufasui ；法眼如炬 / $fayanruju ；明镜止水 / $mingjingzhishui
+npx skills remove mingjingzhishui -g -y -a cursor -a codex
 ```
+
+改装：`oneos-pm-product` / `oneos-biz-rules` / `oneos-dev-delivery`。完整知识库与改原型请打开 **oneos-v2**；真仓本机根 `~/oneos-prod`。本机若已把用途名软链到仓内，不要用 `-g` 覆盖。
 
 ### 七 Skill 用途名（推荐团队 · 用途名优先）
 
-同事优先喊用途名口令；花名三 skill 为运行时深协议，建议同装。上线守闸一期休眠。  
-**曾装过旧版言出法随 / 法眼：一键脚本会先 `remove` 再装新包。**
+同事优先喊用途名口令。上线守闸一期休眠。  
+**曾装过旧花名：一键脚本会先 `remove` 再装用途名。**
 
 #### 职责与功用
 
 | 用途名 · 称号 | 职责 | 什么时候喊 | 不做 |
 |---------------|------|------------|------|
 | **任务指路 · 协调官** `oneos-wave-router` | 只指路，不代打 | 不知道该喊谁 | 不改需求/码/云效 |
-| **产品交付 · 主理人** `oneos-pm-product`（花名言出法随） | PRD · 可点原型 · 验收剧本 · 交棒包 | 写需求、出原型、交开发 | 止于交开发；不上线 |
-| **业务口径 · 合规官** `oneos-biz-rules`（花名法眼如炬） | 能不能做、规则/字段裁决 | 问规则、冲突、查口径 | 不改原型/真码 |
-| **开发落地 · 架构师** `oneos-dev-delivery`（花名明镜止水） | 只吃交棒；双轨落地；回执 | 按包改原型/真仓、待测交接 | 无包拒做；不合 Master |
+| **产品交付 · 主理人** `oneos-pm-product` | PRD · 可点原型 · 验收剧本 · 交棒包 | 写需求、出原型、交开发 | 止于交开发；不上线 |
+| **业务口径 · 合规官** `oneos-biz-rules` | 能不能做、规则/字段裁决 | 问规则、冲突、查口径 | 不改原型/真码 |
+| **开发落地 · 架构师** `oneos-dev-delivery` | 只吃交棒；双轨落地；回执 | 按包改原型/真仓、待测交接 | 无包拒做；不合 Master |
 | **测试验收 · 质检官** `oneos-qa-verify` | 测计划 · 证据 · 缺陷 · 打回 | 开始测试、提缺陷、复测 | 不替本尊点发版 |
 | **体验规范 · 设计官** `oneos-ux-guide` | UI/AI 交互原则、反 AI 味 | 页面评审、交互争议 | 不定业务能不能做 |
 | **上线守闸 · 安全官** `oneos-release-gate` | **一期休眠**；发版权在本尊 | 问发版会被拦回 | 禁止自动推生产 |
@@ -137,9 +110,10 @@ npx skills add 15810879921-coder/oneos-pm-skills --skill mingjingzhishui -a curs
 主链路：`产品交付 →（业务口径）→ 开发落地 → 测试验收 → 【本尊上线】`
 
 ```bash
-# 先卸旧版（没有可忽略报错）
+# 先卸旧花名（没有可忽略报错）
 npx skills remove yanchufasui -g -y -a cursor -a codex
 npx skills remove fayanruju -g -y -a cursor -a codex
+npx skills remove mingjingzhishui -g -y -a cursor -a codex
 npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-wave-router -a cursor -a codex -g -y
 npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-pm-product -a cursor -a codex -g -y
 npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-biz-rules -a cursor -a codex -g -y
@@ -147,34 +121,32 @@ npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-dev-delivery -a c
 npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-qa-verify -a cursor -a codex -g -y
 npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-ux-guide -a cursor -a codex -g -y
 npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-release-gate -a cursor -a codex -g -y
-npx skills add 15810879921-coder/oneos-pm-skills --skill yanchufasui -a cursor -a codex -g -y
-npx skills add 15810879921-coder/oneos-pm-skills --skill fayanruju -a cursor -a codex -g -y
-npx skills add 15810879921-coder/oneos-pm-skills --skill mingjingzhishui -a cursor -a codex -g -y
 ```
 
 更新：
 
 ```bash
-npx skills update oneos-wave-router oneos-pm-product oneos-biz-rules oneos-dev-delivery oneos-qa-verify oneos-ux-guide oneos-release-gate yanchufasui fayanruju mingjingzhishui -g -y
+npx skills update oneos-wave-router oneos-pm-product oneos-biz-rules oneos-dev-delivery oneos-qa-verify oneos-ux-guide oneos-release-gate -g -y
 ```
 
 丢进 AI：
 
 ```text
-请帮我全局安装 OneOS 七 Skill 用途名 + 三花名运行时到 Cursor + Codex：
+请帮我全局安装 OneOS 七 Skill 用途名到 Cursor + Codex：
 
 【七分身职责速览】
 - 任务指路：只指路喊谁，不代打
-- 产品交付（言出法随）：PRD·原型·交棒；止于交开发
-- 业务口径（法眼如炬）：能不能做；不改码
-- 开发落地（明镜止水）：只吃交棒双轨落地；止于待测
+- 产品交付：PRD·原型·交棒；止于交开发
+- 业务口径：能不能做；不改码
+- 开发落地：只吃交棒双轨落地；止于待测
 - 测试验收：证据·缺陷·打回；不点发版
 - 体验规范：UI/AI 原则；不定业务口径
 - 上线守闸：一期休眠，发版权在本尊
 
-重要：若本机曾装过旧版言出法随 / 法眼如炬，必须先卸再装（没有可忽略报错）：
+若本机曾装过旧花名 yanchufasui / fayanruju / mingjingzhishui，必须先卸再装（没有可忽略报错）：
 npx skills remove yanchufasui -g -y -a cursor -a codex
 npx skills remove fayanruju -g -y -a cursor -a codex
+npx skills remove mingjingzhishui -g -y -a cursor -a codex
 
 再安装：
 npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-wave-router -a cursor -a codex -g -y
@@ -184,9 +156,6 @@ npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-dev-delivery -a c
 npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-qa-verify -a cursor -a codex -g -y
 npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-ux-guide -a cursor -a codex -g -y
 npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-release-gate -a cursor -a codex -g -y
-npx skills add 15810879921-coder/oneos-pm-skills --skill yanchufasui -a cursor -a codex -g -y
-npx skills add 15810879921-coder/oneos-pm-skills --skill fayanruju -a cursor -a codex -g -y
-npx skills add 15810879921-coder/oneos-pm-skills --skill mingjingzhishui -a cursor -a codex -g -y
 
 装完请新开 Chat。
 用途名：任务指路 / 产品交付 / 业务口径 / 开发落地 / 测试验收 / 体验规范 / 上线守闸（休眠）。
@@ -542,9 +511,6 @@ oneos-pm-skills/
     ├── oneos-autoprd/
     ├── AutoVUL/
     ├── AutoRDO/
-    ├── yanchufasui/
-    ├── fayanruju/
-    ├── mingjingzhishui/
     ├── oneos-wave-router/
     ├── oneos-pm-product/
     ├── oneos-biz-rules/

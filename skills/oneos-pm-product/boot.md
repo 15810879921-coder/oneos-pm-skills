@@ -121,7 +121,7 @@
 **研发 onboarding / 字段有限可答 / 周五套 A（v1.4.71）**：研发用法·合支升档 `rd-onboarding.md`；字段无字典禁假裁；周五强制套 A（1/19/31/30/23）。  
 **法眼交棒 × 收口三行（v1.4.72）**：业务收口升档 `handoff-closeout.md`；交棒码 W/S/C/B，收口③必须回写勾完。  
 **明镜止水交棒（v1.4.74）**：正式 C 轨双轨（可点原型→真仓）→ 升档 `handoff-to-dev.md` 出交棒包；未唤开发落地时仍可改 **oneos-v2 原型**；窄例外：纯文案/样式/**点名主题 CSS**；**禁止**无包改真仓业务 `views`。  
-**本尊口令速查（v1.5.0 · 配对明镜 v1.0.10）**：该喊谁 → 明镜 [`../mingjingzhishui/twin-linkage.md`](../mingjingzhishui/twin-linkage.md) §0b；偏差回写 §2c；回执 `mj-receipt`。  
+**本尊口令速查（v1.5.0 · 配对明镜 v1.0.10）**：该喊谁 → 明镜 [`../oneos-dev-delivery/twin-linkage.md`](../oneos-dev-delivery/twin-linkage.md) §0b；偏差回写 §2c；回执 `mj-receipt`。  
 **明镜技术顾问旁路（v1.4.84 · 配对明镜 v1.0.5）**：会话撞工程阻塞（产线握手/起服/VPN·网关/缺表/仓路由/灌结构/Vite 红屏/`5666`）→ **同轮**挂「## 明镜建议」（人话原因+本尊可执行步骤+解完口令）；**无需**本尊再喊明镜；**禁止**借顾问旁路无交棒改真码。  
 **作战室新鲜度 / 三口径 / 外部事实（v1.4.69）**：本尊说「刷新作战室数据新鲜度 / 刷新外部事实条」→ `npm run war-room:refresh-facts` + habits **§2.4** + publish；主链 ≠ 产品缺口 ≠ Skill 修复记录；禁写云效。  
 **产线 MySQL 外部事实 cold-up（v1.4.75）**：问「产线有没有××表 / 库归哪个服务」→ 本机 `~/oneos-prod/scripts/prod-ro-probe.sh` + `docs/external-facts/`（**只读**；密钥不进仓；禁写产线库）。
@@ -139,12 +139,12 @@
 | 研发：怎么用 AI / 开 Agent / 合支 / 首次确认研发角色 | [`rd-onboarding.md`](rd-onboarding.md)（半页分诊；闲聊/只要结论不挂） |
 | PM 进展/排期/延期 | [`pm.md`](pm.md) |
 | 周报同步 / 三人周会 / 会议纪要入库 / 会后确认 | [`pm.md`](pm.md)（§9 项目经理数字人） |
-| 业务口径 / 门禁 / 能不能做 | **只**读法眼 [`../fayanruju/SKILL.md`](../fayanruju/SKILL.md)（协议已内联；勿默认读 retrieval） |
+| 业务口径 / 门禁 / 能不能做 | **只**读法眼 [`../oneos-biz-rules/SKILL.md`](../oneos-biz-rules/SKILL.md)（协议已内联；勿默认读 retrieval） |
 | 产线库表 / 外部事实 cold-up / 「现网有没有这张表」 | 先跑本机 `~/oneos-prod/scripts/prod-ro-probe.sh`（只读）；协议见 `~/oneos-prod/docs/external-facts/README.md`；**禁止**把口令写进仓 |
 | 改 Skill 规则、本尊说「跑评测」、严重 Bad Case 回写 | [`eval-cases.md`](eval-cases.md)（habits §2.1） |
 | 法眼交棒 / 收口三行对齐 / 「交棒模板」 | [`handoff-closeout.md`](handoff-closeout.md) |
 | 交棒明镜止水 / C 轨双轨 / 本机真仓模拟 | [`handoff-to-dev.md`](handoff-to-dev.md) |
-| 工程阻塞须挂明镜建议（握手/起服/VPN 等） | 升档读明镜 [`../mingjingzhishui/boot.md`](../mingjingzhishui/boot.md) §0c + [`twin-linkage.md`](../mingjingzhishui/twin-linkage.md) §2b；同轮挂「## 明镜建议」 |
+| 工程阻塞须挂明镜建议（握手/起服/VPN 等） | 升档读明镜 [`../oneos-dev-delivery/boot.md`](../oneos-dev-delivery/boot.md) §0c + [`twin-linkage.md`](../oneos-dev-delivery/twin-linkage.md) §2b；同轮挂「## 明镜建议」 |
 | 本尊说「更新 AI-PM 评分」/ 一号位进度复评 | habits **§2.2** + `aiAgentPmScorecard.ts` |
 | 本尊说「更新双 Skill 评分」/ Skill 进化复评 | habits **§2.3** + `skillCapabilities.ts` |
 | 本尊说「刷新作战室数据新鲜度」/ 三口径误读 | habits **§2.4** + `warRoomDataProvenance.ts` |

@@ -175,7 +175,7 @@
 
 1. 大改 `boot.md` / 本文件 §1–§2 / `SKILL.md` 硬规矩，或本尊说「跑评测」→ 升档读 [`eval-cases.md`](eval-cases.md)，心智自检 Pass/Fail  
 2. Fail → 同轮修协议，或记入 `eval-cases.md`「最近失败」（最多 5 条）  
-3. 法眼侧对应 [`../fayanruju/references/eval-mini.md`](../fayanruju/references/eval-mini.md)（改裁决规则时）  
+3. 法眼侧对应 [`../oneos-biz-rules/references/eval-mini.md`](../oneos-biz-rules/references/eval-mini.md)（改裁决规则时）  
 4. **周五例行（固化套 A · v1.4.71）**：每周五收口必须按 `eval-cases.md` §0.1 固定 5 黄金例（**1 · 19 · 31 · 30 · 23**）复跑并记「最近一次自检」；禁临时另抽装履约（本尊书面改套除外）
 
 **Trace 四问（跑歪时强制 · 再回写）**

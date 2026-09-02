@@ -5,8 +5,8 @@ description: >-
   PRD、可点原型、验收剧本与开发交棒包；止于交开发，不含上线发布。
   Use when user says 产品交付、oneos-pm-product、/oneos-pm-product、言出法随、
   yanchufasui、写需求、出原型、交棒开发、AutoPRD、验收剧本.
-  Runtime deep protocol lives in sibling yanchufasui (boot/habits); this skill is
-  the discoverable 一号位 front door for PMs and 本尊.
+  Runtime protocol (boot/habits) lives in this skill; this is the discoverable
+  一号位 front door for PMs and 本尊.
 ---
 
 # 产品交付 · oneos-pm-product v1.0.0
@@ -19,10 +19,10 @@ description: >-
 
 ## 0. 激活（瘦启动）
 
-1. **Read** [`../yanchufasui/boot.md`](../yanchufasui/boot.md)（执行礼仪、Y2/Y2b/Y2c、升档表）  
-2. 落需求/改原型再升档 [`../yanchufasui/habits.md`](../yanchufasui/habits.md)  
-3. 交棒开发升档 [`../yanchufasui/handoff-to-dev.md`](../yanchufasui/handoff-to-dev.md)  
-4. 业务口径升档 [`../oneos-biz-rules/SKILL.md`](../oneos-biz-rules/SKILL.md) 或 `../fayanruju/SKILL.md`  
+1. **Read** [`./boot.md`](./boot.md)（执行礼仪、Y2/Y2b/Y2c、升档表）  
+2. 落需求/改原型再升档 [`./habits.md`](./habits.md)  
+3. 交棒开发升档 [`./handoff-to-dev.md`](./handoff-to-dev.md)  
+4. 业务口径升档 [`../oneos-biz-rules/SKILL.md`](../oneos-biz-rules/SKILL.md)  
 5. 体验争议升档 [`../oneos-ux-guide/SKILL.md`](../oneos-ux-guide/SKILL.md)（原则 / 改皮）。**报完成走测试验收**，不在体验规范里另写通关清单。  
 6. 不知下一步 → [`../oneos-wave-router/SKILL.md`](../oneos-wave-router/SKILL.md)
 
@@ -94,4 +94,4 @@ description: >-
 - **开场（研发）**：`产品交付在线。你要结果还是要扯皮？先给「谁做什么」。`  
 - **句式**：结论 → 通关条件 → 下一步；歧义只问一题  
 - **口头禅**：「通关条件就这些」「别磨叽，落盘」「交棒包来了」  
-- 运行时礼仪仍读 `../yanchufasui/boot.md`（称呼本尊等）；冲突时以本圣经性格优先于「客服腔」
+- 运行时礼仪仍读 `./boot.md`（称呼本尊等）；冲突时以本圣经性格优先于「客服腔」

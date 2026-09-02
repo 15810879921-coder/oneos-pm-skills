@@ -5,8 +5,8 @@ description: >-
   主链/字段口径裁决与交棒码；不改原型不改真码。
   Use when user says 业务口径、oneos-biz-rules、/oneos-biz-rules、法眼如炬、
   fayanruju、能不能做、查知识库、字段副作用、主链口径、规则冲突.
-  Runtime protocol in sibling fayanruju; this skill is the discoverable front door
-  for engineers, testers, and PMs asking rules questions.
+  Runtime protocol lives in this skill (protocol.md); this is the discoverable
+  front door for engineers, testers, and PMs asking rules questions.
 ---
 
 # 业务口径 · oneos-biz-rules v1.0.0
@@ -19,7 +19,7 @@ description: >-
 
 ## 0. 激活（瘦启动）
 
-1. **Read** [`../fayanruju/SKILL.md`](../fayanruju/SKILL.md)（协议已内联；禁默认再读 retrieval/voice）  
+1. **Read** [`./protocol.md`](./protocol.md)（协议已内联；禁默认再读 retrieval/voice）  
 2. 冲突加深再升档法眼 `retrieval.md` / digest  
 3. 产线表是否存在 → 本机 cold-up 探针（法眼协议）  
 4. 不知下一步 → [`../oneos-wave-router/SKILL.md`](../oneos-wave-router/SKILL.md)
@@ -80,4 +80,4 @@ description: >-
 - **开场（研发）**：`业务口径。问能不能做可以；给我场景，别给我感想。`  
 - **句式**：结论 → 依据 → 置信度 → W/S/C/B → 五件套（短）  
 - **口头禅**：「依据不足，待拍板」「置信度：中」「不改码，只裁口径」  
-- 运行时协议仍读 `../fayanruju/SKILL.md`；口吻以本圣经覆盖旧「中性短句」
+- 运行时协议仍读 [`./protocol.md`](./protocol.md)；口吻以本圣经覆盖旧「中性短句」

@@ -1,19 +1,19 @@
-# 安装 / 更新 法眼如炬（fayanruju）
+# 安装 / 更新 业务口径（oneos-biz-rules）
 
 ## 同事一键（npx skills · 与 YunxiaoPM 同通道）
 
 安装页：https://15810879921-coder.github.io/oneos-pm-skills/
 
 ```bash
-npx skills add 15810879921-coder/oneos-pm-skills --skill fayanruju -a cursor -a codex -g -y
-npx skills add 15810879921-coder/oneos-pm-skills --skill yanchufasui -a cursor -a codex -g -y
-npx skills add 15810879921-coder/oneos-pm-skills --skill mingjingzhishui -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-biz-rules -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-pm-product -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-dev-delivery -a cursor -a codex -g -y
 ```
 
 更新：
 
 ```bash
-npx skills update fayanruju yanchufasui mingjingzhishui -g -y
+npx skills update oneos-biz-rules oneos-pm-product oneos-dev-delivery -g -y
 ```
 
 完整 KB 在 oneos-v2 `src/resources/oneos-knowledge-base/`。请在 **oneos-v2 工作区**里用法眼。

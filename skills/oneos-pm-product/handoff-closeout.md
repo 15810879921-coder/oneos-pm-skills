@@ -71,4 +71,4 @@
 □ 有 B 则 eval-cases「最近失败」已写
 ```
 
-返回：[`../fayanruju/SKILL.md`](../fayanruju/SKILL.md) · [`habits.md`](habits.md) §2.1 · [`boot.md`](boot.md)
+返回：[`../oneos-biz-rules/SKILL.md`](../oneos-biz-rules/SKILL.md) · [`habits.md`](habits.md) §2.1 · [`boot.md`](boot.md)

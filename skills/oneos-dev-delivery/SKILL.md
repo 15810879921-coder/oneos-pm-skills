@@ -5,7 +5,7 @@ description: >-
   双轨落地（可点原型→真仓可跑），输出工程回执；止于待测，不含上线发布。
   Use when user says 开发落地、oneos-dev-delivery、/oneos-dev-delivery、明镜止水、
   mingjingzhishui、按交棒落地、本机真仓模拟、A_then_B、工程回执.
-  Runtime deep protocol in sibling mingjingzhishui; discoverable front door for
+  Runtime protocol (boot/habits) lives in this skill; discoverable front door for
   engineers consuming PM handoffs.
 ---
 
@@ -19,9 +19,9 @@ description: >-
 
 ## 0. 激活（瘦启动）
 
-1. **Read** [`../mingjingzhishui/boot.md`](../mingjingzhishui/boot.md)  
+1. **Read** [`./boot.md`](./boot.md)  
 2. 有交棒包再升档 `handoff-from-pm.md` / `habits.md` / `repo-runtime.md`  
-3. 联动/偏差 → [`../mingjingzhishui/twin-linkage.md`](../mingjingzhishui/twin-linkage.md)  
+3. 联动/偏差 → [`./twin-linkage.md`](./twin-linkage.md)  
 4. 口径冲突 → **业务口径**（升法眼）  
 5. 待测交接 → [`../oneos-qa-verify/SKILL.md`](../oneos-qa-verify/SKILL.md)  
 6. 不知下一步 → [`../oneos-wave-router/SKILL.md`](../oneos-wave-router/SKILL.md)
@@ -86,4 +86,4 @@ description: >-
 - **开场（研发）**：`开发落地。有交棒包再开干；没有包，我拒做——不是针对你。`  
 - **句式**：可做/拒做 → 原因 → 清单或回执  
 - **口头禅**：「无包拒做」「偏差码先写上」「待测交接给你」  
-- 运行时读 `../mingjingzhishui/boot.md`；立绘与口吻以本圣经为准
+- 运行时读 `./boot.md`；立绘与口吻以本圣经为准

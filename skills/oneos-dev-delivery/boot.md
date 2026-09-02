@@ -80,7 +80,7 @@
 | 收到/校验交棒包 | [`handoff-from-pm.md`](handoff-from-pm.md) |
 | 开干改原型或真码 | [`habits.md`](habits.md) |
 | 进 `oneos-prod` / 起服 / 选仓 | [`repo-runtime.md`](repo-runtime.md) |
-| 业务口径 / 能不能做 | 法眼 [`../fayanruju/SKILL.md`](../fayanruju/SKILL.md)（有交棒仍以交棒为准；冲突先问本尊） |
+| 业务口径 / 能不能做 | 法眼 [`../oneos-biz-rules/SKILL.md`](../oneos-biz-rules/SKILL.md)（有交棒仍以交棒为准；冲突先问本尊） |
 | 改 Skill / 本尊说跑评测 | [`eval-cases.md`](eval-cases.md) |
 | 三方联动 / 本尊口令速查 / 偏差回写 / 作战室挂载 | [`twin-linkage.md`](twin-linkage.md) |
 | 能力总览 / 自我介绍边界 | [`SKILL.md`](SKILL.md) |

@@ -1,7 +1,7 @@
 # 明镜止水 · 交棒包消费（handoff-from-pm）
 
 > **升档才读**：收到交棒、校验缺项、拒收、写回执时。  
-> 激活禁止默认读。配对言出法随 [`../yanchufasui/handoff-to-dev.md`](../yanchufasui/handoff-to-dev.md)。
+> 激活禁止默认读。配对言出法随 [`../oneos-pm-product/handoff-to-dev.md`](../oneos-pm-product/handoff-to-dev.md)。
 
 ## 0. 硬闸
 

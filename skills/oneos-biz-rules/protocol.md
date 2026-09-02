@@ -147,7 +147,7 @@ description: >-
 | **C** | 触及 Skill 进化 / 能力短板 / 进化任务进展 | 更新 `skillCapabilities.ts` + publish |
 | **B** | 本尊纠错口径 / 严重 Bad Case | 写入言出法随 `eval-cases.md`「最近失败」 |
 
-无关写 `N/A`，禁止空着装没有。全文模板：言出法随 [`handoff-closeout.md`](../yanchufasui/handoff-closeout.md)。
+无关写 `N/A`，禁止空着装没有。全文模板：言出法随 [`handoff-closeout.md`](../oneos-pm-product/handoff-closeout.md)。
 
 （旧称「大脑答复」同等认；对外口头可说「法眼 / 大脑」。）  
 本尊说「帮我想个更好办法」时：**优化 / 更好办法** 必须给对比（现状 vs 更优 · 取舍），禁止只复述现状。  

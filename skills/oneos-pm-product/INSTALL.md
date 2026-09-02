@@ -1,4 +1,4 @@
-# 安装 / 更新 言出法随（yanchufasui）
+# 安装 / 更新 产品交付（oneos-pm-product）
 
 > **团队请优先用用途名**：**产品交付** `/oneos-pm-product`  
 > 完整版图：[`../oneos-wave-router/SKILL-MAP.md`](../oneos-wave-router/SKILL-MAP.md) · [`../INSTALL-ONEOS-SKILL-MAP.md`](../INSTALL-ONEOS-SKILL-MAP.md)
@@ -8,15 +8,15 @@
 安装页：https://15810879921-coder.github.io/oneos-pm-skills/
 
 ```bash
-npx skills add 15810879921-coder/oneos-pm-skills --skill yanchufasui -a cursor -a codex -g -y
-npx skills add 15810879921-coder/oneos-pm-skills --skill fayanruju -a cursor -a codex -g -y
-npx skills add 15810879921-coder/oneos-pm-skills --skill mingjingzhishui -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-pm-product -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-biz-rules -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-dev-delivery -a cursor -a codex -g -y
 ```
 
 更新：
 
 ```bash
-npx skills update yanchufasui fayanruju mingjingzhishui -g -y
+npx skills update oneos-pm-product oneos-biz-rules oneos-dev-delivery -g -y
 ```
 
 装完 **新开 Chat**。完整知识库仍在 **oneos-v2**；改原型请打开该工作区。  
@@ -50,7 +50,7 @@ Cursor / Codex 会同时索引「仓内 Skill」与 `~/.cursor/skills`、`~/.cod
 
 1. 新开 Chat → 应自动读 `boot.md`
 2. 喊 `$oneos-pm-product` 或 `$yanchufasui` → 签名「王冕驱动 · 言出法随 / 产品交付」
-3. 业务题应能升档到同仓 `../fayanruju/SKILL.md` 或 `../oneos-biz-rules/SKILL.md`
+3. 业务题应能升档到同仓 `../oneos-biz-rules/SKILL.md` 或 `../oneos-biz-rules/SKILL.md`
 
 ## 旧入口
 

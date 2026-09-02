@@ -1,27 +1,27 @@
-# 安装 / 更新 明镜止水（mingjingzhishui）
+# 安装 / 更新 开发落地（oneos-dev-delivery）
 
 ## 同事一键（npx skills · 与言出法随同通道）
 
 安装页：https://15810879921-coder.github.io/oneos-pm-skills/
 
 ```bash
-npx skills add 15810879921-coder/oneos-pm-skills --skill mingjingzhishui -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-dev-delivery -a cursor -a codex -g -y
 ```
 
 建议与言出法随 / 法眼一起装（三 skill）：
 
 ```bash
-npx skills add 15810879921-coder/oneos-pm-skills --skill yanchufasui -a cursor -a codex -g -y
-npx skills add 15810879921-coder/oneos-pm-skills --skill fayanruju -a cursor -a codex -g -y
-npx skills add 15810879921-coder/oneos-pm-skills --skill mingjingzhishui -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-pm-product -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-biz-rules -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-dev-delivery -a cursor -a codex -g -y
 ```
 
 更新：
 
 ```bash
-npx skills update mingjingzhishui -g -y
+npx skills update oneos-dev-delivery -g -y
 # 或三件套：
-npx skills update yanchufasui fayanruju mingjingzhishui -g -y
+npx skills update oneos-pm-product oneos-biz-rules oneos-dev-delivery -g -y
 ```
 
 装完 **新开 Chat**。真仓本机根与完整联调文档仍在本机 `~/oneos-prod`；改原型请打开 **oneos-v2**。
