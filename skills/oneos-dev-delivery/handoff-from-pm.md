@@ -8,12 +8,15 @@
 **唯一合法输入** = 言出法随交棒包（或本尊粘贴的同 schema 文本）。  
 聊天碎片 / 口头一句「做个某某」**不算**交棒 → 拒做并列出缺项。
 
+收到合法交棒后，**先**执行 [`handoff-acquisition.md`](handoff-acquisition.md)：没有 `status=complete` 且 `allowedToParse=true` 的获取回执，不得进入本文件的字段校验、需求理解和编码。
+
 ## 1. 交棒包 schema
 
 ```markdown
 ## 明镜止水交棒包
 - 需求编号：（ONEOS-xx / 无则写「无编号」）
 - 波次 / 进化任务 ID：（如 P0 / evo-xxx · **必填**）
+- 交棒包 ID / 版本：（如 HANDOFF-ONEOS-000-P0-v1 · **必填**）
 - 原型 id：（oneos-v2 目录名 / 新建则写拟用 id）
 - PRD 路径：（如 `src/prototypes/{id}/.spec/requirements-prd.md`）
 - 一句话目标：
@@ -30,6 +33,7 @@
 - 页面或接口路径：（氢/能/跨库**必填**；如 `/asset/hydrogen/ledger` 或菜单名）
 - 已知缺口 / 待拍板：（无则写「无」）
 - 本尊确认轨指令：（是 / 否；B_only 必须是）
+- 材料清单：（人话表 + 唯一 `handoff-manifest` JSON 块）
 ```
 
 ### 必填
@@ -37,6 +41,8 @@
 | 字段 | 拒收条件 |
 |------|----------|
 | 波次 / 进化任务 ID | 空（口语「这一刀」不算） |
+| 交棒包 ID / 版本 | 空，或与 `handoff-manifest.packageId` 不一致 |
+| 材料清单 | 无 `handoff-manifest`，或 required 材料缺 source / acquisitionMethod；旧包按 `legacy-unverified` 处理，不直接开工 |
 | 一句话目标 | 空或含糊到无法验收 |
 | 范围 · 做 / 不做 | 缺任一侧 |
 | 用户故事 | 缺，或无「闭环」 |
@@ -58,7 +64,9 @@
 
 ```text
 收到交棒
- → 按上表勾必填
+ → 先按 handoff-acquisition 获取全部 required 材料并出回执
+ → 运行轻量校验器；不完整/冲突 → 停在首个偏离步骤，禁止写代码
+ → 获取完整后按上表勾必填
  → 有缺 → 输出「拒收 · 缺项清单」；禁止写代码
  → 齐全 → 复述轨指令 + 本轮只做哪一轨
  → 开干前再扫一遍「待拍板」：非空则先问本尊是否带病开工
@@ -77,6 +85,7 @@
 ```markdown
 ## 明镜止水 · 交棒回执
 - 交棒校验：通过 / 拒收（缺项：…）
+- 获取回执：路径 + complete / incomplete / conflict / legacy-unverified
 - 波次 / ID：（与交棒一致）
 - 当前轨：A | B | 等待点头进 B
 - 已实现：（**逐条对照自检记录**；禁止只写「做完了」）
@@ -94,6 +103,8 @@ taskId: evo-mj-xxx
 track: A
 passed: true
 evidencePath: src/prototypes/…/.spec/handoff-mj-….md
+acquisitionReceiptPath: src/prototypes/…/.spec/handoff-acquisition-….md
+acquisitionStatus: complete
 deviationCode: none
 nextWave:
 nextAction: wait_pm_b
@@ -113,6 +124,8 @@ nextAction: wait_pm_b
 | `track` | `A` / `B` / `A_then_B` / `wait_B` | 当前停在哪 |
 | `passed` | `true` / `false` | 本轮自检记录是否对照齐；拒收=false。**不是**测试验收「通过」 |
 | `evidencePath` | 仓内相对路径 | 交棒包或回执所在 md |
+| `acquisitionReceiptPath` | 仓内相对路径 | 获取回执；可复核材料、页/路由/状态覆盖 |
+| `acquisitionStatus` | `complete` / `incomplete` / `conflict` / `legacy-unverified` | 只有 `complete` 可进入字段校验和实现 |
 | `deviationCode` | 见下表 | `none` 才能被脚本优先抬「通过」 |
 | `nextWave` | `P1`… 或空 | 回执写「下一步 Pn」时填 |
 | `nextAction` | 见取值列 | 给人话下一步；脚本可忽略 |
@@ -126,6 +139,7 @@ nextAction: wait_pm_b
 | `acceptance` | 验收条对不上 | 言出法随改包 |
 | `runtime` | 本机工程阻塞 | 明镜建议解阻；不装通关 |
 | `visual` | 像素/壳对表缺口 | 补视觉锚点或改包 |
+| `acquisition` | 交棒正文/附件/原型页或状态未完整取得 | 先按偏差追踪归因；产品补包或开发修获取适配 |
 | `await_pm` | 待本尊拍板 | 拍板后改包再交 |
 | `conflict_kb` | 与 KB/现网口径冲突 | **升法眼** → 改包 |
 

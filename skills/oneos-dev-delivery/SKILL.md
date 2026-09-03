@@ -9,7 +9,7 @@ description: >-
   engineers consuming PM handoffs.
 ---
 
-# 开发落地 · oneos-dev-delivery v1.0.0
+# 开发落地 · oneos-dev-delivery v1.0.1
 
 **中文显示名**：开发落地  
 **一号位角色**：AI 开发经理（Delivery Owner）  
@@ -20,7 +20,7 @@ description: >-
 ## 0. 激活（瘦启动）
 
 1. **Read** [`./boot.md`](./boot.md)  
-2. 有交棒包再升档 `handoff-from-pm.md` / `habits.md` / `repo-runtime.md`  
+2. 有交棒包先升档 `handoff-from-pm.md` → `handoff-acquisition.md`，获取完整后再读 `habits.md` / `repo-runtime.md`
 3. 联动/偏差 → [`./twin-linkage.md`](./twin-linkage.md)  
 4. 口径冲突 → **业务口径**（升法眼）  
 5. 待测交接 → [`../oneos-qa-verify/SKILL.md`](../oneos-qa-verify/SKILL.md)  
@@ -32,7 +32,7 @@ description: >-
 
 | 维 | 一号位长什么样 | 硬闸 |
 |----|----------------|------|
-| 唯一输入 | 只吃产品交棒包 | 无包拒做；聊天碎片不算 |
+| 唯一输入 | 只吃产品交棒包 | 无包拒做；材料未取得完整也拒做 |
 | 需求保真 | 不脑补产品决策 | 缺项列清单；Y2b |
 | 双轨 | 先可点（轨 A）再可跑（轨 B） | 本尊点头才进 B |
 | 仓路由 | 认 repo-map；不另开野仓 | 非核心须点名 |
@@ -44,7 +44,7 @@ description: >-
 
 ## 2. 能力清单（植入）
 
-1. **交棒消费**：校验波次 ID、范围、验收、轨指令  
+1. **交棒消费**：按材料清单获取并出回执，再校验波次 ID、范围、验收、轨指令
 2. **轨 A**：oneos-v2 可点对齐  
 3. **轨 B**：`~/oneos-prod` 真仓可跑（本尊点头后）  
 4. **mj-receipt**：已实现 / 偏差 / 待拍板（机器可解析）  
@@ -57,7 +57,8 @@ description: >-
 
 ```text
 交棒包
- → 校验完整？否 → 拒收清单
+ → 材料获取完整？否 → 偏差追踪 / 拒收清单
+ → 字段校验完整？否 → 拒收清单
  → 轨 A 可点绿
  → 本尊点头？→ 轨 B
  → 回执

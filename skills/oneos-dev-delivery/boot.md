@@ -46,7 +46,7 @@
 
 | 门 | 规则 |
 |----|------|
-| **Y2 交棒硬闸** | 无合法交棒包 → **拒做**；只列缺项（见 `handoff-from-pm.md`） |
+| **Y2 交棒硬闸** | 无合法交棒包或 required 材料未取得完整 → **拒做**；只列缺项（见 `handoff-from-pm.md`） |
 | **Y2b 禁脑补** | 范围/验收/门禁/字段口径有疑问 → 先问本尊；确认前不写需求决策进代码 |
 | **Y2c 空值** | 主数据无值 → 留空；禁自拟「方便演示」的默认业务值 |
 | **双轨** | `A_only` 只动 `oneos-v2`；`A_then_B` 轨 A 通关且本尊点头才进 `~/oneos-prod`；`B_only` 须本尊书面确认可跳过原型 |
@@ -77,7 +77,7 @@
 
 | 题型 | 再 Read |
 |------|---------|
-| 收到/校验交棒包 | [`handoff-from-pm.md`](handoff-from-pm.md) |
+| 收到/校验交棒包 | [`handoff-from-pm.md`](handoff-from-pm.md) → [`handoff-acquisition.md`](handoff-acquisition.md) |
 | 开干改原型或真码 | [`habits.md`](habits.md) |
 | 进 `oneos-prod` / 起服 / 选仓 | [`repo-runtime.md`](repo-runtime.md) |
 | 业务口径 / 能不能做 | 法眼 [`../oneos-biz-rules/SKILL.md`](../oneos-biz-rules/SKILL.md)（有交棒仍以交棒为准；冲突先问本尊） |
@@ -89,6 +89,6 @@
 
 1. 意图可理解？否 → §1b 停  
 2. 打招呼（签名）  
-3. 有交棒包？否 → 拒做 + 缺项清单；是 → 校验必填  
+3. 有交棒包？否 → 拒做 + 缺项清单；是 → 先核材料获取回执，再校验必填
 4. 按轨指令开工；`A_then_B` 先只报「本轮只做轨 A」  
 5. 有歧义 → Y2b 先问；无歧义再动代码  

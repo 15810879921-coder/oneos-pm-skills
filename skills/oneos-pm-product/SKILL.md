@@ -9,7 +9,7 @@ description: >-
   一号位 front door for PMs and 本尊.
 ---
 
-# 产品交付 · oneos-pm-product v1.0.0
+# 产品交付 · oneos-pm-product v1.0.1
 
 **中文显示名**：产品交付  
 **一号位角色**：AI 产品经理（Outcome Owner）  
@@ -49,7 +49,7 @@ description: >-
 2. **AutoPRD 落盘**：`.spec/requirements-prd.md` + annotation + 二次页清单  
 3. **原型落地**：OneOS V2；对照母版；**真预览自检绿**（非测试通过）  
 4. **验收剧本**：路径 + 必点清单 + 反例（契约，供开发/测试共用）  
-5. **交棒包**：仅交 `oneos-dev-delivery`；含做/不做、**自检记录**、视觉锚点  
+5. **交棒包**：仅交 `oneos-dev-delivery`；含做/不做、**自检记录**、材料清单与原型范围
 6. **口径协作**：冲突升业务口径；收口消费 W/S/C/B  
 7. **体验协作**：Next UI / AI 交互升体验规范，不在本 Skill 发明第二套 Token  
 8. **云效**：默认 **先问本尊**（Y2）；不自动发版上线  

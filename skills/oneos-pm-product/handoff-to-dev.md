@@ -37,10 +37,11 @@
 
 ## 2. 交棒包模板（复制填空）
 
-```markdown
+````markdown
 ## 明镜止水交棒包
 - 需求编号：
 - 波次 / 进化任务 ID：（如 P0 / evo-xxx · 必填）
+- 交棒包 ID / 版本：（如 HANDOFF-ONEOS-000-P0-v1 · 必填）
 - 原型 id：
 - PRD 路径：
 - 一句话目标：
@@ -63,9 +64,58 @@
 - 页面或接口路径：（氢/能/跨库必填；如 `/asset/hydrogen/ledger`）
 - 已知缺口 / 待拍板：无
 - 本尊确认轨指令：是 / 否
-```
 
-必填与拒收规则以明镜 `handoff-from-pm.md` 为准。言出法随出包前自检：缺验收/轨指令/波次 ID → **禁止**声称已交棒。  
+### 材料清单（必填）
+
+| id | 类型 | 必需 | 权威来源 | 获取方法 | 版本/身份/完整性证据（可取时） |
+|----|------|------|----------|----------|--------------------------------|
+| prd | markdown | 是 | `src/prototypes/.../.spec/requirements-prd.md` | local_file_raw | SHA-256 / 字节数 / 行数 |
+| prototype | online-prototype | 是 | `https://...` | browser_route_state_walk | 原型 id / 最终 URL / 版本 |
+
+### 原型范围清单（有原型时必填）
+
+- 权威入口：
+- 预期页面 / 路由：
+- 必读交互状态：（如 list / detail / edit / empty / error）
+- 验证视口：（如 1440x900 / 390x844）
+- 版本 / 内容指纹：（可取时）
+
+```handoff-manifest
+{
+  "schema": "oneos.handoff-materials/v1",
+  "packageId": "HANDOFF-ONEOS-000-P0-v1",
+  "waveId": "P0",
+  "materials": [
+    {
+      "id": "prd",
+      "type": "markdown",
+      "required": true,
+      "source": "src/prototypes/.../.spec/requirements-prd.md",
+      "acquisitionMethod": "local_file_raw",
+      "expected": {},
+      "expectedCoverage": {"eof": true}
+    },
+    {
+      "id": "prototype",
+      "type": "online-prototype",
+      "required": true,
+      "source": "https://...",
+      "acquisitionMethod": "browser_route_state_walk",
+      "expectedCoverage": {
+        "routes": ["/list", "/detail"],
+        "states": ["list", "detail", "edit"],
+        "viewports": ["1440x900"]
+      }
+    }
+  ]
+}
+```
+````
+
+必填与拒收规则以明镜 `handoff-from-pm.md` 为准。言出法随出包前自检：缺验收/轨指令/波次 ID/交棒包 ID/材料清单 → **禁止**声称已交棒。
+每个 required 材料必须有唯一 `id`、权威 `source` 和明确 `acquisitionMethod`；哈希、字节数等仅在可取时填写，禁止为了补证据拖慢正常交付。
+人话表用于快速核对，`handoff-manifest` 是机器对账源；两者不一致按 `conflict` 阻断，先修交棒包。
+旧包可兼容接收，但开发侧只能标 `legacy-unverified`，补出临时清单并核验前不得称“完整读取”。
 台账类另检：缺「同页二次态」节或必点未列 → **禁止**声称已交棒（§3.0.7）。  
 像素对表类：缺「视觉锚点」不拒收，但须在待拍板写明「缺锚点」或接受明镜回执 `deviationCode: visual`。
 
