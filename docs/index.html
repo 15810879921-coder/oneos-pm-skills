@@ -421,6 +421,36 @@
             <td>无交棒拒做；不合 Master；不生产发版</td>
           </tr>
           <tr>
+            <td>系统架构 · 总构官<br><span class="muted">oneos-system-arch · 花名鼎立乾坤</span></td>
+            <td>问题切割、权衡、ADR、人机边界；默认不改业务码</td>
+            <td>怎么拆、AI 链路、失败路径、契约</td>
+            <td>无授权不改真码；不裁业务口径</td>
+          </tr>
+          <tr>
+            <td>数据口径 · 度量官<br><span class="muted">oneos-data-metrics</span></td>
+            <td>指标定义、取数口径、汇报数字背书</td>
+            <td>问这个数怎么算、口径冲突</td>
+            <td>不裁业务规则、不改码</td>
+          </tr>
+          <tr>
+            <td>知识典藏 · 典藏官<br><span class="muted">oneos-kb-ops</span></td>
+            <td>知识库唯一写入方；清洗入库</td>
+            <td>结论要沉淀、库里缺料</td>
+            <td>不裁业务规则、不定指标算法</td>
+          </tr>
+          <tr>
+            <td>意图分析 · 意图分析师<br><span class="muted">oneos-kb-intent-analyst</span></td>
+            <td>群聊口语 → 部位/类型/变体草案</td>
+            <td>体微绘画 Excel、故障意图 KB</td>
+            <td>不定版入库、不改 Bot</td>
+          </tr>
+          <tr>
+            <td>项目汇报 · 讲解官<br><span class="muted">oneos-briefing-aide</span></td>
+            <td>一线培训 / 产品方案图解</td>
+            <td>听完就能干活；方案一屏一结论</td>
+            <td>不裁口径、不改真码；决策层大屏不走这套</td>
+          </tr>
+          <tr>
             <td>测试验收 · 质检官<br><span class="muted">oneos-qa-verify · 工具层 YunxiaoQA</span></td>
             <td>风险测计划、可核验证据、缺陷门与打回；给发布候选建议</td>
             <td>开始测试、留证据、提缺陷、复测、打回</td>
@@ -456,7 +486,12 @@ npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-wave-router -a cu
 npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-pm-product -a cursor -a codex -g -y
 npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-biz-rules -a cursor -a codex -g -y
 npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-dev-delivery -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-system-arch -a cursor -a codex -g -y
 npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-qa-verify -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-data-metrics -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-kb-ops -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-kb-intent-analyst -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-briefing-aide -a cursor -a codex -g -y
 npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-ux-guide -a cursor -a codex -g -y
 npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-release-gate -a cursor -a codex -g -y</pre>
       </div>
@@ -526,7 +561,7 @@ npx skills remove fayanruju -g -y -a cursor -a codex
 npx skills remove mingjingzhishui -g -y -a cursor -a codex
 
 不要再装这三个旧目录。改装用途名：产品交付 oneos-pm-product、业务口径 oneos-biz-rules、开发落地 oneos-dev-delivery。</pre>
-      <pre id="seven-update" hidden>npx skills update oneos-wave-router oneos-pm-product oneos-biz-rules oneos-dev-delivery oneos-qa-verify oneos-ux-guide oneos-release-gate -g -y</pre>
+      <pre id="seven-update" hidden>npx skills update oneos-wave-router oneos-pm-product oneos-biz-rules oneos-dev-delivery oneos-system-arch oneos-qa-verify oneos-ux-guide oneos-data-metrics oneos-kb-ops oneos-kb-intent-analyst oneos-briefing-aide oneos-release-gate -g -y</pre>
       <pre id="seven-ai" hidden>请帮我全局安装 OneOS 七 Skill 用途名到 Cursor + Codex：
 
 【七分身职责速览】
@@ -550,7 +585,12 @@ npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-wave-router -a cu
 npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-pm-product -a cursor -a codex -g -y
 npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-biz-rules -a cursor -a codex -g -y
 npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-dev-delivery -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-system-arch -a cursor -a codex -g -y
 npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-qa-verify -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-data-metrics -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-kb-ops -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-kb-intent-analyst -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-briefing-aide -a cursor -a codex -g -y
 npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-ux-guide -a cursor -a codex -g -y
 npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-release-gate -a cursor -a codex -g -y
 
@@ -706,6 +746,61 @@ npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-release-gate -a c
         install: "npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-ux-guide -a cursor -a codex -g -y",
         update: "npx skills update oneos-ux-guide -g -y",
         ai: "请帮我全局安装体验规范（oneos-ux-guide）到 Cursor + Codex：\nnpx skills add 15810879921-coder/oneos-pm-skills --skill oneos-ux-guide -a cursor -a codex -g -y\n装完新开 Chat。口令：体验规范 / oneos-ux-guide。"
+      },
+      {
+        id: "oneos-system-arch",
+        name: "系统架构（oneos-system-arch）",
+        role: "用途名",
+        purpose: "架构一号位：问题切割 / ADR / 人机边界 / 失败路径；默认不改业务码。",
+        repo: "https://github.com/15810879921-coder/oneos-pm-skills",
+        tips: "口令：系统架构 / oneos-system-arch / 鼎立乾坤 / 总构官",
+        install: "npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-system-arch -a cursor -a codex -g -y",
+        update: "npx skills update oneos-system-arch -g -y",
+        ai: "请帮我全局安装系统架构（oneos-system-arch）到 Cursor + Codex。"
+      },
+      {
+        id: "oneos-data-metrics",
+        name: "数据口径（oneos-data-metrics）",
+        role: "用途名",
+        purpose: "度量官：这个数怎么算；不裁业务规则。",
+        repo: "https://github.com/15810879921-coder/oneos-pm-skills",
+        tips: "口令：数据口径 / oneos-data-metrics / 度量官",
+        install: "npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-data-metrics -a cursor -a codex -g -y",
+        update: "npx skills update oneos-data-metrics -g -y",
+        ai: "请帮我全局安装数据口径（oneos-data-metrics）到 Cursor + Codex。"
+      },
+      {
+        id: "oneos-kb-ops",
+        name: "知识典藏（oneos-kb-ops）",
+        role: "用途名",
+        purpose: "典藏官：知识库唯一写入方；定版才收。",
+        repo: "https://github.com/15810879921-coder/oneos-pm-skills",
+        tips: "口令：知识典藏 / oneos-kb-ops / 典藏官",
+        install: "npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-kb-ops -a cursor -a codex -g -y",
+        update: "npx skills update oneos-kb-ops -g -y",
+        ai: "请帮我全局安装知识典藏（oneos-kb-ops）到 Cursor + Codex。"
+      },
+      {
+        id: "oneos-kb-intent-analyst",
+        name: "意图分析（oneos-kb-intent-analyst）",
+        role: "用途名",
+        purpose: "群聊语料 → 部位/类型/变体草案；不定版入库。",
+        repo: "https://github.com/15810879921-coder/oneos-pm-skills",
+        tips: "口令：意图分析 / oneos-kb-intent-analyst / 体微绘画",
+        install: "npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-kb-intent-analyst -a cursor -a codex -g -y",
+        update: "npx skills update oneos-kb-intent-analyst -g -y",
+        ai: "请帮我全局安装知识库意图分析（oneos-kb-intent-analyst）到 Cursor + Codex。"
+      },
+      {
+        id: "oneos-briefing-aide",
+        name: "项目汇报（oneos-briefing-aide）",
+        role: "用途名",
+        purpose: "一线培训听完就能干活；产品方案一屏一结论。决策层大屏不走这套。",
+        repo: "https://github.com/15810879921-coder/oneos-pm-skills",
+        tips: "口令：项目汇报 / oneos-briefing-aide / 讲解官 / 按张兰总口径",
+        install: "npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-briefing-aide -a cursor -a codex -g -y",
+        update: "npx skills update oneos-briefing-aide -g -y",
+        ai: "请帮我全局安装项目汇报（oneos-briefing-aide）到 Cursor + Codex。"
       },
       {
         id: "oneos-release-gate",

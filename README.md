@@ -25,6 +25,11 @@ OneOS 产品团队自用的 AI Agent Skills 合集，支持 `npx skills` 一键�
 | **`oneos-qa-verify`**（测试验收） | 测试一号位；云效工具层→YunxiaoQA | 见下方「七 Skill 用途名」 |
 | **`oneos-ux-guide`**（体验规范） | 体验一号位；UI/AI 交互原则 | 见下方「七 Skill 用途名」 |
 | **`oneos-release-gate`**（上线守闸） | 发布一号位【一期休眠】 | 见下方「七 Skill 用途名」 |
+| **`oneos-system-arch`**（系统架构） | 总构官：怎么拆 / ADR / 人机边界 | 见下方新分身 |
+| **`oneos-data-metrics`**（数据口径） | 度量官：这个数怎么算 | 见下方新分身 |
+| **`oneos-kb-ops`**（知识典藏） | 典藏官：知识库唯一写入 | 见下方新分身 |
+| **`oneos-kb-intent-analyst`**（意图分析） | 群聊口语草案，不定版入库 | 见下方新分身 |
+| **`oneos-briefing-aide`**（项目汇报） | 讲解官：一线培训 / 方案图解 | 见下方新分身 |
 
 > **已下架：** `yunxiao-requirement-lifecycle`（旧全生命周期 Skill）已从本仓库删除。产品侧云效**只**用 `YunxiaoPM`；`oneos-autoprd` **只**写 PRD/标注/描述，**不**建同名阶段任务。本机若仍有旧包请卸载：  
 > `npx skills remove yunxiao-requirement-lifecycle -g -y -a cursor -a codex`  
@@ -120,13 +125,18 @@ npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-biz-rules -a curs
 npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-dev-delivery -a cursor -a codex -g -y
 npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-qa-verify -a cursor -a codex -g -y
 npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-ux-guide -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-system-arch -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-data-metrics -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-kb-ops -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-kb-intent-analyst -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-briefing-aide -a cursor -a codex -g -y
 npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-release-gate -a cursor -a codex -g -y
 ```
 
 更新：
 
 ```bash
-npx skills update oneos-wave-router oneos-pm-product oneos-biz-rules oneos-dev-delivery oneos-qa-verify oneos-ux-guide oneos-release-gate -g -y
+npx skills update oneos-wave-router oneos-pm-product oneos-biz-rules oneos-dev-delivery oneos-system-arch oneos-qa-verify oneos-ux-guide oneos-data-metrics oneos-kb-ops oneos-kb-intent-analyst oneos-briefing-aide oneos-release-gate -g -y
 ```
 
 丢进 AI：
@@ -155,11 +165,37 @@ npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-biz-rules -a curs
 npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-dev-delivery -a cursor -a codex -g -y
 npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-qa-verify -a cursor -a codex -g -y
 npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-ux-guide -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-system-arch -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-data-metrics -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-kb-ops -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-kb-intent-analyst -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-briefing-aide -a cursor -a codex -g -y
 npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-release-gate -a cursor -a codex -g -y
 
 装完请新开 Chat。
 用途名：任务指路 / 产品交付 / 业务口径 / 开发落地 / 测试验收 / 体验规范 / 上线守闸（休眠）。
 ```
+
+
+### 新分身（2026-09 · 已有旧包时只装这些）
+
+| 用途名 · 称号 | 口令 | 什么时候喊 |
+|---------------|------|------------|
+| **系统架构 · 总构官** | `/oneos-system-arch` | 怎么拆、ADR、人机边界 |
+| **数据口径 · 度量官** | `/oneos-data-metrics` | 这个数怎么算 |
+| **知识典藏 · 典藏官** | `/oneos-kb-ops` | 结论入库、库里缺料 |
+| **意图分析 · 意图分析师** | `/oneos-kb-intent-analyst` | 群聊语料 / 体微绘画 |
+| **项目汇报 · 讲解官** | `/oneos-briefing-aide` | 一线培训 / 产品方案图解 |
+
+```bash
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-system-arch -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-data-metrics -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-kb-ops -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-kb-intent-analyst -a cursor -a codex -g -y
+npx skills add 15810879921-coder/oneos-pm-skills --skill oneos-briefing-aide -a cursor -a codex -g -y
+```
+
+装完 **新开 Chat**。
 
 ### 丢进 AI 代装（复制整段）
 
