@@ -24,6 +24,82 @@ PURITY_ACTIONS = {
 }
 
 
+def normalize_source(source: dict[str, Any], label: str) -> tuple[dict[str, Any], list[str]]:
+    blockers: list[str] = []
+    purity = str(source.get("branchPurity") or "unknown")
+    exact_commits = [str(value) for value in source.get("exactCommitIds") or []]
+    raw_history = source.get("sourceCommitHistory")
+    history: list[dict[str, Any]] = []
+    if raw_history is not None:
+        if not isinstance(raw_history, list):
+            blockers.append(f"{label}: sourceCommitHistory必须是数组")
+        else:
+            seen_history: set[str] = set()
+            for index, entry in enumerate(raw_history):
+                if not isinstance(entry, dict):
+                    blockers.append(f"{label}: sourceCommitHistory[{index}]必须是对象")
+                    continue
+                commit_id = str(entry.get("commitId") or "")
+                evidence_id = str(entry.get("evidenceId") or "")
+                include = entry.get("include")
+                if not commit_id:
+                    blockers.append(f"{label}: sourceCommitHistory[{index}]缺少commitId")
+                    continue
+                if commit_id in seen_history:
+                    blockers.append(f"{label}: sourceCommitHistory存在重复提交{commit_id}")
+                    continue
+                seen_history.add(commit_id)
+                if not isinstance(include, bool):
+                    blockers.append(f"{label}: 提交{commit_id}缺少明确include判定")
+                if not evidence_id:
+                    blockers.append(f"{label}: 提交{commit_id}缺少范围判定证据")
+                history.append({
+                    "commitId": commit_id,
+                    "include": include,
+                    "evidenceId": evidence_id or None,
+                    "sourceWorkItemIds": [str(value) for value in entry.get("sourceWorkItemIds") or []],
+                })
+
+    if purity != "contained":
+        if source.get("sourceHistoryComplete") is not True:
+            blockers.append(f"{label}: 未证明已读取源分支相对目标基线的完整提交历史")
+        if not str(source.get("sourceHistoryEvidenceId") or ""):
+            blockers.append(f"{label}: 缺少完整提交历史证据")
+        if not history:
+            blockers.append(f"{label}: 缺少源分支相对目标基线的完整提交历史")
+        else:
+            history_ids = [entry["commitId"] for entry in history]
+            included_ids = {entry["commitId"] for entry in history if entry.get("include") is True}
+            if set(exact_commits) != included_ids:
+                missing = sorted(included_ids - set(exact_commits))
+                extra = sorted(set(exact_commits) - included_ids)
+                blockers.append(
+                    f"{label}: 精确提交集合与逐提交范围判定不闭合"
+                    f"（遗漏={','.join(missing) or '-'}，多选={','.join(extra) or '-'}）"
+                )
+            if str(source.get("sourceHead") or "") != history_ids[-1]:
+                blockers.append(f"{label}: 完整提交历史末项不是冻结的sourceHead")
+            if purity == "pure" and any(entry.get("include") is not True for entry in history):
+                blockers.append(f"{label}: pure源分支存在未纳入提交")
+
+    normalized = {
+        "sourceBranch": source.get("sourceBranch"),
+        "sourceHead": source.get("sourceHead"),
+        "exactCommitIds": exact_commits,
+        "testEvidenceIds": [str(value) for value in source.get("testEvidenceIds") or []],
+        "sourceWorkItemIds": [str(value) for value in source.get("sourceWorkItemIds") or []],
+        "deliveryUnitIds": [str(value) for value in source.get("deliveryUnitIds") or []],
+        "branchPurity": purity,
+        "sourceHistoryComplete": source.get("sourceHistoryComplete") is True,
+        "sourceHistoryEvidenceId": source.get("sourceHistoryEvidenceId"),
+        "sourceCommitHistory": history,
+        "patchHash": source.get("patchHash"),
+        "mr": source.get("mr"),
+        "containmentEvidenceId": source.get("containmentEvidenceId"),
+    }
+    return normalized, blockers
+
+
 def load(path: Path) -> dict[str, Any]:
     value = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(value, dict):
@@ -85,6 +161,9 @@ def build(data: dict[str, Any], previous: dict[str, Any] | None = None,
                 "sourceWorkItemIds": raw.get("sourceWorkItemIds") or [],
                 "deliveryUnitIds": raw.get("deliveryUnitIds") or [],
                 "branchPurity": raw.get("branchPurity"),
+                "sourceHistoryComplete": raw.get("sourceHistoryComplete"),
+                "sourceHistoryEvidenceId": raw.get("sourceHistoryEvidenceId"),
+                "sourceCommitHistory": raw.get("sourceCommitHistory"),
                 "patchHash": raw.get("patchHash"),
                 "mr": raw.get("mr"),
                 "containmentEvidenceId": raw.get("containmentEvidenceId"),
@@ -93,19 +172,11 @@ def build(data: dict[str, Any], previous: dict[str, Any] | None = None,
             blockers.append(f"{key}: sources必须是非空对象数组")
             continue
         sources: list[dict[str, Any]] = []
-        for source in raw_sources:
-            sources.append({
-                "sourceBranch": source.get("sourceBranch"),
-                "sourceHead": source.get("sourceHead"),
-                "exactCommitIds": [str(value) for value in source.get("exactCommitIds") or []],
-                "testEvidenceIds": [str(value) for value in source.get("testEvidenceIds") or []],
-                "sourceWorkItemIds": [str(value) for value in source.get("sourceWorkItemIds") or []],
-                "deliveryUnitIds": [str(value) for value in source.get("deliveryUnitIds") or []],
-                "branchPurity": str(source.get("branchPurity") or "unknown"),
-                "patchHash": source.get("patchHash"),
-                "mr": source.get("mr"),
-                "containmentEvidenceId": source.get("containmentEvidenceId"),
-            })
+        source_blockers: list[str] = []
+        for source_index, source in enumerate(raw_sources):
+            normalized, normalized_blockers = normalize_source(source, f"source[{source_index}]")
+            sources.append(normalized)
+            source_blockers.extend(normalized_blockers)
         purities = {source["branchPurity"] for source in sources}
         if "unknown" in purities or not purities.issubset(PURITY_ACTIONS):
             action = "BLOCKED"
@@ -119,7 +190,7 @@ def build(data: dict[str, Any], previous: dict[str, Any] | None = None,
         tests = sorted({value for source in sources for value in source["testEvidenceIds"]})
         work_items = sorted({value for source in sources for value in source["sourceWorkItemIds"]})
         delivery_units = sorted({value for source in sources for value in source["deliveryUnitIds"]})
-        item_blockers: list[str] = []
+        item_blockers: list[str] = list(source_blockers)
         if raw.get("targetBranchVerified") is not True:
             item_blockers.append("生产目标分支未核验")
         if not commits:
