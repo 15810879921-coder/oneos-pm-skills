@@ -56,11 +56,19 @@ def plan_input():
         "dependencyGroupIds": ["DEP-1"],
         "items": [
             {**common, "repositoryId": "WEB", "componentId": "web",
-             "sourceBranch": "feature/A", "sourceHead": "w1", "exactCommitIds": ["c1"],
-             "branchPurity": "pure", "pipelineId": "PIPE-WEB"},
+             "sourceBranch": "feature/A", "sourceHead": "w1",
+             "branchPurity": "pure", "pipelineId": "PIPE-WEB",
+             "sourceHistoryComplete": True, "sourceHistoryEvidenceId": "H-WEB",
+             "sourceCommitHistory": [{"commitId": "w1", "include": True, "evidenceId": "E-W1"}],
+             "exactCommitIds": ["w1"]},
             {**common, "repositoryId": "API", "componentId": "api",
              "sourceBranch": "feature/A", "sourceHead": "a1", "exactCommitIds": ["c2"],
-             "branchPurity": "mixed", "pipelineId": "PIPE-API"},
+             "branchPurity": "mixed", "pipelineId": "PIPE-API",
+             "sourceHistoryComplete": True, "sourceHistoryEvidenceId": "H-API",
+             "sourceCommitHistory": [
+                 {"commitId": "c2", "include": True, "evidenceId": "E-C2"},
+                 {"commitId": "a1", "include": False, "evidenceId": "E-A1"},
+             ]},
             {**common, "repositoryId": "COMMON", "componentId": "common",
              "sourceBranch": "feature/A", "sourceHead": "m1", "exactCommitIds": ["c3"],
              "branchPurity": "contained", "pipelineId": "PIPE-COMMON",
@@ -109,12 +117,18 @@ class ReleaseMergeLifecycleV2Tests(unittest.TestCase):
 
         value = plan_input()
         value["items"][0]["sources"] = [
-            {"sourceBranch": "tempdev/TEMPDEV-1", "sourceHead": "h1", "exactCommitIds": ["w1"],
+            {"sourceBranch": "tempdev/TEMPDEV-1", "sourceHead": "h1",
              "testEvidenceIds": ["TW"], "sourceWorkItemIds": ["DEV-1"],
-             "deliveryUnitIds": ["TEMPDEV-1"], "branchPurity": "pure"},
-            {"sourceBranch": "fix/BUG-1", "sourceHead": "h2", "exactCommitIds": ["b1"],
+             "deliveryUnitIds": ["TEMPDEV-1"], "branchPurity": "pure",
+             "sourceHistoryComplete": True, "sourceHistoryEvidenceId": "H1",
+             "sourceCommitHistory": [{"commitId": "h1", "include": True, "evidenceId": "EH1"}],
+             "exactCommitIds": ["h1"]},
+            {"sourceBranch": "fix/BUG-1", "sourceHead": "h2",
              "testEvidenceIds": ["TB1"], "sourceWorkItemIds": ["BUG-1"],
-             "deliveryUnitIds": ["DU-B1"], "branchPurity": "pure"},
+             "deliveryUnitIds": ["DU-B1"], "branchPurity": "pure",
+             "sourceHistoryComplete": True, "sourceHistoryEvidenceId": "H2",
+             "sourceCommitHistory": [{"commitId": "h2", "include": True, "evidenceId": "EH2"}],
+             "exactCommitIds": ["h2"]},
         ]
         merge_plan = PLAN.build(value)
         self.assertEqual(merge_plan["status"], "READY")
@@ -178,20 +192,58 @@ class ReleaseMergeLifecycleV2Tests(unittest.TestCase):
                 "pipelineId": "PIPE-WEB",
                 "dependencyGroupId": "DEP-1",
                 "sources": [
-                    {"sourceBranch": "fix/BUG-1", "sourceHead": "h1", "exactCommitIds": ["c1"],
+                    {"sourceBranch": "fix/BUG-1", "sourceHead": "h1",
                      "testEvidenceIds": ["T1"], "sourceWorkItemIds": ["BUG-1"],
-                     "deliveryUnitIds": ["DU-B1"], "branchPurity": "pure", "mr": "MR-1"},
-                    {"sourceBranch": "fix/BUG-2", "sourceHead": "h2", "exactCommitIds": ["c2"],
+                     "deliveryUnitIds": ["DU-B1"], "branchPurity": "pure", "mr": "MR-1",
+                     "sourceHistoryComplete": True, "sourceHistoryEvidenceId": "H1",
+                     "sourceCommitHistory": [{"commitId": "h1", "include": True, "evidenceId": "EH1"}],
+                     "exactCommitIds": ["h1"]},
+                    {"sourceBranch": "fix/BUG-2", "sourceHead": "h2",
                      "testEvidenceIds": ["T2"], "sourceWorkItemIds": ["BUG-2"],
-                     "deliveryUnitIds": ["DU-B2"], "branchPurity": "pure", "mr": "MR-2"},
+                     "deliveryUnitIds": ["DU-B2"], "branchPurity": "pure", "mr": "MR-2",
+                     "sourceHistoryComplete": True, "sourceHistoryEvidenceId": "H2",
+                     "sourceCommitHistory": [{"commitId": "h2", "include": True, "evidenceId": "EH2"}],
+                     "exactCommitIds": ["h2"]},
                 ],
             }
         ]
         result = PLAN.build(value)
         self.assertEqual(result["status"], "READY")
         self.assertEqual(result["items"][0]["action"], "BUILD_CLEAN_CANDIDATE")
-        self.assertEqual(result["items"][0]["exactCommitIds"], ["c1", "c2"])
+        self.assertEqual(result["items"][0]["exactCommitIds"], ["h1", "h2"])
         self.assertEqual(result["items"][0]["deliveryUnitIds"], ["DU-B1", "DU-B2"])
+
+    def test_merge_plan_blocks_silently_omitted_intermediate_commit(self):
+        value = plan_input()
+        source = value["items"][0]
+        source.update({
+            "sourceHead": "c3",
+            "exactCommitIds": ["c1", "c3"],
+            "sourceCommitHistory": [
+                {"commitId": "c1", "include": True, "evidenceId": "E1"},
+                {"commitId": "c2", "include": True, "evidenceId": "E2"},
+                {"commitId": "c3", "include": True, "evidenceId": "E3"},
+            ],
+        })
+        result = PLAN.build(value)
+        self.assertEqual(result["status"], "BLOCKED")
+        self.assertTrue(any("不闭合" in blocker and "c2" in blocker for blocker in result["blockers"]))
+
+    def test_mixed_branch_allows_only_evidenced_exclusion(self):
+        value = plan_input()
+        source = value["items"][1]
+        source.update({
+            "sourceHead": "c3",
+            "exactCommitIds": ["c1", "c3"],
+            "sourceCommitHistory": [
+                {"commitId": "c1", "include": True, "evidenceId": "E1"},
+                {"commitId": "outside", "include": False, "evidenceId": "OUTSIDE-1"},
+                {"commitId": "c3", "include": True, "evidenceId": "E3"},
+            ],
+        })
+        result = PLAN.build(value)
+        self.assertEqual(result["status"], "READY")
+        self.assertEqual(result["items"][1]["exactCommitIds"], ["c1", "c3"])
 
     def test_partial_merge_must_resume_before_deploy_and_deploy_can_retry(self):
         plan = PLAN.build(plan_input())
