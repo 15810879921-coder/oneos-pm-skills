@@ -31,14 +31,14 @@
   },
   {
     "client": "codex",
-    "skill": "yunxiao-release-operations",
-    "archive": "yunxiao-release-operations.zip",
-    "sha256": "2fce8727b2258a46f700fa05877722cb33afebd007fb37c62646ec3404394c48"
-  },
-  {
-    "client": "codex",
     "skill": "development-brain",
     "archive": "development-brain.zip",
     "sha256": "e9c234a3b22d37277e6a35a429306572742583614992b3f61de31c3577426b9b"
+  },
+  {
+    "client": "codex",
+    "skill": "yunxiao-release-operations",
+    "archive": "yunxiao-release-operations.zip",
+    "sha256": "7e7e29316852e62b5455e50f229fe17aab0b345e0a0dfa9663c1d226c02ff30f"
   }
 ]

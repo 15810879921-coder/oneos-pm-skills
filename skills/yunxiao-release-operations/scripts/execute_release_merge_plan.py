@@ -12,6 +12,9 @@ from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import validate_release_change_coverage as coverage
+
 
 PLAN_SCHEMA = "oneos.release-merge-plan/v1"
 ATTEMPT_SCHEMA = "oneos.release-merge-attempt/v1"
@@ -55,9 +58,17 @@ def validate_attempt(attempt: dict[str, Any]) -> None:
         raise ValueError("repositoryKey必须完整且唯一")
 
 
+def validate_execution(attempt: dict[str, Any]) -> None:
+    validate_attempt(attempt)
+    coverage.validate_plan(attempt.get("frozenPlan") or {})
+    if attempt.get("planHash") != attempt["frozenPlan"]["planHash"]:
+        raise ValueError("尝试与冻结计划哈希不一致")
+
+
 def init(plan: dict[str, Any]) -> dict[str, Any]:
     if plan.get("schemaVersion") != PLAN_SCHEMA or plan.get("status") != "READY":
         raise ValueError("只能执行READY状态的mergePlan")
+    coverage.validate_plan(plan)
     repositories = []
     for item in plan.get("items") or []:
         if item.get("action") == "ALREADY_CONTAINED":
@@ -77,6 +88,8 @@ def init(plan: dict[str, Any]) -> dict[str, Any]:
             "resultTargetCommit": target_commit,
             "revertStatus": None,
             "error": None,
+            "targetBaseCommit": item["targetBaseCommit"],
+            "targetCoverage": None,
         })
     state = "TARGETS_READY" if all(item["mergeStatus"] == "SUCCESS" for item in repositories) else "PENDING"
     result = {
@@ -87,6 +100,7 @@ def init(plan: dict[str, Any]) -> dict[str, Any]:
         "mergePlanId": plan.get("mergePlanId"),
         "mergePlanVersion": plan.get("mergePlanVersion"),
         "planHash": plan.get("planHash"),
+        "frozenPlan": json.loads(json.dumps(plan)),
         "state": state,
         "preflightPassed": False,
         "createdAt": now(),
@@ -100,7 +114,7 @@ def init(plan: dict[str, Any]) -> dict[str, Any]:
 
 
 def preflight(attempt: dict[str, Any], checks: dict[str, Any]) -> dict[str, Any]:
-    validate_attempt(attempt)
+    validate_execution(attempt)
     rows = checks.get("repositories")
     if not isinstance(rows, list):
         raise ValueError("preflight checks.repositories必须是数组")
@@ -116,6 +130,19 @@ def preflight(attempt: dict[str, Any], checks: dict[str, Any]) -> dict[str, Any]
         for field in required:
             if check.get(field) is not True:
                 failures.append(f"{repo['repositoryKey']}预检失败：{field}")
+        expected_target = repo.get("resultTargetCommit") or repo["targetBaseCommit"]
+        if check.get("currentTargetCommit") != expected_target:
+            failures.append(f"{repo['repositoryKey']}目标版本与冻结/已合入版本不一致")
+        already_merged = repo["mergeStatus"] == "SUCCESS"
+        revision = expected_target if already_merged else check.get("candidateRevision")
+        proof = check.get("targetCoverage" if already_merged else "candidateCoverage") or {}
+        try:
+            coverage.validate_proof(proof, attempt["planHash"], repo["repositoryKey"],
+                                    repo["targetBaseCommit"], revision)
+            if already_merged:
+                repo["targetCoverage"] = proof
+        except ValueError as exc:
+            failures.append(f"{repo['repositoryKey']}:{exc}")
     attempt["preflightPassed"] = not failures
     attempt["preflightBlockers"] = failures
     attempt["updatedAt"] = now()
@@ -140,8 +167,9 @@ def recalculate_merge_state(attempt: dict[str, Any]) -> None:
 
 
 def record_merge(attempt: dict[str, Any], repository_key: str, status: str,
-                 target_commit: str | None, error: str | None) -> dict[str, Any]:
-    validate_attempt(attempt)
+                 target_commit: str | None, error: str | None,
+                 target_coverage: dict[str, Any] | None = None) -> dict[str, Any]:
+    validate_execution(attempt)
     if attempt["state"] not in {"PENDING", "PARTIAL_TARGET_MERGE"}:
         raise ValueError("当前状态不允许继续记录目标分支合并")
     if attempt.get("preflightPassed") is not True:
@@ -153,6 +181,10 @@ def record_merge(attempt: dict[str, Any], repository_key: str, status: str,
         raise ValueError("已成功进入目标分支的仓库不得直接降级")
     if status == "success" and not target_commit:
         raise ValueError("成功合并必须提供resultTargetCommit")
+    if status == "success":
+        coverage.validate_proof(target_coverage or {}, attempt["planHash"], repository_key,
+                                repo["targetBaseCommit"], target_commit)
+        repo["targetCoverage"] = target_coverage
     repo.update(mergeStatus=status.upper(), resultTargetCommit=target_commit, error=error)
     if status == "success":
         attempt["events"].append({
@@ -170,7 +202,12 @@ def record_merge(attempt: dict[str, Any], repository_key: str, status: str,
 
 
 def start_deployment(attempt: dict[str, Any]) -> dict[str, Any]:
-    validate_attempt(attempt)
+    validate_execution(attempt)
+    if attempt.get("preflightPassed") is not True:
+        raise ValueError("全部仓库预检未通过，禁止开始部署")
+    for repo in attempt["repositories"]:
+        coverage.validate_proof(repo.get("targetCoverage") or {}, attempt["planHash"],
+                                repo["repositoryKey"], repo["targetBaseCommit"], repo.get("resultTargetCommit"))
     retrying = attempt["state"] == "MERGED_NOT_DEPLOYED" and (attempt.get("deployment") or {}).get("status") == "FAILED"
     if attempt["state"] != "TARGETS_READY" and not retrying:
         raise ValueError("只有全部目标分支就绪后才能启动生产流水线")
@@ -193,6 +230,11 @@ def record_deployment(attempt: dict[str, Any], status: str, evidence_id: str | N
         raise ValueError("status必须为success或failed")
     if status == "success" and not evidence_id:
         raise ValueError("生产成功必须提供不可变版本或部署证据")
+    if status == "success":
+        validate_execution(attempt)
+        for repo in attempt["repositories"]:
+            coverage.validate_proof(repo.get("targetCoverage") or {}, attempt["planHash"],
+                                    repo["repositoryKey"], repo["targetBaseCommit"], repo.get("resultTargetCommit"))
     previous = attempt.get("deployment") or {}
     attempt["deployment"] = {"status": status.upper(), "evidenceId": evidence_id,
                              "attemptNo": previous.get("attemptNo", 1),
@@ -247,6 +289,7 @@ def main() -> int:
     merge_parser.add_argument("--status", required=True, choices=["success", "failed"])
     merge_parser.add_argument("--target-commit")
     merge_parser.add_argument("--error")
+    merge_parser.add_argument("--coverage", type=Path, help="verify-tree生成的目标文件树核验结果")
     merge_parser.add_argument("--output", required=True, type=Path)
     deploy_parser = sub.add_parser("start-deployment")
     deploy_parser.add_argument("--attempt", required=True, type=Path)
@@ -270,7 +313,8 @@ def main() -> int:
         elif args.command == "preflight":
             result = preflight(load(args.attempt), load(args.checks))
         elif args.command == "record-merge":
-            result = record_merge(load(args.attempt), args.repository_key, args.status, args.target_commit, args.error)
+            result = record_merge(load(args.attempt), args.repository_key, args.status, args.target_commit,
+                                  args.error, load(args.coverage) if args.coverage else None)
         elif args.command == "start-deployment":
             result = start_deployment(load(args.attempt))
         elif args.command == "record-deployment":
