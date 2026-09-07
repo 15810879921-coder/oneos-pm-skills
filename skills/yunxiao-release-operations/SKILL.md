@@ -38,6 +38,7 @@ Read each selected file completely before acting:
 - Release-batch creation and A/B/C/D scope rules: [references/release-batch.md](references/release-batch.md).
 - Existing delivery-comment validation, official Codeup backfill, and frozen `【发布代码清单】`: [references/release-code-ledger.md](references/release-code-ledger.md).
 - Build dependency groups with `scripts/resolve_release_dependency_groups.py`, freeze exact repository actions with `scripts/build_release_merge_plan.py`, and persist partial target-merge/deployment continuation with `scripts/execute_release_merge_plan.py`.
+- For both preparation and execution, follow [references/change-coverage.md](references/change-coverage.md): collect pinned official histories with `validate_release_change_coverage.py collect`, distinguish branch owners from delivery scope, and verify candidate and resulting target trees with `verify-tree`. Boolean declarations and MR endpoint SHAs alone are not completeness evidence.
 - Business-readable release-task descriptions and append-only managed comment ledgers: [references/release-description.md](references/release-description.md).
 - Runtime write order and callback verification: [references/execution-runtime.md](references/execution-runtime.md).
 - Official CLI environment, guarded transactions, pipeline monitoring, idempotency, and performance: [references/yunxiao-cli-runtime.md](references/yunxiao-cli-runtime.md).

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import unittest
+import copy
 from pathlib import Path
 
 
@@ -37,6 +38,68 @@ LEDGER = load_module(
     "delivery_ledger_e2e",
     "skills/yunxiao-development-delivery/scripts/yunxiao_cli_delivery_ledger.py",
 )
+
+
+def build_fixture_plan(value, *args):
+    """Synthetic histories for the existing state-machine fixtures, not collector tests."""
+    value = copy.deepcopy(value)
+    for item in value["items"]:
+        for source in item.get("sources", [item]):
+            history = source.get("sourceCommitHistory", [])
+            for row in history:
+                if not row["include"]:
+                    row.setdefault("reason", "out-of-scope")
+            base = item["targetBaseCommit"]
+            ids = [row["commitId"] for row in history]
+            if source["branchPurity"] == "contained":
+                ids = list(dict.fromkeys(source["exactCommitIds"] + [source["sourceHead"]]))
+                source_nodes = {sha: ([ids[index - 1]] if index else []) for index, sha in enumerate(ids)}
+                target_nodes = {**source_nodes, base: [ids[-1]]}
+            else:
+                source_nodes = {base: []}
+                for index, sha in enumerate(ids):
+                    source_nodes[sha] = [ids[index - 1] if index else base]
+                target_nodes = {base: []}
+            snapshot = {"schemaVersion": PLAN.coverage.HISTORY_SCHEMA,
+                        "repositoryId": item["repositoryId"], "sourceHead": source["sourceHead"],
+                        "targetBaseCommit": base}
+            for field, head, nodes in [("sourcePages", source["sourceHead"], source_nodes),
+                                       ("targetPages", base, target_nodes)]:
+                snapshot[field] = [
+                    {"request": PLAN.coverage.request(item["repositoryId"], head, 1),
+                     "commits": [{"id": sha, "parentIds": parents} for sha, parents in nodes.items()]},
+                    {"request": PLAN.coverage.request(item["repositoryId"], head, 2), "commits": []}]
+            source["historySnapshot"] = snapshot
+            source["branchOwner"] = {"type": "development_task", "workItemId": "DEV-1", "relationEvidenceId": "R1"}
+    return PLAN.build(value, *args)
+
+
+def fixture_proof(attempt, key, revision):
+    """State-machine unit fixture; actual Git content is exercised in coverage tests."""
+    repo = next(row for row in attempt["repositories"] if row["repositoryKey"] == key)
+    proof = {"schemaVersion": PLAN.coverage.COVERAGE_SCHEMA, "planHash": attempt["planHash"],
+             "repositoryKey": key, "targetBaseCommit": repo["targetBaseCommit"],
+             "revision": revision, "expectedTree": "fixture-tree", "actualTree": "fixture-tree"}
+    proof["proofHash"] = PLAN.coverage.digest(proof)
+    return proof
+
+
+def fixture_checks(attempt):
+    rows = []
+    for repo in attempt["repositories"]:
+        key = repo["repositoryKey"]
+        target = repo.get("resultTargetCommit") or repo["targetBaseCommit"]
+        rows.append({"repositoryKey": key, "targetHeadMatches": True, "testsValid": True,
+                     "dependencyComplete": True, "mergeable": True, "exactCommitsContained": True,
+                     "currentTargetCommit": target, "candidateRevision": "candidate",
+                     "candidateCoverage": fixture_proof(attempt, key, "candidate"),
+                     "targetCoverage": fixture_proof(attempt, key, target)})
+    return {"repositories": rows}
+
+
+def record_fixture_merge(attempt, key, status, target, error):
+    proof = fixture_proof(attempt, key, target) if status == "success" else None
+    return EXECUTE.record_merge(attempt, key, status, target, error, proof)
 
 
 def plan_input():
@@ -130,23 +193,17 @@ class ReleaseMergeLifecycleV2Tests(unittest.TestCase):
              "sourceCommitHistory": [{"commitId": "h2", "include": True, "evidenceId": "EH2"}],
              "exactCommitIds": ["h2"]},
         ]
-        merge_plan = PLAN.build(value)
+        merge_plan = build_fixture_plan(value)
         self.assertEqual(merge_plan["status"], "READY")
         self.assertEqual(merge_plan["items"][0]["action"], "BUILD_CLEAN_CANDIDATE")
         attempt = EXECUTE.init(merge_plan)
-        checks = {"repositories": [
-            {"repositoryKey": repo["repositoryKey"], "targetHeadMatches": True,
-             "testsValid": True, "dependencyComplete": True, "mergeable": True,
-             "exactCommitsContained": True}
-            for repo in attempt["repositories"]
-        ]}
-        EXECUTE.preflight(attempt, checks)
+        EXECUTE.preflight(attempt, fixture_checks(attempt))
         pending = [repo["repositoryKey"] for repo in attempt["repositories"] if repo["mergeStatus"] != "SUCCESS"]
-        EXECUTE.record_merge(attempt, pending[0], "success", "target-1", None)
-        EXECUTE.record_merge(attempt, pending[1], "failed", None, "temporary conflict")
+        record_fixture_merge(attempt, pending[0], "success", "target-1", None)
+        record_fixture_merge(attempt, pending[1], "failed", None, "temporary conflict")
         self.assertEqual(attempt["state"], "PARTIAL_TARGET_MERGE")
-        EXECUTE.preflight(attempt, checks)
-        EXECUTE.record_merge(attempt, pending[1], "success", "target-2", None)
+        EXECUTE.preflight(attempt, fixture_checks(attempt))
+        record_fixture_merge(attempt, pending[1], "success", "target-2", None)
         EXECUTE.start_deployment(attempt)
         EXECUTE.record_deployment(attempt, "failed", None)
         EXECUTE.start_deployment(attempt)
@@ -167,17 +224,17 @@ class ReleaseMergeLifecycleV2Tests(unittest.TestCase):
         self.assertEqual(sorted(len(group["itemIds"]) for group in result["groups"]), [1, 2])
 
     def test_merge_plan_selects_pure_mixed_and_contained_actions(self):
-        result = PLAN.build(plan_input())
+        result = build_fixture_plan(plan_input())
         self.assertEqual(result["status"], "READY")
         self.assertEqual(
             [item["action"] for item in result["items"]],
             ["MERGE_SOURCE_BRANCH", "BUILD_CLEAN_CANDIDATE", "ALREADY_CONTAINED"],
         )
-        revised = PLAN.build(plan_input(), result, "目标分支更新后重新冻结")
+        revised = build_fixture_plan(plan_input(), result, "目标分支更新后重新冻结")
         self.assertEqual(revised["mergePlanVersion"], 2)
         self.assertEqual(revised["previousMergePlanId"], result["mergePlanId"])
         with self.assertRaisesRegex(ValueError, "revisionReason"):
-            PLAN.build(plan_input(), result)
+            build_fixture_plan(plan_input(), result)
 
     def test_multiple_bug_branches_become_one_clean_repository_candidate(self):
         value = plan_input()
@@ -207,7 +264,7 @@ class ReleaseMergeLifecycleV2Tests(unittest.TestCase):
                 ],
             }
         ]
-        result = PLAN.build(value)
+        result = build_fixture_plan(value)
         self.assertEqual(result["status"], "READY")
         self.assertEqual(result["items"][0]["action"], "BUILD_CLEAN_CANDIDATE")
         self.assertEqual(result["items"][0]["exactCommitIds"], ["h1", "h2"])
@@ -225,7 +282,7 @@ class ReleaseMergeLifecycleV2Tests(unittest.TestCase):
                 {"commitId": "c3", "include": True, "evidenceId": "E3"},
             ],
         })
-        result = PLAN.build(value)
+        result = build_fixture_plan(value)
         self.assertEqual(result["status"], "BLOCKED")
         self.assertTrue(any("不闭合" in blocker and "c2" in blocker for blocker in result["blockers"]))
 
@@ -241,35 +298,22 @@ class ReleaseMergeLifecycleV2Tests(unittest.TestCase):
                 {"commitId": "c3", "include": True, "evidenceId": "E3"},
             ],
         })
-        result = PLAN.build(value)
+        result = build_fixture_plan(value)
         self.assertEqual(result["status"], "READY")
         self.assertEqual(result["items"][1]["exactCommitIds"], ["c1", "c3"])
 
     def test_partial_merge_must_resume_before_deploy_and_deploy_can_retry(self):
-        plan = PLAN.build(plan_input())
+        plan = build_fixture_plan(plan_input())
         attempt = EXECUTE.init(plan)
-        checks = {
-            "repositories": [
-                {
-                    "repositoryKey": repo["repositoryKey"],
-                    "targetHeadMatches": True,
-                    "testsValid": True,
-                    "dependencyComplete": True,
-                    "mergeable": True,
-                    "exactCommitsContained": True,
-                }
-                for repo in attempt["repositories"]
-            ]
-        }
-        EXECUTE.preflight(attempt, checks)
+        EXECUTE.preflight(attempt, fixture_checks(attempt))
         keys = [repo["repositoryKey"] for repo in attempt["repositories"] if repo["action"] != "ALREADY_CONTAINED"]
-        EXECUTE.record_merge(attempt, keys[0], "success", "target-web", None)
-        EXECUTE.record_merge(attempt, keys[1], "failed", None, "conflict")
+        record_fixture_merge(attempt, keys[0], "success", "target-web", None)
+        record_fixture_merge(attempt, keys[1], "failed", None, "conflict")
         self.assertEqual(attempt["state"], "PARTIAL_TARGET_MERGE")
-        with self.assertRaisesRegex(ValueError, "全部目标分支"):
+        with self.assertRaisesRegex(ValueError, "全部.*预检|全部目标分支"):
             EXECUTE.start_deployment(attempt)
-        EXECUTE.preflight(attempt, checks)
-        EXECUTE.record_merge(attempt, keys[1], "success", "target-api", None)
+        EXECUTE.preflight(attempt, fixture_checks(attempt))
+        record_fixture_merge(attempt, keys[1], "success", "target-api", None)
         self.assertEqual(attempt["state"], "TARGETS_READY")
         EXECUTE.start_deployment(attempt)
         EXECUTE.record_deployment(attempt, "failed", None)
@@ -280,20 +324,12 @@ class ReleaseMergeLifecycleV2Tests(unittest.TestCase):
         self.assertEqual(attempt["state"], "DEPLOYED")
 
     def test_partial_merge_can_be_reverted_without_touching_contained_code(self):
-        plan = PLAN.build(plan_input())
+        plan = build_fixture_plan(plan_input())
         attempt = EXECUTE.init(plan)
-        checks = {
-            "repositories": [
-                {"repositoryKey": repo["repositoryKey"], "targetHeadMatches": True,
-                 "testsValid": True, "dependencyComplete": True, "mergeable": True,
-                 "exactCommitsContained": True}
-                for repo in attempt["repositories"]
-            ]
-        }
-        EXECUTE.preflight(attempt, checks)
+        EXECUTE.preflight(attempt, fixture_checks(attempt))
         keys = [repo["repositoryKey"] for repo in attempt["repositories"] if repo["action"] != "ALREADY_CONTAINED"]
-        EXECUTE.record_merge(attempt, keys[0], "success", "target-web", None)
-        EXECUTE.record_merge(attempt, keys[1], "failed", None, "conflict")
+        record_fixture_merge(attempt, keys[0], "success", "target-web", None)
+        record_fixture_merge(attempt, keys[1], "failed", None, "conflict")
         EXECUTE.record_revert(attempt, keys[0], "reverted-web")
         self.assertEqual(attempt["state"], "REVERTED")
 

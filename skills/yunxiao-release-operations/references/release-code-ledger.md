@@ -1,5 +1,7 @@
 # 发布代码清单补录
 
+准备与执行均须遵循 [提交完整性与实际内容核对](change-coverage.md)。完整历史必须来自官方分页读回并通过父关系检查；计划冻结分支直接所有者和重放顺序，候选及合并后的目标都须通过实际文件树核验，不能只消费布尔声明。
+
 ## V2 交付台账与合并计划（新写入规范）
 
 新流程以 `oneos.delivery-ledger/v1` 为唯一新增事实源，旧 `【代码交付记录】` 仅作兼容读取。每条台账事件必须保留 `deliveryUnitId`、`branchInstanceId`、仓库、分支、提交、MR、时间、前序事件和内容哈希；发布准备用 `yunxiao_cli_delivery_ledger.py validate|summary` 校验完整链。旧评论缺字段时，继续按本文的 Codeup 反查规则补齐，再以 `EXTERNAL_COMMIT_DISCOVERED` 或 `SUBMISSION_RECORDED` 事件写回新台账，不能改写旧评论。

@@ -12,6 +12,9 @@ from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import validate_release_change_coverage as coverage
+
 
 INPUT_SCHEMA = "oneos.release-merge-input/v1"
 PLAN_SCHEMA = "oneos.release-merge-plan/v1"
@@ -58,6 +61,9 @@ def normalize_source(source: dict[str, Any], label: str) -> tuple[dict[str, Any]
                     "include": include,
                     "evidenceId": evidence_id or None,
                     "sourceWorkItemIds": [str(value) for value in entry.get("sourceWorkItemIds") or []],
+                    "reason": entry.get("reason"),
+                    "requiresCommitIds": entry.get("requiresCommitIds") or [],
+                    "replayParent": entry.get("replayParent"),
                 })
 
     if purity != "contained":
@@ -96,6 +102,8 @@ def normalize_source(source: dict[str, Any], label: str) -> tuple[dict[str, Any]
         "patchHash": source.get("patchHash"),
         "mr": source.get("mr"),
         "containmentEvidenceId": source.get("containmentEvidenceId"),
+        "historySnapshot": source.get("historySnapshot"),
+        "branchOwner": source.get("branchOwner"),
     }
     return normalized, blockers
 
@@ -167,6 +175,8 @@ def build(data: dict[str, Any], previous: dict[str, Any] | None = None,
                 "patchHash": raw.get("patchHash"),
                 "mr": raw.get("mr"),
                 "containmentEvidenceId": raw.get("containmentEvidenceId"),
+                "historySnapshot": raw.get("historySnapshot"),
+                "branchOwner": raw.get("branchOwner"),
             }]
         if not isinstance(raw_sources, list) or not raw_sources or not all(isinstance(source, dict) for source in raw_sources):
             blockers.append(f"{key}: sources必须是非空对象数组")
@@ -231,6 +241,16 @@ def build(data: dict[str, Any], previous: dict[str, Any] | None = None,
             "action": action if not item_blockers else "BLOCKED",
             "blockers": item_blockers,
         }
+        try:
+            change_coverage = coverage.inspect_item(item)
+            item["replayOrder"] = change_coverage["replayOrder"]
+            if (change_coverage["equivalentCommitIds"] and not item_blockers
+                    and action != "ALREADY_CONTAINED"):
+                item["action"] = "BUILD_CLEAN_CANDIDATE"
+        except (ValueError, TypeError, KeyError) as exc:
+            item_blockers.append(str(exc))
+            item["action"] = "BLOCKED"
+            item["replayOrder"] = []
         if item_blockers:
             blockers.extend(f"{key}: {reason}" for reason in item_blockers)
         items.append(item)
@@ -238,6 +258,7 @@ def build(data: dict[str, Any], previous: dict[str, Any] | None = None,
     core = {
         "schemaVersion": PLAN_SCHEMA,
         "suiteVersion": SUITE_VERSION,
+        "coverageVersion": 1,
         "releaseTaskId": release_task,
         "mergePlanVersion": version,
         "previousMergePlanId": previous_id,
