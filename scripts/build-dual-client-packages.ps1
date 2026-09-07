@@ -1,7 +1,10 @@
 [CmdletBinding()]
 param(
     [string]$OutputRoot,
-    [string[]]$SkillNames
+    [string[]]$SkillNames,
+
+    [ValidateSet('codex', 'cursor')]
+    [string[]]$Clients = @('codex')
 )
 
 $ErrorActionPreference = 'Stop'
@@ -52,7 +55,7 @@ New-Item -ItemType Directory -Path $resolvedOutput -Force | Out-Null
 New-Item -ItemType Directory -Path $tempRoot -Force | Out-Null
 
 try {
-    foreach ($client in @('codex', 'cursor')) {
+    foreach ($client in @($Clients | Select-Object -Unique)) {
         $clientOutput = Join-Path $resolvedOutput $client
         New-Item -ItemType Directory -Path $clientOutput -Force | Out-Null
         $manifestPath = Join-Path $clientOutput 'manifest.json'
@@ -119,4 +122,4 @@ finally {
     }
 }
 
-Write-Output "已生成 Codex/Cursor 双版本包：$resolvedOutput"
+Write-Output "已生成客户端包 [$(@($Clients | Select-Object -Unique) -join ', ')]：$resolvedOutput"
