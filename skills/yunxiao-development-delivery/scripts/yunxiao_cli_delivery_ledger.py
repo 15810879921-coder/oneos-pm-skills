@@ -14,8 +14,8 @@ from zoneinfo import ZoneInfo
 
 
 SCHEMA = "oneos.delivery-ledger/v1"
-SUITE_VERSION = "10.1.0"
-SUPPORTED_SUITE_VERSIONS = {"10.0.0", SUITE_VERSION}
+SUITE_VERSION = "10.1.1"
+SUPPORTED_SUITE_VERSIONS = {"10.0.0", "10.1.0", SUITE_VERSION}
 COMMENT_PREFIX = "【交付台账事件】"
 TRANSACTION_SCHEMA = "oneos.yunxiao-cli-transaction-plan/v1"
 SUITE_STATE_SCHEMA = "oneos.lifecycle-suite-state/v1"

@@ -104,6 +104,7 @@ def command_resolve(args: argparse.Namespace) -> int:
     elif len(exact) > 1:
         payload = {"schemaVersion": "oneos.test-scope-resolution/v2",
                    "decision": "ambiguous-plan", "requirement": args.requirement_sn,
+                   "projectId": args.project_id,
                    "developmentTask": args.development_task_sn, "deliveryEnd": end,
                    "testTaskRequired": True,
                    "plans": [{"id": str(item.get("testPlanIdentifier") or ""), "name": item.get("name")}
@@ -115,6 +116,7 @@ def command_resolve(args: argparse.Namespace) -> int:
     else:
         payload = {"schemaVersion": "oneos.test-scope-resolution/v2",
                    "decision": "test-task-required", "requirement": args.requirement_sn,
+                   "projectId": args.project_id,
                    "developmentTask": args.development_task_sn,
                    "deliveryEnd": end, "matchedBy": "requirement-number",
                    "testTaskRequired": True, "testMode": "mandatory-test-task",

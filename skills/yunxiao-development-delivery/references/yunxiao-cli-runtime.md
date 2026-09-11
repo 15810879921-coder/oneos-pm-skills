@@ -20,8 +20,9 @@ skill-run yunxiao_cli_gateway.py doctor
 
 1. `分配任务`使用 `yunxiao_cli_allocate_task.py`。
 2. 批量 Bug 的 Projex 快照和状态写回使用 `yunxiao_cli_bug_batch.py`，Codeup/Flow 使用 `yunxiao_cli_bug_delivery.py`。
-3. 其他接收交棒、开始开发、完成开发、单 Bug、测试任务、发布回流和分支清理的云效动作使用 `yunxiao_cli_gateway.py`。
-4. 本地代码读取、编辑、测试、`git commit` 和 `git push`不经过网关；Codeup 远端分支、MR、合并和删除必须经过 CLI 适配器。
+3. `完成开发`的多阶段收口使用`yunxiao_cli_complete_development.py`，其每个阶段再调用`yunxiao_cli_gateway.py`。
+4. 其他接收交棒、开始开发、单 Bug、测试任务、发布回流和分支清理的云效动作使用 `yunxiao_cli_gateway.py`。
+5. 本地代码读取、编辑、测试、`git commit` 和 `git push`不经过网关；Codeup 远端分支、MR、合并和删除必须经过 CLI 适配器。
 
 ## 只读调用
 

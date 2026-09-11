@@ -13,7 +13,7 @@ from typing import Any
 
 INPUT_SCHEMA = "oneos.release-dependency-input/v1"
 OUTPUT_SCHEMA = "oneos.release-dependency-groups/v1"
-SUITE_VERSION = "10.1.0"
+SUITE_VERSION = "10.1.1"
 EDGE_TYPES = {"artifact", "pipeline", "api", "package", "data", "config"}
 
 

@@ -27,7 +27,7 @@ node <本 Skill 目录>/scripts/ensure-daily-skill-update.mjs --current-skill yu
 - `failed` / `unavailable` / `cooldown`：只给一条简短提示，继续当前任务；更新失败不得阻断云效工作。
 - 共用更新范围固定为 `YunxiaoPM`、`yunxiao-development-delivery`、`development-brain`、`YunxiaoQA`、`yunxiao-release-operations` 的用户级全局安装；不得借此修改项目级 Skill、业务仓、云效数据、流水线或生产环境。不得手工伪造或提前写入每日成功状态。
 
-Operate deployment and release evidence while keeping test, production verification, rollback, and product acceptance separate. Suite version: `10.1.0`.
+Operate deployment and release evidence while keeping test, production verification, rollback, and product acceptance separate. Suite version: `10.1.1`.
 
 ## Load the required references
 
@@ -153,7 +153,7 @@ All Yunxiao Projex, Flow, Codeup, and AppStack discovery, state reads, relations
 - A repeated execution ID must not advance the requirement twice.
 - An active or successful release execution must never be duplicated by `执行发布`.
 - `PARTIAL_TARGET_MERGE` and `MERGED_NOT_DEPLOYED` are recoverable states, not proof of release success and not dead gates. Resume only pending repositories or missing deployment components after live read-back; never repeat a successful merge or pipeline execution.
-- Until all five lifecycle Skills are officially read back at suite version `10.1.0`, release preparation reads new and legacy evidence but does not write a new-format delivery ledger or execute a new-format merge plan. Existing legacy release flow remains available; version skew must not create mixed evidence.
+- Until all five lifecycle Skills are officially read back at suite version `10.1.1`, release preparation reads new and legacy evidence but does not write a new-format delivery ledger or execute a new-format merge plan. Existing legacy release flow remains available; version skew must not create mixed evidence.
 - No production pipeline may start while any repository in the frozen `mergePlan` is pending, failed, drifted, or reverted incompletely. A conflict creates a new plan version with a reason; it never authorizes a force merge.
 - Every first and subsequent production attempt must have a persisted attempt number, type, ID, authorized command, component execution list, status, and idempotency key. A terminal failed attempt can never be replaced, cleared, or reused by `执行发布`.
 - `执行发布` must not guess a rollback target, reuse a stale artifact, or start a second rollback while one is active or already successful.

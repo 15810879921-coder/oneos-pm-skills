@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 
-SUPPORTED_SUITE_VERSIONS = {"10.0.0", "10.1.0"}
+SUPPORTED_SUITE_VERSIONS = {"10.0.0", "10.1.0", "10.1.1"}
 
 
 def _text(value: Any) -> str:

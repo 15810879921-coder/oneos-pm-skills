@@ -27,7 +27,7 @@
 2. 有精确正式计划及端侧目录时使用`formal-plan`；只执行当前端被选中的真实测试用例，真实执行后才更新 TestHub 结果。
 3. 没有正式计划或端侧目录未配置时使用`mandatory-test-task`；仍创建测试任务，由QA按需求验收点执行并记录结果，不伪造计划或用例。
 4. 创建或复用测试任务时以`项目ID+需求ID+交付ID+开发任务ID`唯一去重，并写入`oneos.test-scope/v1`。同一开发任务出现零个或多个有效测试任务都属于阻塞。
-5. 开发任务完成、测试任务创建及关系/负责人/描述回读、需求进入待测试必须分阶段落receipt。后一步失败不得抹掉前一步；部分执行必须留下可恢复回执。
+5. 测试任务创建及关系/负责人/描述回读、开发任务完成、需求进入待测试必须按该顺序分阶段落receipt，并由`yunxiao_cli_complete_development.py`统一编排。测试交接未通过时不得关闭开发任务；部分执行必须留下可恢复回执。
 
 `oneos.test-scope/v1`至少包含`requirementId`、`deliveryId`、`developmentTaskId`、`deliveryEnd`、`scopeId`、`testMode`、`testPlanId`、`directoryIds`、`selectedCaseIds`、交付版本和幂等键。它不是给人看的任务正文，必须按以下格式隐藏写入，JSON使用紧凑单行，重试时只替换这一个区块：
 

@@ -18,7 +18,7 @@ import validate_release_change_coverage as coverage
 
 INPUT_SCHEMA = "oneos.release-merge-input/v1"
 PLAN_SCHEMA = "oneos.release-merge-plan/v1"
-SUITE_VERSION = "10.1.0"
+SUITE_VERSION = "10.1.1"
 PURITY_ACTIONS = {
     "pure": "MERGE_SOURCE_BRANCH",
     "mixed": "BUILD_CLEAN_CANDIDATE",

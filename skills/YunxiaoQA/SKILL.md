@@ -38,7 +38,7 @@ node <本 Skill 目录>/scripts/ensure-daily-skill-update.mjs --current-skill Yu
 
 与 **YunxiaoPM（需求任务）**、开发交付 Skill 分工：本 Skill **只做测试侧**读写。
 
-云效生命周期套件版本：`10.1.0`。
+云效生命周期套件版本：`10.1.1`。
 
 ## Plan 模式门禁（强制 · 凡写云效）
 

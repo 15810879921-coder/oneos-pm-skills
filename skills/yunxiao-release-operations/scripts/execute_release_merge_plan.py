@@ -18,8 +18,8 @@ import validate_release_change_coverage as coverage
 
 PLAN_SCHEMA = "oneos.release-merge-plan/v1"
 ATTEMPT_SCHEMA = "oneos.release-merge-attempt/v1"
-SUITE_VERSION = "10.1.0"
-SUPPORTED_SUITE_VERSIONS = {"10.0.0", SUITE_VERSION}
+SUITE_VERSION = "10.1.1"
+SUPPORTED_SUITE_VERSIONS = {"10.0.0", "10.1.0", SUITE_VERSION}
 STATES = {"PENDING", "PARTIAL_TARGET_MERGE", "TARGETS_READY", "MERGED_NOT_DEPLOYED", "DEPLOYED", "REVERTED"}
 
 

@@ -593,7 +593,7 @@ def cmd_build_plan(args: argparse.Namespace) -> int:
     seed = {"snapshotHash": snapshot.get("snapshotHash"), "groups": grouped}
     plan = {
         "schema": "oneos.yunxiao-cli-bug-delivery-plan/v2",
-        "suiteVersion": "10.1.0",
+        "suiteVersion": "10.1.1",
         "bugBatchId": "BUGBATCH-" + hashlib.sha256(
             json.dumps(seed, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
         ).hexdigest()[:20],

@@ -70,7 +70,7 @@ class ReleaseComponentMatrixTests(unittest.TestCase):
 
     def test_new_contract_requires_valid_ledger_and_bidirectional_anchor_fields(self):
         value = matrix()
-        value["suiteVersion"] = "10.1.0"
+        value["suiteVersion"] = "10.1.1"
         value["ledgerValidation"] = {"status": "passed"}
         value["codeAnchors"][0].update(
             deliveryUnitId="DU-1",
@@ -80,10 +80,10 @@ class ReleaseComponentMatrixTests(unittest.TestCase):
         )
         errors, result = MODULE.validate(value)
         self.assertEqual(errors, [])
-        self.assertEqual(result["suiteVersion"], "10.1.0")
+        self.assertEqual(result["suiteVersion"], "10.1.1")
         del value["codeAnchors"][0]["branchInstanceId"]
         errors, _ = MODULE.validate(value)
-        self.assertIn("codeAnchors[0].branchInstanceId is required for suiteVersion 10.1.0", errors)
+        self.assertIn("codeAnchors[0].branchInstanceId is required for suiteVersion 10.1.1", errors)
 
     def test_legacy_10_0_matrix_remains_readable(self):
         value = matrix()
