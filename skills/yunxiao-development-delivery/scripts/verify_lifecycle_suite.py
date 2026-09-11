@@ -11,7 +11,7 @@ from pathlib import Path
 
 
 SCHEMA = "oneos.lifecycle-suite-state/v1"
-SUITE_VERSION = "10.0.0"
+SUITE_VERSION = "10.1.0"
 REQUIRED = {
     "YunxiaoPM", "yunxiao-development-delivery", "development-brain",
     "YunxiaoQA", "yunxiao-release-operations",
@@ -36,7 +36,8 @@ def verify(values: list[str]) -> dict:
         if not path.is_absolute() or not path.is_file() or path.name.lower() != "skill.md":
             raise ValueError(f"{name}必须指向存在的SKILL.md绝对路径")
         text = path.read_text(encoding="utf-8")
-        matches = sorted(set(re.findall(r"(?<![0-9])10\.0\.0(?![0-9])", text)))
+        pattern = rf"(?<![0-9]){re.escape(SUITE_VERSION)}(?![0-9])"
+        matches = sorted(set(re.findall(pattern, text)))
         versions[name] = matches[0] if len(matches) == 1 else None
         evidence[name] = str(path.resolve())
     mismatched = sorted(name for name, version in versions.items() if version != SUITE_VERSION)

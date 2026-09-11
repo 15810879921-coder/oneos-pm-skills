@@ -4,7 +4,7 @@
 支持三个动作：
   start:    【测试】待处理→处理中；需求待测试→测试中
   record:   在测试进行中幂等写入并回读计划/用例/执行/报告
-  complete: 写入测试证据；【测试】处理中→已完成；需求测试中→测试完成
+  complete: 已停用；必须改用yunxiao_cli_test_lifecycle.py complete的范围聚合门禁
 
 所有写操作均要求先运行 --dry-run，并通过 YunxiaoQA Plan 门禁确认。
 """
@@ -538,6 +538,11 @@ def main() -> None:
     args = build_parser().parse_args()
     space = space_id(args.space)
     try:
+        if args.action == "complete":
+            raise RuntimeError(
+                "旧Cookie完成入口已停用；请使用yunxiao_cli_test_lifecycle.py complete，"
+                "它会强制校验每个非取消开发任务唯一映射一个已完成测试任务。"
+            )
         s = session()
         test, req, delivery = resolve_context(
             s, space, args.test_sn.strip(), args.req_sn.strip() if args.req_sn else None

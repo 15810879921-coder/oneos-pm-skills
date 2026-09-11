@@ -1,11 +1,11 @@
-# 需求级测试计划与交付范围执行
+# 需求级测试计划与开发任务范围执行
 
 ## 口径
 
-- 测试计划按**需求**建立；仅大型新增需求配置正式 TestHub 计划。
-- 交付、开发和【测试】任务按**可独立送测范围**执行；一个范围的完成不等于需求测试完成。
-- 优化需求及未配置正式计划的小型新增，走`lightweight-verification`，跳过正式 TestHub 与【测试】任务，但必须保留真实开发验证和交付版本。
-- 有正式计划的新增需求，必须只执行当前端侧范围的已规划用例；开发不得把更新 TestHub 状态冒充为用例执行。
+- 测试计划按**需求**建立，需要时配置正式 TestHub 计划。
+- 每个非取消【开发】任务都必须唯一对应一个【测试】任务；二者同属源【交付】并关联同一需求。
+- 是否存在正式计划只决定用例来源，不决定是否创建【测试】任务。无正式计划使用`mandatory-test-task`。
+- 测试任务完成是发版红线；没有Bug不能替代测试任务完成。
 
 ## 可识别计划与范围
 
@@ -19,32 +19,32 @@
 [跨端] 任务工单/端间联调
 ```
 
-`PC`归为`Web`。一个目录只能属于一个范围；没有端侧前缀的目录不自动纳入任一端。计划存在但当前端没有可识别目录时，结论是`scope-unconfigured`：本次完成开发改跑开发侧验证，并报告测试计划配置缺口；不得猜测或更新整份计划的用例结果。
+`PC`归为`Web`。一个目录只能属于一个范围；没有端侧前缀的目录不自动纳入任一端。计划存在但当前端没有可识别目录时，记录`scope-unconfigured`，创建`mandatory-test-task`测试任务并报告计划配置缺口；不得猜测或更新整份计划的用例结果。
 
 ## 完成开发分流
 
-1. `新增`先调用`yunxiao_cli_test_scope.py resolve`查询精确需求计划与当前端范围；`优化`不查询计划。
-2. `新增 + formal-plan`：执行当前端被选中的真实测试用例作为完成开发验证；仅有真实执行证据时才更新对应 TestHub 结果。
-3. 其他所有情况（优化、`no-formal-plan`、`scope-unconfigured`、计划歧义/读取失败）：执行普通开发侧验证；其中无计划新增写`oneos.lightweight-verification/v1`，计划问题额外报告配置缺口。
-4. `formal-plan`验证通过后创建/复用该交付范围的【测试】任务，写`oneos.test-scope/v1`，交给测试范围执行。人工用例、缺陷复测、范围关单由`$YunxiaoQA`负责。
-5. 例外：已存在同需求/交付/端侧范围的正式【测试】任务，或用户明确要求本范围进入QA并保留证据落点时，不走轻量直结。创建/复用范围测试任务并写`testMode=qa-requested-exception`、`testPlanId=null`和原因；不伪造计划/用例，不把需求直接推进到`测试完成`。
+1. 每个完成开发任务都调用`yunxiao_cli_test_scope.py resolve`，传入需求编号、开发任务编号和端侧。
+2. 有精确正式计划及端侧目录时使用`formal-plan`；只执行当前端被选中的真实测试用例，真实执行后才更新 TestHub 结果。
+3. 没有正式计划或端侧目录未配置时使用`mandatory-test-task`；仍创建测试任务，由QA按需求验收点执行并记录结果，不伪造计划或用例。
+4. 创建或复用测试任务时以`项目ID+需求ID+交付ID+开发任务ID`唯一去重，并写入`oneos.test-scope/v1`。同一开发任务出现零个或多个有效测试任务都属于阻塞。
+5. 开发任务完成、测试任务创建及关系/负责人/描述回读、需求进入待测试必须分阶段落receipt。后一步失败不得抹掉前一步；部分执行必须留下可恢复回执。
 
-`oneos.test-scope/v1`至少包含`requirementId`、`deliveryId`、`deliveryEnd`、`scopeId`、`testMode`、`testPlanId`、`directoryIds`、`selectedCaseIds`、交付版本和幂等键。它不是给人看的任务正文，必须按以下格式隐藏写入，JSON使用紧凑单行，重试时只替换这一个区块：
+`oneos.test-scope/v1`至少包含`requirementId`、`deliveryId`、`developmentTaskId`、`deliveryEnd`、`scopeId`、`testMode`、`testPlanId`、`directoryIds`、`selectedCaseIds`、交付版本和幂等键。它不是给人看的任务正文，必须按以下格式隐藏写入，JSON使用紧凑单行，重试时只替换这一个区块：
 
 ```html
 <!-- ONEOS_TEST_SCOPE_START -->
-<!-- {"schemaVersion":"oneos.test-scope/v1","requirementId":"...","deliveryId":"...","deliveryEnd":"Web","scopeId":"...","testMode":"formal-plan","testPlanId":"...","directoryIds":["..."],"selectedCaseIds":["..."],"deliveryVersion":"...","idempotencyKey":"..."} -->
+<!-- {"schemaVersion":"oneos.test-scope/v1","requirementId":"...","deliveryId":"...","developmentTaskId":"...","deliveryEnd":"Web","scopeId":"...","testMode":"formal-plan|mandatory-test-task","testPlanId":"...|null","directoryIds":["..."],"selectedCaseIds":["..."],"deliveryVersion":"...","idempotencyKey":"..."} -->
 <!-- ONEOS_TEST_SCOPE_END -->
 ```
 
-不得使用`<pre>`包装受管JSON，也不得把它与`## 开发交接`正文拼接为`<br/>`文本。`oneos.lightweight-verification/v1`至少包含需求/交付/开发任务、端侧、真实验证命令或页面路径、版本、结果、时间和幂等键。
+不得使用`<pre>`包装受管JSON，也不得把它与`## 开发交接`正文拼接为`<br/>`文本。旧`oneos.lightweight-verification/v1`只读保留，不能替代测试任务或满足发布门禁。
 
 ## 需求级聚合
 
-需求进入`测试中`的条件是第一个`formal-plan`范围开始执行，不等待兄弟开发任务。需求进入`测试完成`仅在所有非取消承诺范围均闭环时：
+需求进入`测试中`的条件是第一个测试任务开始执行，不等待兄弟开发任务。需求进入`测试完成`仅在所有非取消开发任务均有唯一测试任务且全部闭环时：
 
-- `formal-plan`范围：所选用例无失败、阻塞、未执行；版本一致；该范围缺陷已关闭或有正式暂不修复批准。
-- `lightweight-verification`范围：真实验证与交付版本均已回读，且无未决阻断缺陷。
+- `formal-plan`：测试任务已完成，所选用例无失败、阻塞、未执行；版本一致；该范围缺陷已关闭或有正式暂不修复批准。
+- `mandatory-test-task`：测试任务已完成，验收结果与交付版本一致，且无未决阻断缺陷。
 - `跨端`范围：所有前置端已闭环后，跨端用例也已闭环。
 
-没有正式计划且没有`qa-requested-exception`范围的需求，在所有轻量验证范围闭环后直接进入`测试完成`，不创建正式测试任务。存在QA例外范围时按正式QA状态流转，开发侧不得将需求直接写为测试完成。若云效工作流不支持轻量直结，只允许由同一`完成开发`事务走工作流允许的最短中间状态并在受管记录注明“轻量验证闭环”；不得伪造计划、用例、报告或测试任务。
+开发侧不得把需求直接写为`测试完成`。该状态只能由QA在全量读取非取消开发任务与对应测试任务后聚合推进。任何缺失、重复、未完成或仍使用旧轻量模式的测试映射都必须阻断发版。

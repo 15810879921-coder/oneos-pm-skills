@@ -18,7 +18,8 @@ import validate_release_change_coverage as coverage
 
 PLAN_SCHEMA = "oneos.release-merge-plan/v1"
 ATTEMPT_SCHEMA = "oneos.release-merge-attempt/v1"
-SUITE_VERSION = "10.0.0"
+SUITE_VERSION = "10.1.0"
+SUPPORTED_SUITE_VERSIONS = {"10.0.0", SUITE_VERSION}
 STATES = {"PENDING", "PARTIAL_TARGET_MERGE", "TARGETS_READY", "MERGED_NOT_DEPLOYED", "DEPLOYED", "REVERTED"}
 
 
@@ -46,8 +47,8 @@ def attempt_id(plan: dict[str, Any]) -> str:
 def validate_attempt(attempt: dict[str, Any]) -> None:
     if attempt.get("schemaVersion") != ATTEMPT_SCHEMA:
         raise ValueError(f"schemaVersion必须为{ATTEMPT_SCHEMA}")
-    if attempt.get("suiteVersion") != SUITE_VERSION:
-        raise ValueError(f"suiteVersion必须为{SUITE_VERSION}")
+    if attempt.get("suiteVersion") not in SUPPORTED_SUITE_VERSIONS:
+        raise ValueError(f"suiteVersion必须为受支持版本：{sorted(SUPPORTED_SUITE_VERSIONS)}")
     if attempt.get("state") not in STATES:
         raise ValueError("合并尝试状态无效")
     repositories = attempt.get("repositories")
@@ -94,7 +95,7 @@ def init(plan: dict[str, Any]) -> dict[str, Any]:
     state = "TARGETS_READY" if all(item["mergeStatus"] == "SUCCESS" for item in repositories) else "PENDING"
     result = {
         "schemaVersion": ATTEMPT_SCHEMA,
-        "suiteVersion": SUITE_VERSION,
+        "suiteVersion": str(plan.get("suiteVersion") or SUITE_VERSION),
         "releaseMergeAttemptId": attempt_id(plan),
         "releaseTaskId": plan.get("releaseTaskId"),
         "mergePlanId": plan.get("mergePlanId"),

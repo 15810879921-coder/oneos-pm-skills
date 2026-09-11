@@ -14,7 +14,8 @@ from zoneinfo import ZoneInfo
 
 
 SCHEMA = "oneos.delivery-ledger/v1"
-SUITE_VERSION = "10.0.0"
+SUITE_VERSION = "10.1.0"
+SUPPORTED_SUITE_VERSIONS = {"10.0.0", SUITE_VERSION}
 COMMENT_PREFIX = "【交付台账事件】"
 TRANSACTION_SCHEMA = "oneos.yunxiao-cli-transaction-plan/v1"
 SUITE_STATE_SCHEMA = "oneos.lifecycle-suite-state/v1"
@@ -100,8 +101,10 @@ def validate(events: list[dict[str, Any]]) -> dict[str, Any]:
         prefix = f"events[{index}]"
         if event.get("schemaVersion") != SCHEMA:
             errors.append(f"{prefix}.schemaVersion无效")
-        if event.get("suiteVersion") != SUITE_VERSION:
-            errors.append(f"{prefix}.suiteVersion必须为{SUITE_VERSION}")
+        if event.get("suiteVersion") not in SUPPORTED_SUITE_VERSIONS:
+            errors.append(
+                f"{prefix}.suiteVersion必须为受支持版本：{sorted(SUPPORTED_SUITE_VERSIONS)}"
+            )
         event_id = str(event.get("eventId") or "")
         idem = str(event.get("idempotencyKey") or "")
         event_type = str(event.get("eventType") or "")

@@ -14,7 +14,8 @@ from zoneinfo import ZoneInfo
 
 
 SCHEMA = "oneos.delivery-submission-attempt/v1"
-SUITE_VERSION = "10.0.0"
+SUITE_VERSION = "10.1.0"
+SUPPORTED_SUITE_VERSIONS = {"10.0.0", SUITE_VERSION}
 REPO_STATES = {"PENDING", "RUNNING", "SUCCEEDED", "FAILED", "BLOCKED"}
 TERMINAL = {"SUCCEEDED", "FAILED", "BLOCKED"}
 
@@ -38,8 +39,8 @@ def now() -> str:
 def validate(attempt: dict[str, Any]) -> None:
     if attempt.get("schemaVersion") != SCHEMA:
         raise ValueError(f"schemaVersion必须为{SCHEMA}")
-    if attempt.get("suiteVersion") != SUITE_VERSION:
-        raise ValueError(f"suiteVersion必须为{SUITE_VERSION}")
+    if attempt.get("suiteVersion") not in SUPPORTED_SUITE_VERSIONS:
+        raise ValueError(f"suiteVersion必须为受支持版本：{sorted(SUPPORTED_SUITE_VERSIONS)}")
     repositories = attempt.get("repositories")
     if not isinstance(repositories, list) or not repositories:
         raise ValueError("repositories不能为空")

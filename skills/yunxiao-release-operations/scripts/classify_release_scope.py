@@ -189,25 +189,59 @@ def structured_evidence_gaps(item: dict[str, Any]) -> list[str]:
 
 
 def qa_gaps(item: dict[str, Any]) -> list[str]:
-    """Apply the requirement-level readiness gate according to its test mode."""
+    """Require one completed test task for every active development task."""
     gaps: list[str] = []
     if item.get("requirementStatus") != "测试完成":
         gaps.append("需求状态不是测试完成")
-    mode = str(item.get("testMode") or "formal-plan").strip()
-    if mode in {"formal-plan", "qa-requested-exception"}:
-        if item.get("testTaskStatus") != "已完成":
-            gaps.append(f"{mode}测试任务不是已完成")
-        if not isinstance(item.get("hasRequiredCases"), bool):
-            gaps.append(f"{mode}未明确是否存在必需用例")
-        elif item.get("hasRequiredCases") is True and item.get("requiredCaseStatus") != "passed":
-            gaps.append(f"{mode}必需用例未通过")
-    elif mode == "lightweight-verification":
-        if item.get("lightweightVerificationStatus") != "passed":
-            gaps.append("轻量开发验证未通过")
-        if not valid_ref(item.get("trustedDeliveryVersion")):
-            gaps.append("轻量开发验证缺可信交付版本")
-    else:
-        gaps.append(f"不支持的测试模式：{mode or '(空)'}")
+    development_tasks = item.get("developmentTasks")
+    test_tasks = item.get("testTasks")
+    if not isinstance(development_tasks, list) or not development_tasks:
+        gaps.append("缺少完整开发任务清单")
+        development_tasks = []
+    if not isinstance(test_tasks, list):
+        gaps.append("缺少完整测试任务清单")
+        test_tasks = []
+
+    active_development_ids: set[str] = set()
+    for development in development_tasks:
+        if not isinstance(development, dict) or not valid_ref(development.get("id")):
+            gaps.append("开发任务缺少有效ID")
+            continue
+        development_id = str(development["id"])
+        if str(development.get("status") or "") == "已取消":
+            continue
+        if development_id in active_development_ids:
+            gaps.append(f"开发任务清单存在重复ID：{development_id}")
+        active_development_ids.add(development_id)
+
+    mapped_development_ids: set[str] = set()
+    allowed_modes = {"formal-plan", "mandatory-test-task", "qa-requested-exception"}
+    for test in test_tasks:
+        if not isinstance(test, dict) or not valid_ref(test.get("id")):
+            gaps.append("测试任务缺少有效ID")
+            continue
+        test_id = str(test["id"])
+        development_id = str(test.get("developmentTaskId") or "")
+        if development_id not in active_development_ids:
+            gaps.append(f"测试任务{test_id}未映射到本需求有效开发任务")
+            continue
+        if development_id in mapped_development_ids:
+            gaps.append(f"开发任务{development_id}存在多个测试任务")
+        mapped_development_ids.add(development_id)
+        mode = str(test.get("testMode") or "").strip()
+        if mode == "lightweight-verification":
+            gaps.append(f"测试任务{test_id}仍使用已停用的轻量验证模式")
+        elif mode not in allowed_modes:
+            gaps.append(f"测试任务{test_id}测试模式无效：{mode or '(空)'}")
+        if str(test.get("status") or "") != "已完成":
+            gaps.append(f"测试任务{test_id}不是已完成")
+        if not isinstance(test.get("hasRequiredCases"), bool):
+            gaps.append(f"测试任务{test_id}未明确是否存在必需用例")
+        elif test.get("hasRequiredCases") is True and test.get("requiredCaseStatus") != "passed":
+            gaps.append(f"测试任务{test_id}必需用例未通过")
+
+    for development_id in sorted(active_development_ids - mapped_development_ids):
+        gaps.append(f"开发任务{development_id}缺少对应测试任务")
     bugs = item.get("bugs")
     if not isinstance(bugs, list):
         gaps.append("未取得完整关联Bug清单")

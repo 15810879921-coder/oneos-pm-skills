@@ -106,7 +106,7 @@
 - `record|complete`必须传`--evidence-manifest`，由脚本读取、校验真实证据清单与test部署、项目、迭代、需求、测试任务的一致性；不再接受聊天参数自报计划、用例、执行、报告和计数。
 - test部署证据按`deliveryEnd`分流：**Web**要求test环境成功部署；**小程序**接受`testPipeline=skipped`，跳过流水线与自动化测试证据，但测试计划、用例执行、报告和逐Bug复测证据一律不放宽。
 - `完成测试`须校验关系、当前范围证据清单、所选用例计数闭合、逐Bug复测证据与暂不修复批准，先推进当前【测试】`处理中→已完成`；仅最后范围加`--aggregate-complete`并通过聚合预检时推进需求`测试中→测试完成`。
-- `完成测试`显式携带`人工确认通过=是`时进入唯一特批分支：命令本身即授权，内部`manual-complete --apply`跳过部署、TestHub、QA manifest、缺陷和范围聚合业务门禁，直接推进【测试】与需求完成态；保留编号、正式关系、当前用户、状态边界、关联缺陷快照、官方回读和幂等审计，且不修改Bug、不作为正式发布候选。
+- `完成测试`显式携带`人工确认通过=是`时进入唯一特批分支：命令本身即授权，内部`manual-complete --apply`可跳过部署、TestHub、QA manifest和缺陷门禁，但仍强制校验每个非取消开发任务唯一映射测试任务、兄弟测试任务已完成，聚合通过后才推进【测试】与需求完成态；保留编号、正式关系、当前用户、状态边界、关联缺陷快照、范围聚合、官方回读和幂等审计，且不修改Bug、不作为正式发布候选。
 - **唯一完整入口**：`skill-run yunxiao_cli_test_lifecycle.py start|record|complete|manual-complete ...`（启动规则见 [runtime-launcher.md](runtime-launcher.md)）。`manual-complete`只是“完成测试”的内部分支，不是对外独立口令。
 - 旧`close_test_task.py`仅保留为拒绝式兼容入口，固定不写状态并返回完整`complete --evidence-manifest`命令；不得用于正式闭环。
 - 完整参数、证据区块和发布交接见 [test-execution.md](test-execution.md)。

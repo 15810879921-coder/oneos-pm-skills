@@ -11,6 +11,9 @@ from pathlib import Path
 from typing import Any
 
 
+SUPPORTED_SUITE_VERSIONS = {"10.0.0", "10.1.0"}
+
+
 def _text(value: Any) -> str:
     return str(value or "").strip()
 
@@ -26,12 +29,15 @@ def validate(data: dict[str, Any]) -> tuple[list[str], dict[str, Any]]:
     errors: list[str] = []
     suite_version = _text(data.get("suiteVersion"))
     new_contract = bool(suite_version)
-    if new_contract and suite_version != "10.0.0":
-        errors.append("suiteVersion must be 10.0.0 for the delivery-ledger contract")
+    if new_contract and suite_version not in SUPPORTED_SUITE_VERSIONS:
+        errors.append(
+            "suiteVersion must be a supported delivery-ledger version: "
+            + ", ".join(sorted(SUPPORTED_SUITE_VERSIONS))
+        )
     if new_contract:
         ledger_validation = data.get("ledgerValidation")
         if not isinstance(ledger_validation, dict) or ledger_validation.get("status") != "passed":
-            errors.append("ledgerValidation.status must be passed for suiteVersion 10.0.0")
+            errors.append(f"ledgerValidation.status must be passed for suiteVersion {suite_version}")
     scope_items = data.get("releaseCodeItems") or []
     anchors = data.get("codeAnchors") or []
     components = data.get("componentMatrix") or []
@@ -76,10 +82,14 @@ def validate(data: dict[str, Any]) -> tuple[list[str], dict[str, Any]]:
         if new_contract:
             for field in ("deliveryUnitId", "branchInstanceId", "ledgerEventId"):
                 if not _text(anchor.get(field)):
-                    errors.append(f"codeAnchors[{index}].{field} is required for suiteVersion 10.0.0")
+                    errors.append(
+                        f"codeAnchors[{index}].{field} is required for suiteVersion {suite_version}"
+                    )
             exact_commits = anchor.get("exactCommitIds") or []
             if not isinstance(exact_commits, list) or not exact_commits:
-                errors.append(f"codeAnchors[{index}].exactCommitIds is required for suiteVersion 10.0.0")
+                errors.append(
+                    f"codeAnchors[{index}].exactCommitIds is required for suiteVersion {suite_version}"
+                )
             elif commit and commit not in {str(value) for value in exact_commits}:
                 errors.append(f"codeAnchors[{index}].commit must be included in exactCommitIds")
 

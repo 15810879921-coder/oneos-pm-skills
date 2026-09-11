@@ -31,6 +31,9 @@ DEPLOY_END = "<!-- ONEOS_TEST_DEPLOYMENT_EVIDENCE_END -->"
 BUG_RETEST_START = "<!-- YUNXIAOQA_BUG_RETEST_EVIDENCE_START -->"
 BUG_RETEST_END = "<!-- YUNXIAOQA_BUG_RETEST_EVIDENCE_END -->"
 BUG_RETEST_SCHEMA = "oneos.bug-retest/v1"
+TEST_SCOPE_START = "<!-- ONEOS_TEST_SCOPE_START -->"
+TEST_SCOPE_END = "<!-- ONEOS_TEST_SCOPE_END -->"
+TEST_SCOPE_SCHEMA = "oneos.test-scope/v1"
 
 
 def rows(value: Any, label: str) -> list[dict[str, Any]]:
@@ -349,9 +352,93 @@ def requirement_delivery_progress(executable: str, project_id: str,
         if subject.startswith("【开发】"):
             development.append(snapshot)
         elif subject.startswith("【测试】") or item_id == current_test_id:
+            try:
+                scope = parse_json_block(
+                    str(item.get("description") or ""), TEST_SCOPE_START, TEST_SCOPE_END,
+                )
+                if scope.get("schemaVersion") != TEST_SCOPE_SCHEMA:
+                    raise core.AdapterError("测试任务范围schema无效。")
+                snapshot["developmentTaskId"] = str(scope.get("developmentTaskId") or "")
+                snapshot["testMode"] = str(scope.get("testMode") or "")
+            except (core.AdapterError, ValueError, json.JSONDecodeError) as error:
+                snapshot["testScopeError"] = str(error)
             tests.append(snapshot)
     return {"development": sorted(development, key=lambda item: item["serialNumber"]),
             "tests": sorted(tests, key=lambda item: item["serialNumber"])}
+
+
+def development_test_mapping_gaps(
+        aggregate: dict[str, list[dict[str, Any]]], current_test_id: str) -> list[str]:
+    """Require one completed test task per non-cancelled development task."""
+    gaps: list[str] = []
+    active_ids: set[str] = set()
+    for development in aggregate.get("development", []):
+        development_id = str(development.get("id") or "")
+        if not development_id:
+            gaps.append("开发任务缺少有效ID")
+            continue
+        if development.get("status") == "已取消":
+            continue
+        if development_id in active_ids:
+            gaps.append(f"开发任务清单存在重复ID：{development_id}")
+        active_ids.add(development_id)
+
+    mapped: dict[str, list[str]] = {}
+    allowed_modes = {"formal-plan", "mandatory-test-task", "qa-requested-exception"}
+    for test in aggregate.get("tests", []):
+        test_id = str(test.get("id") or "")
+        if not test_id:
+            gaps.append("测试任务缺少有效ID")
+            continue
+        if test.get("testScopeError"):
+            gaps.append(f"测试任务{test_id}范围无效：{test['testScopeError']}")
+            continue
+        development_id = str(test.get("developmentTaskId") or "")
+        if development_id not in active_ids:
+            gaps.append(f"测试任务{test_id}未映射到本需求有效开发任务")
+            continue
+        mapped.setdefault(development_id, []).append(test_id)
+        mode = str(test.get("testMode") or "")
+        if mode == "lightweight-verification":
+            gaps.append(f"测试任务{test_id}仍使用已停用的轻量验证模式")
+        elif mode not in allowed_modes:
+            gaps.append(f"测试任务{test_id}测试模式无效：{mode or '(空)'}")
+        if test_id != current_test_id and test.get("status") != "已完成":
+            gaps.append(f"测试任务{test_id}不是已完成")
+
+    for development_id in sorted(active_ids):
+        test_ids = mapped.get(development_id, [])
+        if not test_ids:
+            gaps.append(f"开发任务{development_id}缺少对应测试任务")
+        elif len(test_ids) > 1:
+            gaps.append(
+                f"开发任务{development_id}存在多个测试任务：{','.join(sorted(test_ids))}"
+            )
+    return gaps
+
+
+def require_requirement_scope_completion(
+        executable: str, project_id: str, requirement_id: str,
+        current_test_id: str) -> dict[str, list[dict[str, Any]]]:
+    aggregate = requirement_delivery_progress(
+        executable, project_id, requirement_id, current_test_id,
+    )
+    pending_development = [
+        item for item in aggregate["development"]
+        if item["status"] not in {"已完成", "已取消"}
+    ]
+    pending_tests = [
+        item for item in aggregate["tests"]
+        if item["id"] != current_test_id and item["status"] != "已完成"
+    ]
+    mapping_gaps = development_test_mapping_gaps(aggregate, current_test_id)
+    if pending_development or pending_tests or mapping_gaps:
+        raise core.AdapterError(json.dumps({
+            "pendingDevelopmentScopes": pending_development,
+            "pendingTestScopes": pending_tests,
+            "developmentTestMappingGaps": mapping_gaps,
+        }, ensure_ascii=False))
+    return aggregate
 
 
 def parse_approvals(values: list[str]) -> dict[str, dict[str, str]]:
@@ -446,6 +533,9 @@ def run_manual_complete(args: argparse.Namespace, executable: str, auth: dict[st
     allowed_req = {"开发中", "开发完成", "待测试", "测试中", "测试完成"}
     if status_name(test) not in allowed_test or status_name(req) not in allowed_req:
         raise core.AdapterError(f"人工确认状态边界失败：{before}")
+    aggregate = require_requirement_scope_completion(
+        executable, args.space_id, str(req["id"]), str(test["id"]),
+    )
     user = current_user(executable)
     bugs = collect_bugs(
         executable, args.space_id, str(test["id"]), "", match_version=False,
@@ -479,7 +569,7 @@ def run_manual_complete(args: argparse.Namespace, executable: str, auth: dict[st
         "confirmedAt": confirmed_at,
         "bypassedBusinessGates": [
             "testDeploymentEvidence", "testPlanAndCases", "qaManifest",
-            "unclosedDefects", "requirementScopeAggregation",
+            "unclosedDefects",
         ],
         "bugSnapshot": bug_snapshot,
         "bugSnapshotSha256": hashlib.sha256(json.dumps(
@@ -508,6 +598,7 @@ def run_manual_complete(args: argparse.Namespace, executable: str, auth: dict[st
         "projectId": args.space_id,
         "before": before,
         "relations": {"parentIds": parents, "associatedIds": associated},
+        "aggregate": aggregate,
         "manualComplete": payload,
         "plannedActions": actions,
         "verified": False,
@@ -666,18 +757,9 @@ def run(args: argparse.Namespace) -> int:
                 "closedWithoutRetest": closed_invalid, "extraApprovals": extra,
             }, ensure_ascii=False))
         if args.aggregate_complete:
-            aggregate = requirement_delivery_progress(
-                executable, args.space_id, str(req["id"]), str(test["id"])
+            aggregate = require_requirement_scope_completion(
+                executable, args.space_id, str(req["id"]), str(test["id"]),
             )
-            pending_development = [item for item in aggregate["development"]
-                                   if item["status"] not in {"已完成", "已取消"}]
-            pending_tests = [item for item in aggregate["tests"]
-                             if item["id"] != str(test["id"]) and item["status"] != "已完成"]
-            if pending_development or pending_tests:
-                raise core.AdapterError(json.dumps({
-                    "pendingDevelopmentScopes": pending_development,
-                    "pendingTestScopes": pending_tests,
-                }, ensure_ascii=False))
     bug_snapshot = [{
         "id": bug["id"], "serialNumber": bug["serialNumber"],
         "status": bug["status"],

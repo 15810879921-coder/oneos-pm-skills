@@ -194,6 +194,76 @@ def validate_plan(value: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _arg_value(args: list[str], name: str) -> str | None:
+    try:
+        index = args.index(name)
+    except ValueError:
+        return None
+    return args[index + 1] if index + 1 < len(args) else None
+
+
+def _status_value(call: dict[str, Any]) -> str | None:
+    if call.get("operation") != "projex-update-workitem":
+        return None
+    args = call.get("args") or []
+    direct = _arg_value(args, "--status")
+    if direct:
+        return direct
+    raw_body = _arg_value(args, "--biz-body")
+    if not raw_body:
+        return None
+    try:
+        body = json.loads(raw_body)
+    except json.JSONDecodeError as exc:
+        raise core.AdapterError("projex-update-workitem的--biz-body不是有效JSON。") from exc
+    if not isinstance(body, dict):
+        raise core.AdapterError("projex-update-workitem的--biz-body必须是JSON对象。")
+    value = body.get("status")
+    return str(value) if value is not None else None
+
+
+def _expected_status(plan: dict[str, Any], workitem_id: str) -> str | None:
+    matches: set[str] = set()
+    for verification in plan["verifications"]:
+        if verification.get("operation") != "projex-get-workitem":
+            continue
+        args = verification.get("args") or []
+        if _arg_value(args, "--id") != workitem_id:
+            continue
+        expected = verification.get("expect") or {}
+        value = expected.get("status.displayName")
+        if value:
+            matches.add(str(value))
+    if len(matches) > 1:
+        raise core.AdapterError(f"工作项{workitem_id}存在冲突的目标状态回读。")
+    return next(iter(matches), None)
+
+
+def enforce_development_lifecycle(executable: str, plan: dict[str, Any]) -> list[dict[str, str]]:
+    """Apply development-owned lifecycle limits before any write."""
+    checks: list[dict[str, str]] = []
+    for action in plan["actions"]:
+        if _status_value(action) is None:
+            continue
+        workitem_id = _arg_value(action.get("args") or [], "--id")
+        if not workitem_id or TOKEN_RE.fullmatch(workitem_id):
+            continue
+        current = core.unwrap(core.run_devops(executable, ["projex-get-workitem", "--id", workitem_id]))
+        if not isinstance(current, dict):
+            raise core.AdapterError(f"无法读取状态动作目标工作项：{workitem_id}")
+        subject = str(current.get("subject") or "")
+        if not subject.startswith("【交付】"):
+            continue
+        expected = _expected_status(plan, workitem_id)
+        if expected not in {"已分配", "处理中"}:
+            raise core.AdapterError(
+                f"开发网关禁止把【交付】推进到{expected or '未声明目标状态'}；"
+                "仅允许待处理→已分配→处理中，交付已完成必须走YunxiaoPM生产验收。"
+            )
+        checks.append({"workitemId": workitem_id, "subject": subject, "targetStatus": expected})
+    return checks
+
+
 def cmd_doctor(_: argparse.Namespace) -> int:
     executable = core.find_aliyun()
     flags = core.require_auth_env()
@@ -226,11 +296,13 @@ def cmd_preflight(args: argparse.Namespace) -> int:
         value = execute_read(executable, guard)
         assert_expect(value, guard.get("expect"), f"guard[{index}]")
         guard_receipts.append({"call": guard, "sha256": stable_hash(value)})
+    lifecycle_checks = enforce_development_lifecycle(executable, plan)
     fingerprint = stable_hash(plan)
     receipt = {
         "schema": SCHEMA, "stage": "preflight", "result": "ready",
         "fingerprint": fingerprint, "plan": plan, "guards": guard_receipts,
         "currentUser": core.current_user(executable), "createdAt": core.now_utc(),
+        "lifecycleChecks": lifecycle_checks,
     }
     output = Path(args.output) if args.output else core.output_dir() / f"yunxiao-preflight-{fingerprint[:16]}.json"
     write_json(output, receipt)
@@ -255,29 +327,53 @@ def cmd_apply(args: argparse.Namespace) -> int:
         prior = load_object(str(ledger))
         if prior.get("fingerprint") != fingerprint:
             raise core.AdapterError("相同idempotencyKey已有不同计划的成功回执，拒绝重复写入。")
-        print(json.dumps(prior, ensure_ascii=False, indent=2))
-        return 0
+        if prior.get("result") == "applied":
+            print(json.dumps(prior, ensure_ascii=False, indent=2))
+            return 0
+        raise core.AdapterError(
+            "相同idempotencyKey存在未完成或部分执行回执，禁止自动重放；请先按回执核对真实状态。"
+        )
     expected_guards = preflight.get("guards") or []
     for index, guard in enumerate(plan["guards"]):
         value = execute_read(executable, guard)
         assert_expect(value, guard.get("expect"), f"guard[{index}]")
         if index >= len(expected_guards) or stable_hash(value) != expected_guards[index].get("sha256"):
             raise core.AdapterError(f"guard[{index}]发生漂移，拒绝写入。")
+    lifecycle_checks = enforce_development_lifecycle(executable, plan)
     action_outputs: list[Any] = []
-    for action in plan["actions"]:
-        resolved = resolve_args(action["args"], action_outputs)
-        action_outputs.append(core.run_devops(executable, [action["operation"], *resolved]))
-    verification_receipts = []
-    for index, verification in enumerate(plan["verifications"]):
-        value = execute_read(executable, verification, action_outputs)
-        assert_expect(value, verification.get("expect"), f"verification[{index}]")
-        verification_receipts.append({"call": verification, "value": value})
+    progress: dict[str, Any] = {
+        "schema": SCHEMA, "stage": "apply", "result": "applying",
+        "fingerprint": fingerprint, "idempotencyKey": plan["idempotencyKey"],
+        "actions": [], "verifications": [], "lifecycleChecks": lifecycle_checks,
+        "currentUser": core.current_user(executable), "startedAt": core.now_utc(),
+    }
+    write_json(ledger, progress)
+    try:
+        for index, action in enumerate(plan["actions"]):
+            resolved = resolve_args(action["args"], action_outputs)
+            output = core.run_devops(executable, [action["operation"], *resolved])
+            action_outputs.append(output)
+            progress["actions"].append({"index": index, "operation": action["operation"], "result": output})
+            write_json(ledger, progress)
+        for index, verification in enumerate(plan["verifications"]):
+            value = execute_read(executable, verification, action_outputs)
+            assert_expect(value, verification.get("expect"), f"verification[{index}]")
+            progress["verifications"].append({"index": index, "call": verification, "value": value})
+            write_json(ledger, progress)
+    except Exception as exc:
+        progress["result"] = "partial"
+        progress["error"] = core.scrub(str(exc))
+        progress["failedAt"] = core.now_utc()
+        write_json(ledger, progress)
+        if args.receipt:
+            write_json(Path(args.receipt), progress)
+        raise
     receipt = {
         "schema": SCHEMA, "stage": "apply", "result": "applied",
         "fingerprint": fingerprint, "idempotencyKey": plan["idempotencyKey"],
-        "actions": [{"operation": item["operation"], "result": action_outputs[index]}
-                    for index, item in enumerate(plan["actions"])],
-        "verifications": verification_receipts,
+        "actions": progress["actions"],
+        "verifications": progress["verifications"],
+        "lifecycleChecks": lifecycle_checks,
         "currentUser": core.current_user(executable), "appliedAt": core.now_utc(),
     }
     write_json(ledger, receipt)

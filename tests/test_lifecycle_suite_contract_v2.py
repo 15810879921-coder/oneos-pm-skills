@@ -25,7 +25,7 @@ class LifecycleSuiteContractV2Tests(unittest.TestCase):
         for relative in paths:
             with self.subTest(relative=relative):
                 text = (ROOT / relative).read_text(encoding="utf-8")
-                self.assertIn("10.0.0", text)
+                self.assertIn("10.1.0", text)
 
     def test_new_writer_is_compatible_with_legacy_reader_boundary(self):
         development = (ROOT / "skills/yunxiao-development-delivery/references/branch-submit-release-ledger.md").read_text(encoding="utf-8")

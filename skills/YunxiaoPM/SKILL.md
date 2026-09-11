@@ -28,7 +28,7 @@ node <本 Skill 目录>/scripts/ensure-daily-skill-update.mjs --current-skill Yu
 - 共用更新范围固定为 `YunxiaoPM`、`yunxiao-development-delivery`、`development-brain`、`YunxiaoQA`、`yunxiao-release-operations` 的用户级全局安装；不得借此修改项目级 Skill、业务仓、云效数据、流水线或生产环境。不得手工伪造或提前写入每日成功状态。
 
 产品部云效自动化。正式 Skill 名 **`YunxiaoPM`**，选择器 **`$YunxiaoPM`**；对外中文名 **需求任务**。
-云效生命周期套件版本：`10.0.0`。
+云效生命周期套件版本：`10.1.0`。
 
 **自洽成篇**；**禁止** fork / include / 「对齐」已下架的旧 lifecycle。  
 产品经理会话**不要**同时挂载旧 lifecycle Skill。

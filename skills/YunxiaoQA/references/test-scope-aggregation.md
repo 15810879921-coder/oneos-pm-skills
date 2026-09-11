@@ -3,7 +3,7 @@
 ## QA 口径
 
 - 测试计划属于需求；【测试】任务属于可独立送测的交付范围。
-- 只有大型新增需求配置正式 TestHub 计划。优化和未配置正式计划的小型新增，使用开发侧`oneos.lightweight-verification/v1`，不补建计划或【测试】任务。
+- 正式 TestHub 计划仍只在需要时配置；无论是否有计划，每个非取消【开发】任务都必须有唯一对应【测试】任务。无计划范围使用`mandatory-test-task`，不得以轻量验证跳过测试任务。
 - 一个范围完成只能关闭该范围的【测试】任务；需求测试完成需要聚合全部承诺范围。
 
 ## 计划绑定与端侧范围
@@ -14,6 +14,6 @@
 
 ## 范围完成与需求聚合
 
-范围证据必须声明`scopeId`、`deliveryId`、`deliveryEnd`、`testMode`、`testPlanId`、`directoryIds`、`selectedCaseIds`和测试版本。QA只校验所选范围用例，不用整个计划的总计数替代范围结果。
+范围证据必须声明`scopeId`、`deliveryId`、`developmentTaskId`、`deliveryEnd`、`testMode`、`testPlanId`、`directoryIds`、`selectedCaseIds`和测试版本。QA只校验所选范围用例，不用整个计划的总计数替代范围结果。
 
-需求测试完成的前提：所有非取消承诺范围均为已完成；正式计划范围的所选用例全绿、版本一致、范围缺陷闭环；轻量验证范围有真实开发验证及交付版本；跨端范围在前置端完成后也已闭环。任何`scope-unconfigured`、范围待确认或活动阻断缺陷都保持需求`测试中`。
+需求测试完成的前提：所有非取消开发任务均唯一映射一个已完成测试任务；正式计划范围的所选用例全绿、版本一致、范围缺陷闭环；无正式计划范围由`mandatory-test-task`记录真实QA结论；跨端范围在前置端完成后也已闭环。任何缺失/重复测试映射、`scope-unconfigured`待补配置、范围待确认或活动阻断缺陷都保持需求`测试中`。

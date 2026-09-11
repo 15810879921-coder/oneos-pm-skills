@@ -151,7 +151,7 @@ skill-run yunxiao_cli_test_lifecycle.py manual-complete `
   --apply
 ```
 
-这条路径跳过test部署、TestHub测试计划/用例结果、QA manifest、未关闭缺陷和需求范围聚合业务门禁，直接推进【测试】=`已完成`、需求=`测试完成`。但仍必须满足：项目与编号唯一、测试任务正式`PARENT/ASSOCIATED`关系正确、状态在允许边界内、确认人可由当前PAT用户回读、关联缺陷快照已记录，写入后两侧状态和`oneos.qa-manual-complete/v1`审计区块可回读。脚本不关闭、不改状态也不删除任何Bug，不把人工确认伪造成普通QA证据；该结果标记为非正式发布候选。
+这条路径可跳过test部署、TestHub测试计划/用例结果、QA manifest和未关闭缺陷业务门禁，但不能跳过需求范围聚合。仍必须满足：项目与编号唯一、测试任务正式`PARENT/ASSOCIATED`关系正确、每个非取消开发任务唯一映射测试任务、兄弟测试任务均已完成、状态在允许边界内、确认人可由当前PAT用户回读、关联缺陷快照已记录，写入后两侧状态和`oneos.qa-manual-complete/v1`审计区块可回读。脚本不关闭、不改状态也不删除任何Bug，不把人工确认伪造成普通QA证据；该结果标记为非正式发布候选。
 
 ## 发布候选交接
 

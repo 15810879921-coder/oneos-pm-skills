@@ -85,6 +85,8 @@ def command_resolve(args: argparse.Namespace) -> int:
     executable = core.find_aliyun()
     core.require_auth_env()
     end = "Web" if args.delivery_end == "PC" else args.delivery_end
+    target = Path(args.output) if args.output else core.output_dir() / \
+        f"test-scope-{args.requirement_sn.lower()}-{end.lower()}-{args.development_task_sn.lower()}.json"
     plans = list_plans(executable, args.project_id)
     exact = [plan for plan in plans if exact_requirement_match(
         str(plan.get("name") or ""), args.requirement_sn)]
@@ -100,15 +102,26 @@ def command_resolve(args: argparse.Namespace) -> int:
         selected = exact[0]
         match_mode = "requirement-number"
     elif len(exact) > 1:
-        payload = {"decision": "ambiguous-plan", "requirement": args.requirement_sn,
+        payload = {"schemaVersion": "oneos.test-scope-resolution/v2",
+                   "decision": "ambiguous-plan", "requirement": args.requirement_sn,
+                   "developmentTask": args.development_task_sn, "deliveryEnd": end,
+                   "testTaskRequired": True,
                    "plans": [{"id": str(item.get("testPlanIdentifier") or ""), "name": item.get("name")}
                              for item in exact]}
+        write_receipt(target, payload)
+        payload["receipt"] = str(target)
         print(json.dumps(payload, ensure_ascii=False, indent=2))
         return 3
     else:
-        payload = {"decision": "no-formal-plan", "requirement": args.requirement_sn,
+        payload = {"schemaVersion": "oneos.test-scope-resolution/v2",
+                   "decision": "test-task-required", "requirement": args.requirement_sn,
+                   "developmentTask": args.development_task_sn,
                    "deliveryEnd": end, "matchedBy": "requirement-number",
-                   "note": "未发现名称含精确需求编号的计划；历史计划须显式指定testPlanId。"}
+                   "testTaskRequired": True, "testMode": "mandatory-test-task",
+                   "testPlan": None, "scopeDirectories": [],
+                   "note": "未发现正式测试计划；仍须为当前开发任务创建独立【测试】任务并由QA完成。"}
+        write_receipt(target, payload)
+        payload["receipt"] = str(target)
         print(json.dumps(payload, ensure_ascii=False, indent=2))
         return 0
 
@@ -128,21 +141,22 @@ def command_resolve(args: argparse.Namespace) -> int:
             selected_directories.append(directory)
     decision = "formal-plan" if selected_directories else "scope-unconfigured"
     payload = {
-        "schemaVersion": "oneos.test-scope-resolution/v1",
+        "schemaVersion": "oneos.test-scope-resolution/v2",
         "decision": decision,
         "projectId": args.project_id,
         "requirement": args.requirement_sn,
+        "developmentTask": args.development_task_sn,
         "deliveryEnd": end,
+        "testTaskRequired": True,
+        "testMode": "formal-plan" if selected_directories else "mandatory-test-task",
         "testPlan": {"id": plan_id, "name": selected.get("name"), "matchMode": match_mode},
         "scopeDirectories": selected_directories,
         "untaggedDirectoryCount": len(untagged),
     }
-    target = Path(args.output) if args.output else core.output_dir() / \
-        f"test-scope-{args.requirement_sn.lower()}-{end.lower()}.json"
     write_receipt(target, payload)
     payload["receipt"] = str(target)
     print(json.dumps(payload, ensure_ascii=False, indent=2))
-    return 0 if decision == "formal-plan" else 4
+    return 0
 
 
 def main() -> int:
@@ -151,6 +165,7 @@ def main() -> int:
     resolve = sub.add_parser("resolve")
     resolve.add_argument("--project-id", required=True)
     resolve.add_argument("--requirement-sn", required=True)
+    resolve.add_argument("--development-task-sn", required=True)
     resolve.add_argument("--delivery-end", required=True, choices=("Web", "PC", "小程序", "跨端"))
     resolve.add_argument("--test-plan-id")
     resolve.add_argument("--output")

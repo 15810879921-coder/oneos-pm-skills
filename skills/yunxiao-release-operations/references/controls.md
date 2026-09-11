@@ -101,7 +101,7 @@ $yunxiao-release-operations
 
 - A：选入、状态测试完成且可由本迭代交付正式关联唯一反查，进入本批。
 - B：迭代内未选入/正式延期，记录但不阻塞、不进入本批。
-- C：选入但需求未到`测试完成`，或其`testMode`门禁未通过。`formal-plan`/`qa-requested-exception`要求测试任务完成且已有必需用例通过；`lightweight-verification`要求轻量验证通过并绑定可信交付版本，不要求测试任务。
+- C：选入但需求未到`测试完成`，或其`testMode`门禁未通过。每个非取消开发任务必须唯一映射一个已完成测试任务；`formal-plan`/`mandatory-test-task`/遗留`qa-requested-exception`存在必需用例时还必须通过；`lightweight-verification`一律阻断。
 - D：跨项目/跨迭代/迭代交付到需求的正式关系缺失或冲突/编号不存在，阻塞。
 
 项目、精确源事项和关系方向均唯一时，可创建或复用唯一顶层`【发版】`草稿并冻结A/B/C/D与缺口；C/D存在或A为空时状态为`准备不通过`，禁止`执行发布`。只有A非空且C/D为空时才标记`准备完成`。身份歧义、跨项目或来源归属冲突零写入。**Web**在准备完成前按[release-code-ledger.md](release-code-ledger.md)验证/补录代码并冻结组件矩阵；**小程序**记录跳过渠道。标准入口以迭代为发现起点，例外入口以精确需求/交付ID和原因起点；本Skill不写或改变发版任务迭代字段，既有迭代字段只作历史元数据。完整契约见[release-batch.md](release-batch.md)。

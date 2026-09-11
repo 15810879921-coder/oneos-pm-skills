@@ -25,9 +25,14 @@ def item(**updates):
         "iterationId": "I-1",
         "formallyInIteration": True,
         "requirementStatus": "测试完成",
-        "testMode": "formal-plan",
-        "testTaskStatus": "已完成",
-        "hasRequiredCases": False,
+        "developmentTasks": [{"id": "DEV-1", "status": "已完成"}],
+        "testTasks": [{
+            "id": "TEST-1",
+            "developmentTaskId": "DEV-1",
+            "status": "已完成",
+            "testMode": "formal-plan",
+            "hasRequiredCases": False,
+        }],
         "bugs": [],
     }
     value.update(updates)
@@ -46,34 +51,69 @@ class ReleaseScopeClassifierTests(unittest.TestCase):
     def test_formal_plan_requires_completed_task_and_existing_cases_to_pass(self):
         self.assertTrue(MODULE.classify(payload(item()))["releaseReady"])
 
-        task_gap = MODULE.classify(payload(item(testTaskStatus="处理中")))
+        task_gap = MODULE.classify(payload(item(testTasks=[{
+            "id": "TEST-1", "developmentTaskId": "DEV-1", "status": "处理中",
+            "testMode": "formal-plan", "hasRequiredCases": False,
+        }])))
         self.assertFalse(task_gap["releaseReady"])
         self.assertIn(
-            "formal-plan测试任务不是已完成",
+            "测试任务TEST-1不是已完成",
             task_gap["C_selectedIncomplete"][0]["reasons"],
         )
 
         case_gap = MODULE.classify(
-            payload(item(hasRequiredCases=True, requiredCaseStatus="failed"))
+            payload(item(testTasks=[{
+                "id": "TEST-1", "developmentTaskId": "DEV-1", "status": "已完成",
+                "testMode": "formal-plan", "hasRequiredCases": True,
+                "requiredCaseStatus": "failed",
+            }]))
         )
         self.assertIn(
-            "formal-plan必需用例未通过",
+            "测试任务TEST-1必需用例未通过",
             case_gap["C_selectedIncomplete"][0]["reasons"],
         )
 
-    def test_lightweight_verification_does_not_require_a_test_task(self):
+    def test_lightweight_verification_is_blocked_even_when_it_passed(self):
         result = MODULE.classify(
             payload(
                 item(
-                    testMode="lightweight-verification",
-                    testTaskStatus=None,
-                    hasRequiredCases=None,
-                    lightweightVerificationStatus="passed",
-                    trustedDeliveryVersion="commit:abc123",
+                    testTasks=[{
+                        "id": "TEST-1", "developmentTaskId": "DEV-1", "status": "已完成",
+                        "testMode": "lightweight-verification", "hasRequiredCases": False,
+                    }],
                 )
             )
         )
-        self.assertTrue(result["releaseReady"])
+        self.assertFalse(result["releaseReady"])
+        self.assertIn(
+            "测试任务TEST-1仍使用已停用的轻量验证模式",
+            result["C_selectedIncomplete"][0]["reasons"],
+        )
+
+    def test_every_development_task_requires_exactly_one_completed_test_task(self):
+        missing = MODULE.classify(payload(item(
+            developmentTasks=[
+                {"id": "DEV-1", "status": "已完成"},
+                {"id": "DEV-2", "status": "已完成"},
+            ],
+        )))
+        self.assertFalse(missing["releaseReady"])
+        self.assertIn(
+            "开发任务DEV-2缺少对应测试任务",
+            missing["C_selectedIncomplete"][0]["reasons"],
+        )
+
+        duplicate = MODULE.classify(payload(item(testTasks=[
+            {"id": "TEST-1", "developmentTaskId": "DEV-1", "status": "已完成",
+             "testMode": "mandatory-test-task", "hasRequiredCases": False},
+            {"id": "TEST-2", "developmentTaskId": "DEV-1", "status": "已完成",
+             "testMode": "mandatory-test-task", "hasRequiredCases": False},
+        ])))
+        self.assertFalse(duplicate["releaseReady"])
+        self.assertIn(
+            "开发任务DEV-1存在多个测试任务",
+            duplicate["C_selectedIncomplete"][0]["reasons"],
+        )
 
     def test_any_unclosed_bug_blocks_release_readiness(self):
         result = MODULE.classify(
@@ -92,7 +132,10 @@ class ReleaseScopeClassifierTests(unittest.TestCase):
         )
 
     def test_safe_readiness_gap_can_persist_draft_but_cross_project_cannot(self):
-        safe = MODULE.classify(payload(item(testTaskStatus="处理中")))
+        safe = MODULE.classify(payload(item(testTasks=[{
+            "id": "TEST-1", "developmentTaskId": "DEV-1", "status": "处理中",
+            "testMode": "formal-plan", "hasRequiredCases": False,
+        }])))
         self.assertTrue(safe["canPersistDraft"])
         self.assertFalse(safe["releaseReady"])
 

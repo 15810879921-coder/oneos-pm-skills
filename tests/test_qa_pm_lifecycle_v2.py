@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -19,8 +20,21 @@ def load_module(name: str, relative: str):
     return module
 
 
-CREATE_BUG = load_module("qa_create_bug", "skills/YunxiaoQA/scripts/create_bug.py")
-RETEST = load_module("qa_bug_retest", "skills/YunxiaoQA/scripts/yunxiao_cli_bug_retest.py")
+QA_SCRIPTS = ROOT / "skills" / "YunxiaoQA" / "scripts"
+saved_modules = {
+    name: sys.modules.pop(name)
+    for name in ("yunxiao_cli_runtime", "yunxiao_cli_testhub")
+    if name in sys.modules
+}
+sys.path.insert(0, str(QA_SCRIPTS))
+try:
+    CREATE_BUG = load_module("qa_create_bug", "skills/YunxiaoQA/scripts/create_bug.py")
+    RETEST = load_module("qa_bug_retest", "skills/YunxiaoQA/scripts/yunxiao_cli_bug_retest.py")
+finally:
+    for name in ("yunxiao_cli_runtime", "yunxiao_cli_testhub"):
+        sys.modules.pop(name, None)
+    sys.modules.update(saved_modules)
+    sys.path.remove(str(QA_SCRIPTS))
 ACCEPT = load_module("pm_accept_release", "skills/YunxiaoPM/scripts/accept_release.py")
 
 
