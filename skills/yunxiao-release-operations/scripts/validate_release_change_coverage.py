@@ -7,6 +7,7 @@ Scope decisions remain evidence-backed judgments; graph reachability is not busi
 from __future__ import annotations
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 import hashlib
 import json
 import os
@@ -18,6 +19,7 @@ import tempfile
 from typing import Any
 
 HISTORY_SCHEMA = "oneos.release-history/v1"
+HISTORY_BATCH_SCHEMA = "oneos.release-history-batch/v1"
 COVERAGE_SCHEMA = "oneos.release-tree-coverage/v1"
 
 
@@ -43,6 +45,26 @@ def official_reader():
     return read
 
 
+def collect_pages(repository: str, head: str, reader) -> list[dict]:
+    pages = []
+    seen = set()
+    for page in range(1, 10001):
+        call = request(repository, head, page)
+        rows = reader(call)
+        if not isinstance(rows, list):
+            raise ValueError("Codeup提交列表返回值不是数组")
+        pages.append({"request": call, "commits": rows})
+        if not rows:
+            break
+        ids = [row.get("id") for row in rows if isinstance(row, dict)]
+        if len(ids) != len(rows) or any(not value or value in seen for value in ids):
+            raise ValueError("提交分页重复或无有效提交ID，保留已有证据后重新读取")
+        seen.update(ids)
+    else:
+        raise ValueError("提交历史超过读取上限，不能声明完整")
+    return pages
+
+
 def collect(repository: str, source: str, target: str, reader=None) -> dict:
     if any(not re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", value) for value in (source, target)):
         raise ValueError("历史采集必须使用完整冻结提交SHA，不能使用可变分支名")
@@ -51,27 +73,57 @@ def collect(repository: str, source: str, target: str, reader=None) -> dict:
         reader = official_reader()
 
     result = {"schemaVersion": HISTORY_SCHEMA, "repositoryId": repository,
-              "sourceHead": source, "targetBaseCommit": target}
-    for key, head in (("sourcePages", source), ("targetPages", target)):
-        pages = []
-        seen = set()
-        for page in range(1, 10001):
-            call = request(repository, head, page)
-            rows = reader(call)
-            if not isinstance(rows, list):
-                raise ValueError("Codeup提交列表返回值不是数组")
-            pages.append({"request": call, "commits": rows})
-            if not rows:
-                break
-            ids = [row.get("id") for row in rows if isinstance(row, dict)]
-            if len(ids) != len(rows) or any(not value or value in seen for value in ids):
-                raise ValueError("提交分页重复或无有效提交ID，保留已有证据后重新读取")
-            seen.update(ids)
-        else:
-            raise ValueError("提交历史超过读取上限，不能声明完整")
-        result[key] = pages
+              "sourceHead": source, "targetBaseCommit": target,
+              "sourcePages": collect_pages(repository, source, reader),
+              "targetPages": collect_pages(repository, target, reader)}
     history_graphs(result, repository, source, target)
     return result
+
+
+def collect_batch(value: dict, reader=None, workers: int = 4) -> dict:
+    """Collect unique immutable heads once and assemble all requested snapshots.
+
+    Sources and targets are independent reads. Identical target bases in one
+    repository are fetched once, while every result retains the exact evidence
+    shape required by the merge-plan validator.
+    """
+    if not isinstance(value, dict) or value.get("schemaVersion") != HISTORY_BATCH_SCHEMA:
+        raise ValueError(f"批量历史输入schemaVersion必须为{HISTORY_BATCH_SCHEMA}")
+    requests = value.get("requests")
+    if not isinstance(requests, list) or not requests or len(requests) > 64:
+        raise ValueError("批量历史requests必须为1到64项")
+    ids = [row.get("id") for row in requests if isinstance(row, dict)]
+    if len(ids) != len(requests) or any(not isinstance(item, str) or not item for item in ids) or len(set(ids)) != len(ids):
+        raise ValueError("批量历史请求ID必须完整且唯一")
+    normalized = []
+    for row in requests:
+        repository = str(row.get("repositoryId") or "")
+        source = str(row.get("sourceHead") or "")
+        target = str(row.get("targetBaseCommit") or "")
+        if not repository or any(not re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", sha)
+                                 for sha in (source, target)):
+            raise ValueError("批量历史必须提供仓库及完整冻结源/目标SHA")
+        normalized.append((row["id"], repository, source, target))
+    if reader is None:
+        reader = official_reader()
+    heads = list(dict.fromkeys((repository, head)
+                               for _, repository, source, target in normalized
+                               for head in (source, target)))
+    if not isinstance(workers, int) or not 1 <= workers <= 8:
+        raise ValueError("批量历史workers必须为1到8")
+    with ThreadPoolExecutor(max_workers=min(workers, len(heads))) as executor:
+        futures = {key: executor.submit(collect_pages, key[0], key[1], reader) for key in heads}
+        pages = {key: future.result() for key, future in futures.items()}
+    results = []
+    for request_id, repository, source, target in normalized:
+        snapshot = {"schemaVersion": HISTORY_SCHEMA, "repositoryId": repository,
+                    "sourceHead": source, "targetBaseCommit": target,
+                    "sourcePages": pages[(repository, source)],
+                    "targetPages": pages[(repository, target)]}
+        history_graphs(snapshot, repository, source, target)
+        results.append({"id": request_id, "historySnapshot": snapshot})
+    return {"schemaVersion": HISTORY_BATCH_SCHEMA, "results": results,
+            "uniqueHistoryReads": len(heads), "requestedSnapshots": len(results)}
 
 
 def graph(pages: Any, repository: str, head: str) -> dict[str, list[str]]:
@@ -267,6 +319,29 @@ def validate_plan(plan: dict) -> None:
             raise ValueError("仓库与来源提交集合不一致")
 
 
+def reuse_history(plan: dict, repository: str, source: str, target: str) -> dict:
+    """Reuse one immutable history snapshot from a valid, hashed merge plan.
+
+    This is intentionally stricter than a cache lookup: the complete plan is
+    validated first, then repository/source/target must identify exactly one
+    frozen source. A changed SHA therefore requires a fresh official collect.
+    """
+    validate_plan(plan)
+    matches = []
+    for item in plan["items"]:
+        if (str(item.get("repositoryId")) != repository or
+                item.get("targetBaseCommit") != target):
+            continue
+        for frozen in item.get("sources") or []:
+            if frozen.get("sourceHead") == source:
+                matches.append(frozen.get("historySnapshot"))
+    if len(matches) != 1:
+        raise ValueError("仓库、冻结源SHA和目标基线未唯一命中有效计划；必须重新官方采集")
+    snapshot = matches[0]
+    history_graphs(snapshot, repository, source, target)
+    return json.loads(json.dumps(snapshot, ensure_ascii=False))
+
+
 def repository_key(item: dict) -> str:
     return "|".join(str(item[key]) for key in ("repositoryId", "componentId", "targetBranch", "deploymentTarget"))
 
@@ -399,6 +474,16 @@ def main() -> int:
     gather.add_argument("--source-head", required=True)
     gather.add_argument("--target-base", required=True)
     gather.add_argument("--output", required=True, type=Path)
+    reuse = sub.add_parser("reuse-history")
+    reuse.add_argument("--plan", required=True, type=Path)
+    reuse.add_argument("--repository-id", required=True)
+    reuse.add_argument("--source-head", required=True)
+    reuse.add_argument("--target-base", required=True)
+    reuse.add_argument("--output", required=True, type=Path)
+    batch = sub.add_parser("collect-batch")
+    batch.add_argument("--input", required=True, type=Path)
+    batch.add_argument("--workers", type=int, default=4)
+    batch.add_argument("--output", required=True, type=Path)
     verify = sub.add_parser("verify-tree")
     verify.add_argument("--plan", required=True, type=Path)
     verify.add_argument("--repository-key", required=True)
@@ -410,6 +495,12 @@ def main() -> int:
     try:
         if args.command == "collect":
             result = collect(args.repository_id, args.source_head, args.target_base)
+        elif args.command == "reuse-history":
+            plan = json.loads(args.plan.read_text(encoding="utf-8-sig"))
+            result = reuse_history(plan, args.repository_id, args.source_head, args.target_base)
+        elif args.command == "collect-batch":
+            value = json.loads(args.input.read_text(encoding="utf-8-sig"))
+            result = collect_batch(value, workers=args.workers)
         else:
             plan = json.loads(args.plan.read_text(encoding="utf-8-sig"))
             matches = [item for item in plan["items"] if repository_key(item) == args.repository_key]

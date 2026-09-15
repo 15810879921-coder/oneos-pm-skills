@@ -5,11 +5,14 @@
 ## 准备发布：先查全，再决定范围
 
 1. 通过正式关系从源交付找到开发任务及其分支、关联修复缺陷。交付是汇总节点，不创建也不拥有业务分支。只有无关联工作项的独立缺陷可以作为独立缺陷分支所有者；有测试、需求或交付关系时先追踪开发链，不能降级新开 fix。发布候选分支是执行产物，与业务分支所有者分开。
-2. 从官方 Codeup/Flow 核验仓库、目标分支及其 HEAD，冻结完整源 SHA 与目标基线 SHA；分支已删除时可用有证据的 MR 源 SHA。每个源运行：
+2. 从官方 Codeup/Flow 核验仓库、目标分支及其 HEAD，冻结完整源 SHA 与目标基线 SHA；分支已删除时可用有证据的 MR 源 SHA。单个源可运行 `collect`；同批多个源/仓库优先运行 `collect-batch`，独立冻结头并发读取、相同目标历史只读一次：
 
 ```text
 skill-run validate_release_change_coverage.py collect --repository-id <仓库ID> --source-head <完整源SHA> --target-base <完整目标SHA> --output <history.json>
+skill-run validate_release_change_coverage.py collect-batch --input <history-batch.json> --workers 4 --output <history-batch-result.json>
 ```
+
+`collect-batch` 输入为 `oneos.release-history-batch/v1`，每项包含唯一 `id`、`repositoryId`、`sourceHead`、`targetBaseCommit`。最多并发 8 个不可变头；同仓同 SHA 自动去重，但每个输出快照仍保留完整源/目标证据。
 
 采集器通过本 Skill 官方 CLI 网关按 SHA 读取源和目标的提交历史，每页最多 100 条，读至空页，不使用日期、标题、路径过滤。它检查分页、父关系、HEAD 可达性；任何源记录遗漏都不能靠 `sourceHistoryComplete=true` 补齐。返回数据只含读取参数、提交 ID 和父关系，不保存凭据。网络/权限失败保留已有计划，恢复后重采集；不能改写“已完整”声明继续。
 
@@ -38,6 +41,20 @@ skill-run validate_release_change_coverage.py verify-tree --plan <merge-plan.jso
 含竖线的 repository-key 在 shell 中须整体加引号。核验器验证计划哈希及官方父关系，在临时 Git 仓库/索引中从冻结基线重放精确补丁，将预期根树与官方实际根树比较；检查增加、修改、删除、重命名、二进制和文件模式。只有最终内容完全一致才生成核验结果，官方根目录记录保存在 `officialTreeRead` 内。离线测试可用 `--local-only` 从本地提交取实际树，此结果不替代正式执行的官方读回。不会调用 Git 网络、checkout、merge 或生产流水线。
 
 `target-equivalent` 及已在目标祖先链中的选定提交，先用反向补丁检查当前基线中的内容仍存在。后续合法修改导致旧补丁无法独立证明时会报告需要补证/修订，不能把失败当作“代码必然缺失”，更不能盲目重放或重试；本实现不自动裁决复杂语义等价。无冲突重放失败时同样保留双方代码和旧证据，按已有授权/修订规范处理。
+
+候选提交不是新的业务来源。发生冲突修订或生成干净候选后，计划修订必须保留原 `sources`、`historySnapshot`、逐提交判定、精确提交和重放顺序；候选 SHA 只写入 `candidateRevision`/`candidateCoverage`。禁止把候选分支改造成 source 再重扫候选与目标全历史。冻结源 SHA、目标基线和计划哈希未变时，可从有效计划复用历史：
+
+```text
+skill-run validate_release_change_coverage.py reuse-history --plan <merge-plan.json> --repository-id <仓库ID> --source-head <原冻结源SHA> --target-base <原目标基线SHA> --output <history.json>
+```
+
+任何 SHA、仓库或计划哈希变化都会拒绝复用，并要求重新官方采集。
+
+## 代码冲突自动解析与续跑
+
+冲突不是默认停机点。`执行发布`已授权的精确提交在候选重放或 MR 中发生冲突时，先保存 base/ours/theirs 与冲突路径；逐文件只做可解释的三方合并：保留生产基线的已有修复，同时纳入本次冻结提交的必要逻辑。解析后必须重新运行完整重放、范围 diff、编译/测试、候选树覆盖和目标漂移门禁，并以明确原因生成下一版 mergePlan 后接续同一次执行。
+
+只有出现无法判断的业务语义、范围外文件、必要测试失败、目标继续漂移或无法证明最终树等情况，才停止并告知用户。不得通过整支合并、删除任一侧逻辑、跳过测试或 force merge 消除冲突。
 
 执行状态机的调用约束：
 

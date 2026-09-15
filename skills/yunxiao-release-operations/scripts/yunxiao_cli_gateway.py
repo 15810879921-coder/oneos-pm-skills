@@ -319,6 +319,30 @@ def validate_codeup_file_commit(action: dict[str, Any], authority: str) -> None:
     if authority != "execute":
         raise core.AdapterError("干净发布候选代码提交必须使用execute权限。")
     args = action["args"]
+    body_file = flag_value(args, "--body-file") or ""
+    if body_file:
+        if len(args) != 4 or args[0] != "--repository-id" or args[2] != "--body-file":
+            raise core.AdapterError("代码文件body-file模式只允许repository-id和body-file参数。")
+        path = Path(body_file)
+        if not path.is_absolute() or not path.is_file():
+            raise core.AdapterError("代码文件body-file必须是已存在的绝对路径。")
+        raw = path.read_bytes()
+        try:
+            body = json.loads(raw.decode("utf-8-sig"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise core.AdapterError(f"代码文件body-file不是有效UTF-8 JSON：{exc}") from exc
+        if not isinstance(body, dict) or set(body) != {"branch", "commit_message", "actions"}:
+            raise core.AdapterError("代码文件body-file只允许branch、commit_message和actions。")
+        if not isinstance(body.get("actions"), list):
+            raise core.AdapterError("代码文件body-file的actions必须是数组。")
+        virtual_args = ["--repository-id", args[1], "--branch", body.get("branch", ""),
+                        "--commit-message", body.get("commit_message", "")]
+        for group in body["actions"]:
+            virtual_args.extend(["--actions", json.dumps(
+                group, ensure_ascii=False, separators=(",", ":"))])
+        validate_codeup_file_commit({"operation": action["operation"], "args": virtual_args}, authority)
+        action["bodySha256"] = hashlib.sha256(raw).hexdigest()
+        return
     repository_id = flag_value(args, "--repository-id") or ""
     branch = flag_value(args, "--branch") or ""
     commit_message = flag_value(args, "--commit-message") or ""
