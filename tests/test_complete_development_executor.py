@@ -296,7 +296,7 @@ class CompleteDevelopmentExecutorTests(unittest.TestCase):
         state = suite_state()
         self.assertTrue(EXECUTOR._verify_suite_state(state)["verified"])
         state["suiteVersion"] = "10.1.0"
-        with self.assertRaisesRegex(GATEWAY.core.AdapterError, "必须全部回读为10.1.2"):
+        with self.assertRaisesRegex(GATEWAY.core.AdapterError, "必须全部回读为10.1.3"):
             EXECUTOR._verify_suite_state(state)
 
     def test_critical_failure_stops_later_stages_and_persists_partial_receipt(self):

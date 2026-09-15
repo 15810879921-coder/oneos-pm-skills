@@ -11,7 +11,7 @@ from pathlib import Path
 
 
 SCHEMA = "oneos.lifecycle-suite-state/v1"
-SUITE_VERSION = "10.1.2"
+SUITE_VERSION = "10.1.3"
 REQUIRED = {
     "YunxiaoPM", "yunxiao-development-delivery", "development-brain",
     "YunxiaoQA", "yunxiao-release-operations",

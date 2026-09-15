@@ -20,7 +20,7 @@ import verify_lifecycle_suite as suite
 SCHEMA = "oneos.complete-development-plan/v1"
 PREFLIGHT_SCHEMA = "oneos.complete-development-preflight/v1"
 RECEIPT_SCHEMA = "oneos.complete-development-receipt/v1"
-SUITE_VERSION = "10.1.2"
+SUITE_VERSION = "10.1.3"
 TEST_SCOPE_START = "<!-- ONEOS_TEST_SCOPE_START -->"
 TEST_SCOPE_END = "<!-- ONEOS_TEST_SCOPE_END -->"
 ALLOWED_TEST_MODES = {"formal-plan", "mandatory-test-task"}

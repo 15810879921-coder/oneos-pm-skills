@@ -20,10 +20,10 @@ ROUTES: list[tuple[str, tuple[str, ...]]] = [
     ("start_bug", ("开始修复", "开始处理bug", "开始处理缺陷")),
     ("fix_bug", ("修复bug", "修复缺陷", "把这个问题修掉", "解决这个bug")),
     ("complete_development", ("完成开发", "开发完成", "交给测试", "做完了")),
-    ("submit", ("提交代码", "推送代码", "提mr", "创建mr", "把代码提交")),
+    ("submit", ("提交代码", "代码提交", "提交到远端", "推送代码", "推到远端", "提mr", "创建mr", "把代码提交")),
     ("test_deploy", ("上测试", "部署测试", "先测一下", "测试环境看看")),
     ("start_development", ("开始开发", "开始做", "进入开发")),
-    ("implement", ("实现", "开发", "修改代码", "优化", "改一下", "改造", "重构", "修复")),
+    ("implement", ("实现", "开发", "做完", "修改代码", "优化", "改一下", "改造", "重构", "修复")),
 ]
 
 DISCUSSION = (
@@ -83,6 +83,8 @@ def route(text: str, context: dict[str, Any]) -> dict[str, Any]:
     canonical_command = None
     if action == "complete_development" and work_item_serial and len(text_serials) <= 1:
         canonical_command = f"完成开发:任务={work_item_serial}"
+    elif action == "implement" and work_item_serial and len(text_serials) <= 1:
+        canonical_command = f"开发任务:任务={work_item_serial}"
     return {
         "schemaVersion": SCHEMA,
         "originalText": text,
@@ -92,6 +94,8 @@ def route(text: str, context: dict[str, Any]) -> dict[str, Any]:
         "workItemSerial": work_item_serial,
         "canonicalCommand": canonical_command,
         "serialCandidates": text_serials,
+        "autoCompleteOnSuccess": action == "implement" and bool(work_item_serial or unique_mapping),
+        "assessCompletionAfterSubmit": action == "submit",
         "deliveryUnitId": delivery_unit_id or None,
         "requiresItemResolution": requires_resolution,
         "mayCreateTempBranch": action in {"start_development", "implement", "fix_bug"} and not unique_mapping,

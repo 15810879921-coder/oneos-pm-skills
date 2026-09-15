@@ -86,6 +86,25 @@ class DeliveryLifecycleV2Tests(unittest.TestCase):
             with self.subTest(text=text):
                 self.assertEqual(ROUTER.route(text, {})["action"], "audit")
 
+    def test_development_task_is_one_click_through_test_handoff(self):
+        for text in ("开发 ONEOS-983", "实现 ONEOS-983", "把 ONEOS-983 做完"):
+            with self.subTest(text=text):
+                value = ROUTER.route(text, {})
+                self.assertEqual(value["action"], "implement")
+                self.assertEqual(value["canonicalCommand"], "开发任务:任务=ONEOS-983")
+                self.assertTrue(value["autoCompleteOnSuccess"])
+
+    def test_start_development_does_not_auto_complete(self):
+        value = ROUTER.route("开始开发 ONEOS-983", {})
+        self.assertEqual(value["action"], "start_development")
+        self.assertFalse(value["autoCompleteOnSuccess"])
+
+    def test_submit_to_remote_requests_post_submit_completion_assessment(self):
+        value = ROUTER.route("把 ONEOS-983 的代码提交到远端", {})
+        self.assertEqual(value["action"], "submit")
+        self.assertEqual(value["workItemSerial"], "ONEOS-983")
+        self.assertTrue(value["assessCompletionAfterSubmit"])
+
     def test_question_is_read_only_but_clear_action_creates_temporary_mapping(self):
         audit = ROUTER.route("能不能修改这段代码？", {})
         self.assertEqual(audit["action"], "audit")
