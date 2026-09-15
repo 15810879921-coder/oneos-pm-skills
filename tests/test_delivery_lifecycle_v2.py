@@ -52,6 +52,40 @@ def chinese_summary():
 
 
 class DeliveryLifecycleV2Tests(unittest.TestCase):
+    def test_complete_development_natural_language_normalizes_to_canonical_command(self):
+        variants = (
+            "完成开发 ONEOS-983",
+            "ONEOS-983 开发完成了",
+            "ONEOS-983 已经做完了，交测试",
+            "把 ONEOS-983 完成开发并转测试",
+            "代码已经合并，完成 ONEOS-983 的开发",
+        )
+        for text in variants:
+            with self.subTest(text=text):
+                value = ROUTER.route(text, {})
+                self.assertEqual(value["action"], "complete_development")
+                self.assertEqual(value["workItemSerial"], "ONEOS-983")
+                self.assertEqual(value["canonicalCommand"], "完成开发:任务=ONEOS-983")
+
+    def test_complete_development_uses_unique_context_when_text_omits_id(self):
+        value = ROUTER.route(
+            "这个开发做完了，交给测试",
+            {"workItemId": "DEV-ID", "workItemSerial": "ONEOS-983", "mappingUnique": True},
+        )
+        self.assertEqual(value["canonicalCommand"], "完成开发:任务=ONEOS-983")
+        self.assertFalse(value["requiresItemResolution"])
+
+    def test_complete_development_with_multiple_ids_does_not_create_canonical_command(self):
+        value = ROUTER.route("ONEOS-983 和 ONEOS-984 都开发完成了", {})
+        self.assertEqual(value["action"], "complete_development")
+        self.assertIsNone(value["canonicalCommand"])
+        self.assertEqual(value["serialCandidates"], ["ONEOS-983", "ONEOS-984"])
+
+    def test_question_about_complete_development_stays_read_only(self):
+        for text in ("开发完成命令现在会跑测试用例吗", "怎么用自然语言唤醒完成开发"):
+            with self.subTest(text=text):
+                self.assertEqual(ROUTER.route(text, {})["action"], "audit")
+
     def test_question_is_read_only_but_clear_action_creates_temporary_mapping(self):
         audit = ROUTER.route("能不能修改这段代码？", {})
         self.assertEqual(audit["action"], "audit")

@@ -33,6 +33,58 @@ def items(value: Any) -> list[dict[str, Any]]:
     return []
 
 
+def testcase_id(item: dict[str, Any]) -> str:
+    for key in ("testcaseIdentifier", "workitemIdentifier", "identifier", "id"):
+        if item.get(key):
+            return str(item[key])
+    nested = item.get("testcase")
+    return testcase_id(nested) if isinstance(nested, dict) else ""
+
+
+def result_id(item: dict[str, Any]) -> str:
+    for key in ("testResultIdentifier", "resultIdentifier", "executionIdentifier"):
+        if item.get(key):
+            return str(item[key])
+    return ""
+
+
+def result_status(item: dict[str, Any]) -> str:
+    for key in ("status", "testResultStatus", "resultStatus"):
+        value = item.get(key)
+        if isinstance(value, str):
+            return value.upper()
+        if isinstance(value, dict):
+            for nested in ("identifier", "name", "value"):
+                if value.get(nested):
+                    return str(value[nested]).upper()
+    return ""
+
+
+def list_directory_cases(executable: str, plan_id: str,
+                         directories: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    selected: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for directory in directories:
+        directory_id = str(directory["id"])
+        response = core.run_devops(executable, [
+            "test-hub-get-test-result-list",
+            "--test-plan-identifier", plan_id,
+            "--directory-identifier", directory_id,
+        ])
+        for item in items(response):
+            case_id = testcase_id(item)
+            if not case_id or case_id in seen:
+                continue
+            seen.add(case_id)
+            selected.append({
+                "directoryId": directory_id,
+                "testcaseId": case_id,
+                "testResultId": result_id(item) or None,
+                "status": result_status(item) or None,
+            })
+    return selected
+
+
 def list_plans(executable: str, project_id: str) -> list[dict[str, Any]]:
     result: list[dict[str, Any]] = []
     for page in range(1, 101):
@@ -120,7 +172,8 @@ def command_resolve(args: argparse.Namespace) -> int:
                    "developmentTask": args.development_task_sn,
                    "deliveryEnd": end, "matchedBy": "requirement-number",
                    "testTaskRequired": True, "testMode": "mandatory-test-task",
-                   "testPlan": None, "scopeDirectories": [],
+                   "testPlan": None, "scopeDirectories": [], "directoryIds": [],
+                   "selectedCaseIds": [], "selectedCaseResults": [],
                    "note": "未发现正式测试计划；仍须为当前开发任务创建独立【测试】任务并由QA完成。"}
         write_receipt(target, payload)
         payload["receipt"] = str(target)
@@ -141,7 +194,16 @@ def command_resolve(args: argparse.Namespace) -> int:
             continue
         if match.group(1) == end:
             selected_directories.append(directory)
-    decision = "formal-plan" if selected_directories else "scope-unconfigured"
+    selected_cases = list_directory_cases(executable, plan_id, selected_directories)
+    if not selected_directories:
+        decision = "scope-unconfigured"
+        test_mode = "mandatory-test-task"
+    elif not selected_cases:
+        decision = "scope-empty"
+        test_mode = "mandatory-test-task"
+    else:
+        decision = "formal-plan"
+        test_mode = "formal-plan"
     payload = {
         "schemaVersion": "oneos.test-scope-resolution/v2",
         "decision": decision,
@@ -150,11 +212,16 @@ def command_resolve(args: argparse.Namespace) -> int:
         "developmentTask": args.development_task_sn,
         "deliveryEnd": end,
         "testTaskRequired": True,
-        "testMode": "formal-plan" if selected_directories else "mandatory-test-task",
+        "testMode": test_mode,
         "testPlan": {"id": plan_id, "name": selected.get("name"), "matchMode": match_mode},
         "scopeDirectories": selected_directories,
+        "directoryIds": [str(item["id"]) for item in selected_directories],
+        "selectedCaseIds": [item["testcaseId"] for item in selected_cases],
+        "selectedCaseResults": selected_cases,
         "untaggedDirectoryCount": len(untagged),
     }
+    if decision == "scope-empty":
+        payload["note"] = "已配置当前端目录但其中没有正式用例；仍创建独立【测试】任务，由QA补齐或执行人工测试。"
     write_receipt(target, payload)
     payload["receipt"] = str(target)
     print(json.dumps(payload, ensure_ascii=False, indent=2))

@@ -15,30 +15,30 @@
     "client": "codex",
     "skill": "YunxiaoPM",
     "archive": "YunxiaoPM.zip",
-    "sha256": "82bf725875578b2f4b0cf0e55cf637d3663d31d07263c9e9c6e4562a69ca58de"
+    "sha256": "158aa00eb51d830e1e1c5caa49770758dd2527024dc7018cc451fc8629e87ed8"
   },
   {
     "client": "codex",
     "skill": "yunxiao-development-delivery",
     "archive": "yunxiao-development-delivery.zip",
-    "sha256": "5047445c6b92804cde034ff83cced6c640f8fd91959fd039148b6d4c49cd5fe1"
+    "sha256": "2b6e12ff87ff14f264c42628e7040bf00774569f258d5237151596bf609af3fb"
   },
   {
     "client": "codex",
     "skill": "development-brain",
     "archive": "development-brain.zip",
-    "sha256": "ad6169ac1e1c553821dfe1150ced6644c062b7164e6f04c7ffb097a686788997"
+    "sha256": "bdafaaf63449d0d5e77447858c0ea50b71ac70552ea7d63d9ab397d3f679606e"
   },
   {
     "client": "codex",
     "skill": "YunxiaoQA",
     "archive": "YunxiaoQA.zip",
-    "sha256": "77316b701f9fb553679eb180344ed2b90fad02c778dbbaf5b8b5042185842d86"
+    "sha256": "b77777e05e5d0fa23b1d5e891afc9b8fe28615fb6567d8b8f7506fa17a0c68fc"
   },
   {
     "client": "codex",
     "skill": "yunxiao-release-operations",
     "archive": "yunxiao-release-operations.zip",
-    "sha256": "aa0f11bb5189d36224825b474b354f504c8b6d341fd3ad5ac59dd5f959a0fd06"
+    "sha256": "1fbeece6303088d797b873281902375bb3c201b0158f8544b13069745f2e9c93"
   }
 ]

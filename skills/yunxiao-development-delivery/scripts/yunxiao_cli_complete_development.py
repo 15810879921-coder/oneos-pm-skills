@@ -20,7 +20,7 @@ import verify_lifecycle_suite as suite
 SCHEMA = "oneos.complete-development-plan/v1"
 PREFLIGHT_SCHEMA = "oneos.complete-development-preflight/v1"
 RECEIPT_SCHEMA = "oneos.complete-development-receipt/v1"
-SUITE_VERSION = "10.1.1"
+SUITE_VERSION = "10.1.2"
 TEST_SCOPE_START = "<!-- ONEOS_TEST_SCOPE_START -->"
 TEST_SCOPE_END = "<!-- ONEOS_TEST_SCOPE_END -->"
 ALLOWED_TEST_MODES = {"formal-plan", "mandatory-test-task"}
@@ -68,6 +68,24 @@ def _serialized(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True)
 
 
+def _managed_scope(description: str) -> dict[str, Any]:
+    start = description.find(TEST_SCOPE_START)
+    end = description.find(TEST_SCOPE_END)
+    if start < 0 or end <= start:
+        raise core.AdapterError("测试任务描述缺少受管测试范围区块。")
+    body = description[start + len(TEST_SCOPE_START):end].strip()
+    match = re.fullmatch(r"<!--\s*(\{.*\})\s*-->", body, flags=re.DOTALL)
+    if not match:
+        raise core.AdapterError("受管测试范围必须使用oneos.test-scope/v1单行JSON。")
+    try:
+        value = json.loads(match.group(1))
+    except json.JSONDecodeError as error:
+        raise core.AdapterError("受管测试范围JSON无效。") from error
+    if not isinstance(value, dict) or value.get("schemaVersion") != "oneos.test-scope/v1":
+        raise core.AdapterError("受管测试范围schemaVersion必须为oneos.test-scope/v1。")
+    return value
+
+
 def _status_updates(plan: dict[str, Any]) -> list[tuple[str, str | None]]:
     result: list[tuple[str, str | None]] = []
     for action in plan["actions"]:
@@ -104,14 +122,21 @@ def _require_test_readbacks(calls: list[dict[str, Any]], scope: dict[str, Any]) 
         raise core.AdapterError("测试任务回读必须校验负责人等于唯一测试主管。")
     if expect.get("status.displayName") not in {"待处理", "处理中", "已完成"}:
         raise core.AdapterError("测试任务回读必须校验真实测试状态。")
-    description = str(expect.get("description") or "")
-    for required in (
-        TEST_SCOPE_START, TEST_SCOPE_END, str(scope["developmentTaskId"]),
-        str(scope["requirementId"]), str(scope["deliveryId"]), str(scope["testMode"]),
-        str(scope["scopeId"]), str(scope["deliveryEnd"]),
-    ):
-        if required not in description:
-            raise core.AdapterError(f"测试任务描述回读缺少受管范围字段：{required}")
+    managed = _managed_scope(str(expect.get("description") or ""))
+    expected_fields = {
+        "developmentTaskId": str(scope["developmentTaskId"]),
+        "requirementId": str(scope["requirementId"]),
+        "deliveryId": str(scope["deliveryId"]),
+        "testMode": str(scope["testMode"]),
+        "scopeId": str(scope["scopeId"]),
+        "deliveryEnd": str(scope["deliveryEnd"]),
+        "testPlanId": scope["testPlanId"],
+        "directoryIds": scope["directoryIds"],
+        "selectedCaseIds": scope["selectedCaseIds"],
+    }
+    for field, expected in expected_fields.items():
+        if managed.get(field) != expected:
+            raise core.AdapterError(f"测试任务描述回读的{field}与完成开发范围不一致。")
 
     relation_expectations = {
         "PARENT": str(scope["deliveryId"]),
@@ -191,6 +216,18 @@ def validate_plan(value: dict[str, Any]) -> dict[str, Any]:
     for field in required_scope:
         if not valid_ref(scope.get(field)):
             raise core.AdapterError(f"scope.{field}缺少有效值。")
+    for field in ("testPlanId", "directoryIds", "selectedCaseIds"):
+        if field not in scope:
+            raise core.AdapterError(f"scope.{field}必须显式声明。")
+    if scope["testPlanId"] is not None and not valid_ref(scope["testPlanId"]):
+        raise core.AdapterError("scope.testPlanId必须为有效ID或null。")
+    if not isinstance(scope["directoryIds"], list) or not isinstance(scope["selectedCaseIds"], list):
+        raise core.AdapterError("scope.directoryIds和scope.selectedCaseIds必须是数组。")
+    if any(not valid_ref(item) for item in scope["directoryIds"] + scope["selectedCaseIds"]):
+        raise core.AdapterError("测试目录和用例ID不得包含空值。")
+    if len(scope["directoryIds"]) != len(set(map(str, scope["directoryIds"]))) \
+            or len(scope["selectedCaseIds"]) != len(set(map(str, scope["selectedCaseIds"]))):
+        raise core.AdapterError("测试目录和用例ID必须去重。")
     if scope["testMode"] not in ALLOWED_TEST_MODES:
         raise core.AdapterError("testMode只允许formal-plan或mandatory-test-task。")
     if scope["deliveryEnd"] not in {"Web", "小程序", "跨端"}:
@@ -231,12 +268,22 @@ def validate_plan(value: dict[str, Any]) -> dict[str, Any]:
     if scope["testMode"] == "formal-plan":
         test_plan = resolution.get("testPlan")
         directories = resolution.get("scopeDirectories")
+        directory_ids = resolution.get("directoryIds")
+        case_ids = resolution.get("selectedCaseIds")
         if resolution.get("decision") != "formal-plan" \
                 or not isinstance(test_plan, dict) or not valid_ref(test_plan.get("id")) \
-                or not isinstance(directories, list) or not directories:
-            raise core.AdapterError("formal-plan必须包含唯一测试计划和非空端侧目录回执。")
-    elif resolution.get("decision") not in {"test-task-required", "scope-unconfigured"}:
-        raise core.AdapterError("mandatory-test-task必须来自无计划或端侧未配置回执。")
+                or not isinstance(directories, list) or not directories \
+                or not isinstance(directory_ids, list) or not directory_ids \
+                or not isinstance(case_ids, list) or not case_ids:
+            raise core.AdapterError("formal-plan必须包含唯一测试计划、非空端侧目录和具体用例回执。")
+        if str(scope["testPlanId"]) != str(test_plan["id"]) \
+                or scope["directoryIds"] != directory_ids \
+                or scope["selectedCaseIds"] != case_ids:
+            raise core.AdapterError("formal-plan的测试计划、目录或具体用例与解析回执不一致。")
+    elif resolution.get("decision") not in {"test-task-required", "scope-unconfigured", "scope-empty"}:
+        raise core.AdapterError("mandatory-test-task必须来自无计划、端侧未配置或正式范围为空回执。")
+    elif scope["testPlanId"] is not None or scope["directoryIds"] or scope["selectedCaseIds"]:
+        raise core.AdapterError("mandatory-test-task不得伪造正式计划、目录或具体用例。")
 
     stages_raw = value.get("stages")
     if not isinstance(stages_raw, dict):
@@ -266,6 +313,9 @@ def validate_plan(value: dict[str, Any]) -> dict[str, Any]:
     ):
         if required not in test_serialized:
             raise core.AdapterError(f"testHandoff阶段缺少范围约束：{required}")
+    for required in scope["directoryIds"] + scope["selectedCaseIds"]:
+        if str(required) not in test_serialized:
+            raise core.AdapterError(f"testHandoff阶段缺少测试范围ID：{required}")
     for target, _ in _status_updates(stages["testHandoff"]):
         if target in {scope["developmentTaskId"], scope["requirementId"], scope["deliveryId"]}:
             raise core.AdapterError("testHandoff阶段不得提前修改开发、需求或交付状态。")

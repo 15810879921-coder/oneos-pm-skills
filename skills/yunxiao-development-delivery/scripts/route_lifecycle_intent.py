@@ -12,6 +12,7 @@ from typing import Any
 
 
 SCHEMA = "oneos.development-intent/v1"
+WORK_ITEM_PATTERN = re.compile(r"(?<![A-Z0-9-])([A-Z][A-Z0-9_]*-\d+)(?![A-Z0-9-])", re.IGNORECASE)
 
 ROUTES: list[tuple[str, tuple[str, ...]]] = [
     ("cleanup", ("清理分支", "删掉分支", "删除分支")),
@@ -44,17 +45,31 @@ def _load_context(path: Path | None) -> dict[str, Any]:
 def route(text: str, context: dict[str, Any]) -> dict[str, Any]:
     normalized = re.sub(r"\s+", "", text).lower()
     explicit_action = any(keyword in normalized for _, words in ROUTES for keyword in words)
-    asks_discussion = any(word in normalized for word in DISCUSSION)
+    asks_discussion = any(word in normalized for word in DISCUSSION) \
+        or bool(re.search(r"(?:吗|呢|么)[？?]?$", normalized)) \
+        or normalized.startswith(("怎么", "如何"))
     has_action_authority = any(word in normalized for word in ACTION_AUTHORITY)
     is_discussion = asks_discussion and not has_action_authority
     action = "audit" if is_discussion else "unknown"
     if not is_discussion:
-        for candidate, words in ROUTES:
-            if any(word in normalized for word in words):
-                action = candidate
-                break
+        completion_phrase = re.search(
+            r"(?:完成|做完).*?(?:开发|交(?:给)?测试)|开发.*?(?:完成|做完)|交(?:给)?测试",
+            normalized,
+        )
+        if completion_phrase:
+            action = "complete_development"
+        else:
+            for candidate, words in ROUTES:
+                if any(word in normalized for word in words):
+                    action = candidate
+                    break
 
     work_item_id = str(context.get("workItemId") or "").strip()
+    text_serials = list(dict.fromkeys(
+        match.group(1).upper() for match in WORK_ITEM_PATTERN.finditer(text)
+    ))
+    context_serial = str(context.get("workItemSerial") or "").strip().upper()
+    work_item_serial = text_serials[0] if len(text_serials) == 1 else context_serial or None
     delivery_unit_id = str(context.get("deliveryUnitId") or "").strip()
     unique_mapping = context.get("mappingUnique") is True and bool(work_item_id)
     mapping_mode = "formal" if unique_mapping else "temporary"
@@ -65,12 +80,18 @@ def route(text: str, context: dict[str, Any]) -> dict[str, Any]:
     requires_resolution = action in {
         "submit", "complete_development", "complete_bug", "test_deploy", "cleanup"
     } and not unique_mapping and not has_temporary_mapping
+    canonical_command = None
+    if action == "complete_development" and work_item_serial and len(text_serials) <= 1:
+        canonical_command = f"完成开发:任务={work_item_serial}"
     return {
         "schemaVersion": SCHEMA,
         "originalText": text,
         "action": action,
         "mappingMode": mapping_mode,
         "workItemId": work_item_id or None,
+        "workItemSerial": work_item_serial,
+        "canonicalCommand": canonical_command,
+        "serialCandidates": text_serials,
         "deliveryUnitId": delivery_unit_id or None,
         "requiresItemResolution": requires_resolution,
         "mayCreateTempBranch": action in {"start_development", "implement", "fix_bug"} and not unique_mapping,

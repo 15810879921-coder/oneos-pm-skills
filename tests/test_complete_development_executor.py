@@ -23,12 +23,7 @@ DESCRIPTION = """## 开发交接
 ### 临时需求变更点
 无（本次开发未发生已确认的临时需求变更）
 <!-- ONEOS_TEST_SCOPE_START -->
-developmentTaskId: DEV-1
-requirementId: REQ-1
-deliveryId: DEL-1
-testMode: mandatory-test-task
-scopeId: SCOPE-DEV-1
-deliveryEnd: Web
+<!-- {"schemaVersion":"oneos.test-scope/v1","requirementId":"REQ-1","deliveryId":"DEL-1","developmentTaskId":"DEV-1","deliveryEnd":"Web","scopeId":"SCOPE-DEV-1","testMode":"mandatory-test-task","testPlanId":null,"directoryIds":[],"selectedCaseIds":[],"deliveryVersion":"commit:abc123","idempotencyKey":"scope-DEV-1-v1"} -->
 <!-- ONEOS_TEST_SCOPE_END -->"""
 
 
@@ -87,6 +82,9 @@ def valid_plan() -> dict:
             "testTaskRef": "TEST-1",
             "testSupervisorId": "QA-1",
             "testMode": "mandatory-test-task",
+            "testPlanId": None,
+            "directoryIds": [],
+            "selectedCaseIds": [],
             "scopeId": "SCOPE-DEV-1",
             "deliveryEnd": "Web",
             "requirementTargetStatus": "待测试",
@@ -106,6 +104,9 @@ def valid_plan() -> dict:
                 "testMode": "mandatory-test-task",
                 "testPlan": None,
                 "scopeDirectories": [],
+                "directoryIds": [],
+                "selectedCaseIds": [],
+                "selectedCaseResults": [],
             },
         },
         "stages": {
@@ -193,14 +194,46 @@ class CompleteDevelopmentExecutorTests(unittest.TestCase):
         with self.assertRaisesRegex(GATEWAY.core.AdapterError, "只有小程序范围允许"):
             EXECUTOR.validate_plan(plan)
 
-    def test_formal_plan_requires_scope_directories(self):
+    def test_formal_plan_requires_exact_cases(self):
         plan = valid_plan()
         plan["scope"]["testMode"] = "formal-plan"
+        plan["scope"]["testPlanId"] = "PLAN-1"
+        plan["scope"]["directoryIds"] = ["DIR-1"]
         plan["evidence"]["testScopeResolution"].update(
             decision="formal-plan", testMode="formal-plan",
-            testPlan={"id": "PLAN-1"}, scopeDirectories=[],
+            testPlan={"id": "PLAN-1"}, scopeDirectories=[{"id": "DIR-1"}],
+            directoryIds=["DIR-1"], selectedCaseIds=[],
         )
-        with self.assertRaisesRegex(GATEWAY.core.AdapterError, "非空端侧目录"):
+        with self.assertRaisesRegex(GATEWAY.core.AdapterError, "具体用例"):
+            EXECUTOR.validate_plan(plan)
+
+    def test_formal_plan_scope_must_match_resolution(self):
+        plan = valid_plan()
+        plan["scope"].update(
+            testMode="formal-plan", testPlanId="PLAN-1",
+            directoryIds=["DIR-1"], selectedCaseIds=["CASE-OTHER"],
+        )
+        plan["evidence"]["testScopeResolution"].update(
+            decision="formal-plan", testMode="formal-plan",
+            testPlan={"id": "PLAN-1"}, scopeDirectories=[{"id": "DIR-1"}],
+            directoryIds=["DIR-1"], selectedCaseIds=["CASE-1"],
+        )
+        with self.assertRaisesRegex(GATEWAY.core.AdapterError, "具体用例与解析回执不一致"):
+            EXECUTOR.validate_plan(plan)
+
+    def test_mandatory_scope_accepts_empty_formal_directory_resolution(self):
+        plan = valid_plan()
+        plan["evidence"]["testScopeResolution"].update(
+            decision="scope-empty", testPlan={"id": "PLAN-1"},
+            scopeDirectories=[{"id": "DIR-1"}], directoryIds=["DIR-1"],
+        )
+        self.assertEqual(EXECUTOR.validate_plan(plan)["scope"]["testMode"],
+                         "mandatory-test-task")
+
+    def test_mandatory_scope_rejects_claimed_case_ids(self):
+        plan = valid_plan()
+        plan["scope"]["selectedCaseIds"] = ["CASE-1"]
+        with self.assertRaisesRegex(GATEWAY.core.AdapterError, "不得伪造"):
             EXECUTOR.validate_plan(plan)
 
     def test_new_test_task_must_reference_test_handoff(self):
@@ -263,7 +296,7 @@ class CompleteDevelopmentExecutorTests(unittest.TestCase):
         state = suite_state()
         self.assertTrue(EXECUTOR._verify_suite_state(state)["verified"])
         state["suiteVersion"] = "10.1.0"
-        with self.assertRaisesRegex(GATEWAY.core.AdapterError, "必须全部回读为10.1.1"):
+        with self.assertRaisesRegex(GATEWAY.core.AdapterError, "必须全部回读为10.1.2"):
             EXECUTOR._verify_suite_state(state)
 
     def test_critical_failure_stops_later_stages_and_persists_partial_receipt(self):
