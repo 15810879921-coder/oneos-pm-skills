@@ -13,13 +13,16 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import handoff_gate as hg
 import validate_release_change_coverage as coverage
 
 
 PLAN_SCHEMA = "oneos.release-merge-plan/v1"
 ATTEMPT_SCHEMA = "oneos.release-merge-attempt/v1"
-SUITE_VERSION = "10.1.3"
-SUPPORTED_SUITE_VERSIONS = {"10.0.0", "10.1.0", SUITE_VERSION}
+SUITE_VERSION = "10.2.0"
+SUPPORTED_SUITE_VERSIONS = {
+    "10.0.0", "10.1.0", "10.1.1", "10.1.2", "10.1.3", SUITE_VERSION,
+}
 STATES = {"PENDING", "PARTIAL_TARGET_MERGE", "TARGETS_READY", "MERGED_NOT_DEPLOYED", "DEPLOYED", "REVERTED"}
 
 
@@ -57,6 +60,29 @@ def validate_attempt(attempt: dict[str, Any]) -> None:
     keys = [str(item.get("repositoryKey") or "") for item in repositories if isinstance(item, dict)]
     if len(keys) != len(repositories) or any(not value for value in keys) or len(keys) != len(set(keys)):
         raise ValueError("repositoryKey必须完整且唯一")
+    frozen = attempt.get("frozenPlan")
+    # Historical summaries may not retain the frozen plan. They remain readable,
+    # but validate_execution/preflight will reject them before any continuation.
+    if frozen is not None:
+        if not isinstance(frozen, dict):
+            raise ValueError("frozenPlan必须是对象")
+        validate_release_handoffs(frozen.get("releaseHandoffs"))
+
+
+def validate_release_handoffs(value: Any) -> None:
+    if not isinstance(value, list) or not value:
+        raise ValueError("冻结计划缺releaseHandoffs")
+    scopes: set[tuple[str, str, str, str]] = set()
+    for index, bundle in enumerate(value):
+        try:
+            hg.validate_bundle(bundle, "release")
+            scope = bundle["manifest"]["scope"]
+            key = tuple(str(scope[name]) for name in hg.SCOPE_KEYS)
+        except (ValueError, TypeError, KeyError) as error:
+            raise ValueError(f"releaseHandoffs[{index}]失败：{error}") from error
+        if key in scopes:
+            raise ValueError(f"releaseHandoffs[{index}]重复scope")
+        scopes.add(key)
 
 
 def validate_execution(attempt: dict[str, Any]) -> None:
@@ -70,6 +96,7 @@ def init(plan: dict[str, Any]) -> dict[str, Any]:
     if plan.get("schemaVersion") != PLAN_SCHEMA or plan.get("status") != "READY":
         raise ValueError("只能执行READY状态的mergePlan")
     coverage.validate_plan(plan)
+    validate_release_handoffs(plan.get("releaseHandoffs"))
     repositories = []
     for item in plan.get("items") or []:
         if item.get("action") == "ALREADY_CONTAINED":

@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 import yunxiao_cli_runtime as core
+import handoff_gate as hg
 
 
 SCHEMA = "oneos.yunxiao-pm-cli/v2"
@@ -459,12 +460,35 @@ def cmd_doctor(_: argparse.Namespace) -> int:
     return 0
 
 
+def require_unfrozen_initialization(scope: dict[str, Any]) -> None:
+    for label in ("requirement", "delivery"):
+        item = scope.get("existing", {}).get(label)
+        if not item:
+            continue
+        if "ONEOS_DELIVERY_HANDOFF" in description_text(item) or \
+                "ONEOS_PRODUCT_HANDOFF_SNAPSHOT" in description_text(item):
+            raise core.AdapterError("已有冻结资料，禁止初始化覆盖；请使用刷新产品快照或正式交棒入口。")
+        if label == "requirement" and status_name(item) not in REQUIREMENT_STATUS_ORDER[:-1]:
+            raise core.AdapterError("需求已越过初始化阶段，禁止重跑 standard 覆盖或回退。")
+
+
+def verify_initialization_scope(executable: str, scope: dict[str, Any]) -> None:
+    current = {}
+    for label in ("requirement", "delivery"):
+        snapshot = scope["existing"].get(label)
+        current[label] = get_workitem(executable, snapshot["id"]) if snapshot else None
+        if snapshot and snapshot_item(current[label]) != snapshot:
+            raise core.AdapterError("初始化预检后工作项正文或归属发生变化，零写入。")
+    require_unfrozen_initialization({"existing": current})
+
+
 def cmd_preflight(args: argparse.Namespace) -> int:
     executable = core.find_aliyun()
     core.require_auth_env()
     load_text(args.description_file)
     load_text(args.delivery_file)
     scope = build_scope(executable, args)
+    verify_initialization_scope(executable, scope)
     value = {
         "schema": SCHEMA, "command": "preflight-standard", "createdAt": core.now_utc(),
         "input": {
@@ -481,6 +505,7 @@ def cmd_preflight(args: argparse.Namespace) -> int:
             "delivery": hashlib.sha256(load_text(args.delivery_file).encode("utf-8")).hexdigest(),
         },
         "liveScope": scope, "scopeFingerprint": canonical_hash(scope),
+        "formal": False, "targetStatus": "设计完成",
     }
     value["preflightHash"] = canonical_hash(value, {"preflightHash"})
     output = Path(args.output) if args.output else core.output_dir() / "pm-standard-preflight.json"
@@ -506,6 +531,9 @@ def cmd_apply(args: argparse.Namespace) -> int:
     scope = build_scope(executable, params)
     if canonical_hash(scope) != plan.get("scopeFingerprint"):
         raise core.AdapterError("预检后项目、成员、状态、同名对象或迭代发生变化。")
+    if plan.get("formal") is not False or plan.get("targetStatus") != "设计完成":
+        raise core.AdapterError("旧 standard 预检不能授权正式交棒，请重新预检初始化范围。")
+    verify_initialization_scope(executable, scope)
 
     marker = scope["marker"]
     req_doc = load_text(params.description_file) + f"\n\n<!-- {marker} -->"
@@ -596,7 +624,7 @@ def cmd_apply(args: argparse.Namespace) -> int:
         "description": delivery_doc, "formatType": "MARKDOWN",
         "assignedTo": scope["deliveryOwner"]["id"],
     })
-    req, advanced = advance_requirement(executable, req, "待开发", req_status)
+    req, advanced = advance_requirement(executable, req, "设计完成", req_status)
     for target in advanced:
         ops.append({"operation": "requirement-status", "target": target,
                     "result": "verified"})
@@ -611,7 +639,7 @@ def cmd_apply(args: argparse.Namespace) -> int:
     delivery = get_workitem(executable, str(delivery["id"]))
     analysis = get_workitem(executable, str(analysis["id"]))
     design = get_workitem(executable, str(design["id"]))
-    if status_name(req) != "待开发" or status_name(analysis) != "已完成" or status_name(design) != "已完成":
+    if status_name(req) != "设计完成" or status_name(analysis) != "已完成" or status_name(design) != "已完成":
         raise core.AdapterError("产品阶段状态回读未闭合。")
     if str(req["id"]) not in relation_ids(executable, str(delivery["id"]), "ASSOCIATED"):
         raise core.AdapterError("交付到需求的正式关系回读失败。")
@@ -630,6 +658,7 @@ def cmd_apply(args: argparse.Namespace) -> int:
             "name": scope["sprint"]["name"], "result": sprint_result},
         "requirement": snapshot_item(req), "delivery": snapshot_item(delivery),
         "analysis": snapshot_item(analysis), "design": snapshot_item(design),
+        "formal": False, "nextAction": "冻结并回读产品快照及全部端侧交棒清单，再 preflight-handoff / apply-handoff。",
     }
     receipt["receiptHash"] = canonical_hash(receipt, {"receiptHash"})
     output = Path(args.receipt) if args.receipt else core.output_dir() / "pm-standard-receipt.json"
@@ -696,6 +725,10 @@ def cmd_preflight_product_snapshot(args: argparse.Namespace) -> int:
     core.require_auth_env()
     snapshot = load_product_snapshot(args.snapshot_file)
     scope = build_product_snapshot_scope(executable, args)
+    manifest_path = getattr(args, "handoff_file", None)
+    if not manifest_path:
+        raise core.AdapterError("交棒清单缺失：正式刷新快照须提供 --handoff-file。旧文档可只读，不得冒充已冻结。")
+    manifest = load_handoff_manifest(manifest_path, scope)
     value = {
         "schema": SCHEMA, "command": "preflight-product-snapshot",
         "createdAt": core.now_utc(),
@@ -703,12 +736,14 @@ def cmd_preflight_product_snapshot(args: argparse.Namespace) -> int:
             "spaceId": args.space_id, "projectName": scope["project"]["name"],
             "requirementId": args.requirement_id, "deliveryId": args.delivery_id,
             "snapshotFile": snapshot["path"],
+            "handoffFile": str(Path(manifest_path).resolve()),
         },
         "productSnapshot": {
             "schema": snapshot["schema"], "snapshotId": snapshot["snapshotId"],
             "path": snapshot["path"], "sha256": snapshot["sha256"],
         },
         "liveScope": scope,
+        "handoffManifest": manifest,
     }
     value["preflightHash"] = canonical_hash(value, {"preflightHash"})
     output = Path(args.output) if args.output else core.output_dir() / "pm-product-snapshot-preflight.json"
@@ -719,6 +754,20 @@ def cmd_preflight_product_snapshot(args: argparse.Namespace) -> int:
         "productSnapshot": value["productSnapshot"], "scope": scope,
     }, ensure_ascii=False, indent=2))
     return 0
+
+
+def load_handoff_manifest(path: str, scope: dict[str, Any]) -> dict[str, Any]:
+    try:
+        manifest = json.loads(Path(path).read_text(encoding="utf-8-sig"))
+        hg.validate_manifest(manifest, {
+            "projectId": scope["project"]["id"],
+            "requirementId": scope["requirement"]["id"],
+            "deliveryId": scope["delivery"]["id"],
+        })
+        hg.verify_documents(manifest)
+        return manifest
+    except (ValueError, OSError) as error:
+        raise core.AdapterError(f"交棒清单校验失败：{error}") from error
 
 
 def cmd_apply_product_snapshot(args: argparse.Namespace) -> int:
@@ -739,14 +788,28 @@ def cmd_apply_product_snapshot(args: argparse.Namespace) -> int:
     scope = build_product_snapshot_scope(executable, params)
     if canonical_hash(scope) != canonical_hash(plan.get("liveScope")):
         raise core.AdapterError("产品快照预检后需求、交付、状态、负责人、关系或描述发生变化。")
+    if not source.get("handoffFile"):
+        raise core.AdapterError("交棒预检来自旧版本，须重新生成带清单的预检。")
+    manifest = load_handoff_manifest(source["handoffFile"], scope)
+    if manifest != plan.get("handoffManifest"):
+        raise core.AdapterError("交棒清单在预检后发生变化，零写入。")
 
     requirement = get_workitem(executable, scope["requirement"]["id"])
     delivery = get_workitem(executable, scope["delivery"]["id"])
     operations: list[dict[str, Any]] = []
+    prepared_updates = []
     for label, item in (("requirement", requirement), ("delivery", delivery)):
         updated_description, format_type = managed_product_snapshot_description(
             description_text(item), item.get("formatType"), snapshot,
             serial(requirement), serial(delivery))
+        try:
+            updated_description = hg.upsert_manifest(updated_description, manifest)
+        except ValueError as error:
+            raise core.AdapterError(str(error)) from error
+        prepared_updates.append((label, item, updated_description, format_type))
+    # Parse both managed blocks before the first write; corruption in the second
+    # object must not result in a preventable half-published product handoff.
+    for label, item, updated_description, format_type in prepared_updates:
         if updated_description == description_text(item) and \
                 str(item.get("formatType") or "MARKDOWN").upper() == format_type:
             operations.append({"operation": label, "result": "idempotent"})
@@ -763,6 +826,12 @@ def cmd_apply_product_snapshot(args: argparse.Namespace) -> int:
     if snapshot_marker not in description_text(after_requirement) or \
             snapshot_marker not in description_text(after_delivery):
         raise core.AdapterError("产品交棒快照未在需求和交付中完整回读。")
+    try:
+        for item in (after_requirement, after_delivery):
+            if hg.manifest_from_description(description_text(item), manifest["scope"]) != manifest:
+                raise ValueError("正式交棒清单回读不一致")
+    except ValueError as error:
+        raise core.AdapterError(f"交棒清单未完整回读：{error}") from error
     if status_name(after_requirement) != scope["requirement"]["status"] or \
             owner_id(after_requirement) != scope["requirement"]["ownerId"] or \
             status_name(after_delivery) != scope["delivery"]["status"] or \
@@ -781,11 +850,118 @@ def cmd_apply_product_snapshot(args: argparse.Namespace) -> int:
         },
         "requirement": snapshot_reverse(after_requirement),
         "delivery": snapshot_reverse(after_delivery),
+        "handoffManifest": manifest,
     }
     receipt["receiptHash"] = canonical_hash(receipt, {"receiptHash"})
     output = Path(args.receipt) if args.receipt else core.output_dir() / "pm-product-snapshot-receipt.json"
     core.write_json(output, receipt)
     print(json.dumps({**receipt, "receiptPath": str(output)}, ensure_ascii=False, indent=2))
+    return 0
+
+
+def build_formal_handoff_scope(executable: str, project_id: str, requirement_id: str,
+                               manifests: list[dict[str, Any]]) -> dict[str, Any]:
+    _, project_name = verified_project(executable, project_id, None)
+    req = get_workitem(executable, requirement_id)
+    if str(req.get("id") or "") != requirement_id or item_project_id(req) != project_id:
+        raise core.AdapterError("正式交棒需求的项目/内部ID不一致。")
+    if status_name(req) not in {"设计完成", "待开发"}:
+        raise core.AdapterError("正式交棒仅允许设计完成→待开发；已开发或后续阶段换版请刷新快照。")
+    if not isinstance(manifests, list) or not manifests:
+        raise core.AdapterError("正式交棒缺冻结清单。")
+    deliveries: dict[str, dict[str, Any]] = {}
+    seen_scopes: set[str] = set()
+    try:
+        for manifest in manifests:
+            hg.validate_manifest(manifest, {"projectId": project_id, "requirementId": requirement_id})
+            scope = manifest["scope"]
+            if scope["scopeId"] in seen_scopes:
+                raise core.AdapterError("正式交棒存在重复 scopeId。")
+            seen_scopes.add(scope["scopeId"])
+            delivery_id = scope["deliveryId"]
+            item = deliveries.get(delivery_id) or get_workitem(executable, delivery_id)
+            if str(item.get("id") or "") != delivery_id or item_project_id(item) != project_id \
+                    or not str(item.get("subject") or "").startswith("【交付】") \
+                    or status_name(item) in {"已完成", "已取消"} or not owner_id(item):
+                raise core.AdapterError("交付任务归属、类型、有效状态或负责人不满足正式交棒。")
+            require_relation(executable, delivery_id, requirement_id, "ASSOCIATED", "交付→需求")
+            for source in (req, item):
+                if hg.manifest_from_description(description_text(source), scope) != manifest:
+                    raise core.AdapterError("当前需求/交付冻结资料已变化或两边不一致。")
+            hg.verify_documents(manifest)
+            deliveries[delivery_id] = item
+    except (ValueError, OSError) as error:
+        raise core.AdapterError(f"正式交棒校验失败：{error}") from error
+    # A requirement-wide state cannot be advanced using one ready endpoint only.
+    linked_deliveries = set()
+    # ASSOCIATED is written delivery -> requirement. Do not assume that the
+    # requirement endpoint returns reverse edges: enumerate project deliveries
+    # with the existing paginated official search and check outgoing relations.
+    for candidate in search_workitems(executable, project_id, "Task"):
+        if not str(candidate.get("subject") or "").startswith("【交付】") or \
+                str(candidate.get("logicalStatus") or "NORMAL").upper() != "NORMAL":
+            continue
+        item_id = str(candidate["id"])
+        if requirement_id not in relation_ids(executable, item_id, "ASSOCIATED"):
+            continue
+        item = deliveries.get(item_id) or get_workitem(executable, item_id)
+        if status_name(item) not in {"已完成", "已取消"} and \
+                str(item.get("logicalStatus") or "NORMAL").upper() == "NORMAL":
+            linked_deliveries.add(item_id)
+    if linked_deliveries != set(deliveries):
+        raise core.AdapterError("正式推进需求必须覆盖全部当前关联的端侧交付；不能以单端清单放行整条需求。")
+    req_type = exact_type(executable, project_id, "Req", "产品类需求")
+    target = status_ids(executable, project_id, str(req_type["id"]), ["待开发"])["待开发"]
+    return {"project": {"id": project_id, "name": project_name},
+            "requirement": snapshot_reverse(req),
+            "deliveries": [snapshot_reverse(deliveries[key]) for key in sorted(deliveries)],
+            "targetStatusId": target}
+
+
+def cmd_preflight_handoff(args: argparse.Namespace) -> int:
+    executable = core.find_aliyun(); core.require_auth_env()
+    manifests = [json.loads(Path(path).read_text(encoding="utf-8-sig")) for path in args.handoff_file]
+    scope = build_formal_handoff_scope(executable, args.space_id, args.requirement_id, manifests)
+    plan = {"schema": SCHEMA, "command": "preflight-handoff", "createdAt": core.now_utc(),
+            "input": {"spaceId": args.space_id, "requirementId": args.requirement_id},
+            "manifests": manifests, "liveScope": scope,
+            "boundary": "经确认仅推进需求待开发；不改正文、交付负责人、不建开发或测试任务。"}
+    plan["preflightHash"] = canonical_hash(plan, {"preflightHash"})
+    output = Path(args.output) if args.output else core.output_dir() / "pm-handoff-preflight.json"
+    core.write_json(output, plan)
+    print(json.dumps({"ready": True, "preflightPath": str(output), "scope": scope}, ensure_ascii=False))
+    return 0
+
+
+def cmd_apply_handoff(args: argparse.Namespace) -> int:
+    executable = core.find_aliyun(); core.require_auth_env()
+    plan = json.loads(Path(args.preflight).read_text(encoding="utf-8"))
+    if plan.get("schema") != SCHEMA or plan.get("command") != "preflight-handoff" \
+            or plan.get("preflightHash") != canonical_hash(plan, {"preflightHash"}):
+        raise core.AdapterError("正式交棒预检格式或哈希无效。")
+    source = plan["input"]
+    scope = build_formal_handoff_scope(executable, source["spaceId"], source["requirementId"], plan["manifests"])
+    if scope != plan.get("liveScope"):
+        raise core.AdapterError("交棒预检后状态、负责人、关系或正文变化，零写入。")
+    result = "idempotent"
+    if scope["requirement"]["status"] == "设计完成":
+        update_item(executable, source["requirementId"], {"status": scope["targetStatusId"]})
+        result = "updated"
+    # Always re-read raw documents, owners and links; never infer success from PATCH.
+    try:
+        after = build_formal_handoff_scope(executable, source["spaceId"], source["requirementId"], plan["manifests"])
+    except (core.AdapterError, ValueError, OSError) as error:
+        raise core.AdapterError(f"正式交棒回读失败，状态可能已写入，未确认完成；先只读核对后重新预检：{error}") from error
+    expected_requirement = {**scope["requirement"], "status": "待开发"}
+    expected_requirement["gmtModified"] = after["requirement"].get("gmtModified")
+    if after["requirement"] != expected_requirement or after["deliveries"] != scope["deliveries"]:
+        raise core.AdapterError("正式交棒最终回读不一致；状态可能已写入，未确认完成，须只读核对后重新预检续跑。")
+    receipt = {"schema": SCHEMA, "command": "apply-handoff", "createdAt": core.now_utc(),
+               "formal": True, "result": result, "preflightHash": plan["preflightHash"],
+               "scope": after, "manifestHashes": [m["sha256"] for m in plan["manifests"]]}
+    output = Path(args.receipt) if args.receipt else core.output_dir() / "pm-handoff-receipt.json"
+    core.write_json(output, receipt)
+    print(json.dumps({**receipt, "receiptPath": str(output)}, ensure_ascii=False))
     return 0
 
 
@@ -984,12 +1160,24 @@ def parser() -> argparse.ArgumentParser:
     for name in ("space-id", "requirement-id", "delivery-id", "snapshot-file"):
         snapshot_preflight.add_argument(f"--{name}", required=True)
     snapshot_preflight.add_argument("--project-name")
+    snapshot_preflight.add_argument("--handoff-file", help="冻结交棒清单 JSON；正式刷新时必需")
     snapshot_preflight.add_argument("--output")
     snapshot_preflight.set_defaults(handler=cmd_preflight_product_snapshot)
     snapshot_apply = sub.add_parser("apply-product-snapshot")
     snapshot_apply.add_argument("--preflight", required=True)
     snapshot_apply.add_argument("--receipt")
     snapshot_apply.set_defaults(handler=cmd_apply_product_snapshot)
+    handoff_preflight = sub.add_parser("preflight-handoff")
+    handoff_preflight.add_argument("--space-id", required=True)
+    handoff_preflight.add_argument("--requirement-id", required=True, help="需求官方内部ID")
+    handoff_preflight.add_argument("--handoff-file", required=True, action="append",
+                                   help="每个 scope 一份；重复指定，覆盖全部当前端侧交付")
+    handoff_preflight.add_argument("--output")
+    handoff_preflight.set_defaults(handler=cmd_preflight_handoff)
+    handoff_apply = sub.add_parser("apply-handoff")
+    handoff_apply.add_argument("--preflight", required=True)
+    handoff_apply.add_argument("--receipt")
+    handoff_apply.set_defaults(handler=cmd_apply_handoff)
     cancel_preflight = sub.add_parser("preflight-cancel-downstream")
     for name in ("space-id", "requirement-id", "delivery-id", "execution-id", "reason", "idempotency-key"):
         cancel_preflight.add_argument(f"--{name}", required=True)

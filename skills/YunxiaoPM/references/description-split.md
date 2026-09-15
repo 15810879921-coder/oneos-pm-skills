@@ -87,6 +87,6 @@
 缺原型 / AutoPRD 失败 / 导出或截图失败 → **不得**报到设计完成并宣称附件齐全；停下并列出缺项。  
 缺 AutoRDO 规则对照章 → **不得**声称【交付】描述已齐。非占位交棒缺产品快照 → **不得**声称产品修改已留下可追溯版本印记。
 
-执行顺序：先 AutoRDO 规则对照章、AutoPRD/原型和附件就绪 → 标准命令按原流程写需求/交付描述 → 独立执行`preflight-product-snapshot → apply-product-snapshot`写入并回读快照。两者都成功后，才能声称非占位设计交棒完整。
+执行顺序：先 AutoRDO 规则对照章、AutoPRD/原型和附件就绪 → 初始化命令写需求/交付描述并停在设计完成（formal:false）→ `preflight-product-snapshot → apply-product-snapshot` 写入同版快照与 manifest → `preflight-handoff → 确认 → apply-handoff` 正式交棒。已有冻结资料不能重跑初始化覆盖；同一已确认计划已包含完整交棒范围时可串行续行。
 
 旧 lifecycle **已下架**勿加载；阶段任务树只由本 Skill（YunxiaoPM）创建。

@@ -45,27 +45,42 @@ apply 必须重新读取全部守卫并比对哈希。通过后按顺序创建�
 1. 产品类需求；
 2. `【交付】`任务并建立 `ASSOCIATED→需求`；
 3. `【分析】`、`【设计】`并分别建立 `PARENT→交付`；
-4. 逐状态推进需求，完成分析/设计，回填交付说明，最终停在`待开发`；
+4. 逐状态推进需求，完成分析/设计，回填交付说明，最终停在`设计完成`，回执 `formal:false`；
 5. 创建或复用迭代，只把`【交付】`挂入迭代；
 6. 按内部ID回读状态、负责人、关系、迭代和幂等回执。
 
 相同幂等键只能对应一套对象；多条匹配时阻塞，不按标题或最新时间自动选择。部分失败后必须重新预检，由幂等键复用已创建对象并只补未完成动作；该续跑和补官方回读不重复确认。项目、对象、关系、负责人或动作范围变化时不属于续跑，必须重新Plan。
 
+已有冻结 manifest/产品快照，或需求已进入待开发及后续阶段时，初始化入口零写入阻断，不能覆盖历史或其他 scope。10.1.x standard 预检须重新生成；不再承诺初始化一步直接正式交开发。
+
 ## 产品修改后刷新快照
 
-PRD/原型修改并确认后，生成符合[product-handoff-snapshot.md](product-handoff-snapshot.md)的快照文件，再独立执行；该命令不改变标准生命周期命令的参数和行为：
+PRD/原型修改并确认后，生成符合[product-handoff-snapshot.md](product-handoff-snapshot.md)的快照和 [handoff-gate.md](handoff-gate.md) 清单，再独立执行：
 
 ```text
 skill-run yunxiao_cli_pm.py preflight-product-snapshot \
   --space-id <项目ID> --project-name <项目名> \
   --requirement-id ONEOS-xx --delivery-id ONEOS-a \
-  --snapshot-file <产品快照MD> --output <预检JSON>
+  --snapshot-file <产品快照MD> --handoff-file <该scope冻结清单JSON> --output <预检JSON>
 
 skill-run yunxiao_cli_pm.py apply-product-snapshot \
   --preflight <预检JSON> --receipt <回执JSON>
 ```
 
 预检按编号唯一解析需求和【交付】，验证`ASSOCIATED→需求`，冻结两者状态、负责人、描述哈希和快照哈希。明确编号的刷新属于幂等写入：同一已授权范围内不重复确认；apply只替换`## 产品交棒快照`受管区块，随后回读两边快照编号/哈希，并证明状态、负责人和正式关系未变化。已完成或已取消对象不得刷新。
+
+## 正式交棒到待开发
+
+全部当前端侧交付分别冻结和回读清单后执行（此处用官方内部 ID，不是 ONEOS 显示编号）：
+
+```text
+skill-run yunxiao_cli_pm.py preflight-handoff \
+  --space-id <项目内部ID> --requirement-id <需求内部ID> \
+  --handoff-file <Web清单.json> --handoff-file <小程序清单.json> --output <预检JSON>
+skill-run yunxiao_cli_pm.py apply-handoff --preflight <预检JSON> --receipt <回执JSON>
+```
+
+单端只传一份，多 scope 重复参数。脚本实时检查全部关联端侧交付、负责人、正式关系、两边同版 manifest 和必读资料字节；仅允许设计完成→待开发，同版已待开发可幂等重验。预检需按既有 Plan 授权确认；已确认计划明确覆盖这些对象、清单及正式交棒时无需重复确认，只有初始化授权则不自动继续。apply 只写需求状态，不改正文、负责人或创建下游任务；前置漂移零写入。写后回读失败须报告可能部分成功，重新预检后续跑，不把 PATCH 返回当完成。
 
 ## 官方 CLI 操作映射
 

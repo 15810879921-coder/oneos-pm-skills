@@ -15,12 +15,14 @@ from typing import Any
 import yunxiao_cli_gateway as gateway
 import yunxiao_cli_runtime as core
 import verify_lifecycle_suite as suite
+import handoff_gate as hg
+import yunxiao_cli_handoff as handoff_start
 
 
 SCHEMA = "oneos.complete-development-plan/v1"
 PREFLIGHT_SCHEMA = "oneos.complete-development-preflight/v1"
 RECEIPT_SCHEMA = "oneos.complete-development-receipt/v1"
-SUITE_VERSION = "10.1.3"
+SUITE_VERSION = "10.2.0"
 TEST_SCOPE_START = "<!-- ONEOS_TEST_SCOPE_START -->"
 TEST_SCOPE_END = "<!-- ONEOS_TEST_SCOPE_END -->"
 ALLOWED_TEST_MODES = {"formal-plan", "mandatory-test-task"}
@@ -249,6 +251,13 @@ def validate_plan(value: dict[str, Any]) -> dict[str, Any]:
         raise core.AdapterError("evidence必须是对象。")
     if not valid_ref(evidence.get("trustedDeliveryVersion")):
         raise core.AdapterError("缺少可信交付版本，不能执行完成开发。")
+    try:
+        bundle = hg.validate_bundle(evidence.get("handoffEvidence"), "development",
+                                    scope, evidence["trustedDeliveryVersion"])
+        hg.validate_receipt(bundle["developmentReceipt"], bundle["manifest"],
+                            "development", str(scope["developmentTaskId"]))
+    except ValueError as error:
+        raise core.AdapterError(str(error)) from error
     validation = evidence.get("developmentValidation")
     if not isinstance(validation, dict) or validation.get("status") not in {"passed", "skipped"} \
             or not valid_ref(validation.get("evidence")):
@@ -326,6 +335,7 @@ def validate_plan(value: dict[str, Any]) -> dict[str, Any]:
     development_updates = _status_updates(stages["developmentComplete"])
     if development_updates != [(str(scope["developmentTaskId"]), "已完成")]:
         raise core.AdapterError("developmentComplete阶段必须且只能把当前开发任务推进到已完成。")
+    _require_receipt_write(stages["developmentComplete"], bundle)
 
     requirement_stage = stages.get("requirementHandoff")
     if requirement_stage is not None:
@@ -355,6 +365,13 @@ def validate_plan(value: dict[str, Any]) -> dict[str, Any]:
     )
     _require_status_readback(final_calls, str(scope["deliveryId"]), "处理中", "交付任务")
     _require_test_readbacks(final_calls, scope)
+    dev_readback = next(call for call in final_calls if call["operation"] == "projex-get-workitem"
+                        and _arg_value(call["args"], "--id") == str(scope["developmentTaskId"]))
+    try:
+        if hg.bundle_from_description((dev_readback.get("expect") or {}).get("description", "")) != bundle:
+            raise ValueError("开发回执与计划不一致")
+    except ValueError as error:
+        raise core.AdapterError(f"交棒回执缺少 finalReadbacks：{error}") from error
 
     return {
         "schemaVersion": SCHEMA,
@@ -365,6 +382,44 @@ def validate_plan(value: dict[str, Any]) -> dict[str, Any]:
         "stages": stages,
         "finalReadbacks": final_calls,
     }
+
+
+def _require_receipt_write(stage: dict, bundle: dict) -> None:
+    description = _arg_value(stage["actions"][0]["args"], "--description")
+    try:
+        if hg.bundle_from_description(description or "") != bundle:
+            raise ValueError("开发回执与计划不一致")
+    except ValueError as error:
+        raise core.AdapterError(f"交棒回执必须随开发完成写入开发任务：{error}") from error
+    matches = [call for call in stage["verifications"]
+               if call["operation"] == "projex-get-workitem"
+               and _arg_value(call["args"], "--id") == bundle["developmentReceipt"]["taskId"]
+               and (call.get("expect") or {}).get("description") == description]
+    if len(matches) != 1:
+        raise core.AdapterError("交棒理解回执必须在 developmentComplete 阶段内完整回读。")
+
+
+def _verify_handoff(plan: dict) -> None:
+    """Fresh authoritative reads before preflight and every lifecycle write."""
+    executable = core.find_aliyun()
+    core.require_auth_env()
+    def read(item_id):
+        return core.unwrap(gateway.execute_read(executable, {
+            "operation": "projex-get-workitem", "args": ["--id", item_id]}))
+    bundle = plan["evidence"]["handoffEvidence"]
+    try:
+        hg.verify_live_bundle(bundle, "development", read, plan["scope"],
+                              plan["evidence"]["trustedDeliveryVersion"])
+        hg.verify_documents(bundle["manifest"])
+        item = read(plan["scope"]["developmentTaskId"])
+        if not isinstance(item, dict) or str(item.get("id")) != plan["scope"]["developmentTaskId"]:
+            raise ValueError("官方开发任务身份无法唯一回读")
+        handoff_start.verify_task_binding(executable, item, bundle["manifest"]["scope"])
+        planned = _arg_value(plan["stages"]["developmentComplete"]["actions"][0]["args"], "--description")
+        if planned != hg.upsert_bundle(str(item.get("description") or ""), bundle):
+            raise ValueError("开发描述已变化或计划覆盖了人工正文，须刷新计划")
+    except (ValueError, OSError) as error:
+        raise core.AdapterError(f"交棒实时校验失败：{error}") from error
 
 
 def _stage_dir(output: Path) -> Path:
@@ -379,6 +434,7 @@ def _call_gateway(func: Any, args: argparse.Namespace) -> None:
 def command_preflight(args: argparse.Namespace) -> int:
     suite_state = _verify_suite_state(load_object(args.suite_state))
     plan = validate_plan(load_object(args.plan))
+    _verify_handoff(plan)
     output = Path(args.output) if args.output else core.output_dir() / \
         f"complete-development-preflight-{gateway.stable_hash(plan)[:16]}.json"
     stages_root = _stage_dir(output)
@@ -458,6 +514,7 @@ def command_apply(args: argparse.Namespace) -> int:
     fingerprint = gateway.stable_hash(plan)
     if fingerprint != preflight.get("fingerprint"):
         raise core.AdapterError("完成开发预检指纹不一致。")
+    _verify_handoff(plan)
     output = Path(args.output) if args.output else core.output_dir() / \
         f"complete-development-{gateway.stable_hash(plan['idempotencyKey'])[:16]}.json"
     progress = load_object(output) if output.is_file() else {
@@ -498,6 +555,7 @@ def command_apply(args: argparse.Namespace) -> int:
             raise core.AdapterError(f"关键阶段{name}缺少ready预检。")
         stage_receipt_path = _stage_dir(Path(args.preflight)) / f"{name}-apply.json"
         try:
+            _verify_handoff(plan)
             _call_gateway(
                 gateway.cmd_apply,
                 argparse.Namespace(preflight=stage_preflight["path"],

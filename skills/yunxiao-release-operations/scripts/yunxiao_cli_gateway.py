@@ -13,6 +13,7 @@ from typing import Any
 
 import yaml
 
+import handoff_gate as hg
 import yunxiao_cli_runtime as core
 
 
@@ -70,6 +71,20 @@ RELEASE_DESCRIPTION_FORBIDDEN = (
     '"scopeHash"',
     '"idempotencyKey"',
 )
+RELEASE_GATE_OPERATIONS = {
+    "codeup-create-branch", "codeup-commit-multiple-files",
+    "codeup-create-change-request", "codeup-update-change-request",
+    "codeup-update-change-request-related-person", "codeup-merge-change-request",
+    "flow-create-pipeline-run", "flow-execute-pipeline-job-action",
+    "flow-execute-pipeline-job-run", "flow-rerun-pipeline-job-run",
+    "flow-retry-pipeline-job-run", "flow-resume-vm-deploy-order",
+    "flow-retry-vm-deploy-machine", "flow-pass-pipeline-validate",
+    "app-stack-create-change-request", "app-stack-create-change-order",
+    "app-stack-execute-change-request-release-stage",
+    "app-stack-retry-change-request-stage-pipeline",
+    "app-stack-skip-change-request-stage-pipeline",
+    "app-stack-pass-release-stage-pipeline-validate",
+}
 
 
 def stable_hash(value: Any) -> str:
@@ -517,6 +532,280 @@ def execute_read(executable: str, call: dict[str, Any], outputs: list[Any] | Non
     return core.run_devops(executable, [call["operation"], *args])
 
 
+def release_gate_required(actions: list[dict[str, Any]]) -> bool:
+    for action in actions:
+        if action["operation"] in RELEASE_GATE_OPERATIONS:
+            return True
+        if action["operation"] == "projex-create-workitem":
+            if (flag_value(action["args"], "--subject") or "").startswith("【发版】"):
+                return True
+        managed = managed_release_comment(action)
+        if managed and managed[0] in {
+            "【发布受管数据】", "【发布尝试账本】",
+            "【生产发布证据】",
+        }:
+            return True
+    return False
+
+
+def validate_release_handoffs(value: Any) -> list[dict[str, Any]]:
+    if not isinstance(value, list) or not value:
+        raise core.AdapterError(
+            "发布准备/生产操作缺releaseHandoffs；不得以口头交接或旧测试状态继续。"
+        )
+    result: list[dict[str, Any]] = []
+    scopes: set[tuple[str, str, str, str]] = set()
+    for index, bundle in enumerate(value):
+        try:
+            hg.validate_bundle(bundle, "release")
+        except ValueError as error:
+            raise core.AdapterError(f"releaseHandoffs[{index}]失败：{error}") from error
+        scope = bundle["manifest"]["scope"]
+        key = tuple(str(scope[name]) for name in hg.SCOPE_KEYS)
+        if key in scopes:
+            raise core.AdapterError(f"releaseHandoffs[{index}]重复scope。")
+        scopes.add(key)
+        result.append(bundle)
+    return result
+
+
+def verify_release_handoffs(executable: str, bundles: list[dict[str, Any]]) -> None:
+    def read_workitem(item_id: str) -> dict[str, Any]:
+        value = core.unwrap(core.run_devops(executable, [
+            "projex-get-workitem", "--id", item_id,
+        ]))
+        if not isinstance(value, dict) or str(value.get("id") or "") != item_id:
+            raise core.AdapterError(f"发布交棒官方回读工作项{item_id}失败。")
+        return value
+
+    for index, bundle in enumerate(bundles):
+        try:
+            hg.verify_live_bundle(bundle, "release", read_workitem)
+            hg.verify_documents(bundle["manifest"])
+        except (ValueError, OSError) as error:
+            raise core.AdapterError(f"releaseHandoffs[{index}]实时复检失败：{error}") from error
+
+
+def validate_release_merge_plan(value: Any, bundles: list[dict[str, Any]],
+                                guards: list[dict[str, Any]],
+                                actions: list[dict[str, Any]]) -> dict[str, Any]:
+    if not isinstance(value, dict) or value.get("schemaVersion") != "oneos.release-merge-plan/v1":
+        raise core.AdapterError("生产动作必须绑定当前冻结的releaseMergePlan。")
+    if value.get("status") != "READY" or value.get("blockers") not in ([], None):
+        raise core.AdapterError("releaseMergePlan尚未READY或仍有阻断项。")
+    plan_hash = str(value.get("planHash") or "")
+    unhashed = {key: child for key, child in value.items() if key != "planHash"}
+    if not plan_hash or stable_hash(unhashed) != plan_hash:
+        raise core.AdapterError("releaseMergePlan指纹不一致。")
+    if value.get("releaseHandoffs") != bundles:
+        raise core.AdapterError("事务的releaseHandoffs与冻结mergePlan来源集合不一致。")
+    bundle_by_scope = {
+        tuple(str(bundle["manifest"]["scope"][name]) for name in hg.SCOPE_KEYS): bundle
+        for bundle in bundles
+    }
+    used_scopes: set[tuple[str, str, str, str]] = set()
+    items = value.get("items")
+    if not isinstance(items, list) or not items:
+        raise core.AdapterError("releaseMergePlan缺当前来源集合。")
+    for item_index, item in enumerate(items):
+        sources = item.get("sources") if isinstance(item, dict) else None
+        if not isinstance(sources, list) or not sources:
+            raise core.AdapterError(f"releaseMergePlan.items[{item_index}]缺来源。")
+        for source_index, source in enumerate(sources):
+            scope = source.get("handoffScope") if isinstance(source, dict) else None
+            if not isinstance(scope, dict) or set(scope) != set(hg.SCOPE_KEYS):
+                raise core.AdapterError(
+                    f"releaseMergePlan.items[{item_index}].sources[{source_index}]缺handoffScope。"
+                )
+            scope_key = tuple(str(scope.get(name) or "") for name in hg.SCOPE_KEYS)
+            bundle = bundle_by_scope.get(scope_key)
+            if bundle is None:
+                raise core.AdapterError("releaseMergePlan来源绑定了错误交棒scope。")
+            try:
+                hg.validate_bundle(
+                    bundle, "release", expected_scope=scope,
+                    delivery_version=str(source.get("handoffDeliveryVersion") or ""),
+                )
+            except ValueError as error:
+                raise core.AdapterError(f"releaseMergePlan来源交棒版本不一致：{error}") from error
+            work_items = [str(item_id) for item_id in source.get("sourceWorkItemIds") or []]
+            test_evidence = [str(item_id) for item_id in source.get("testEvidenceIds") or []]
+            if str(bundle["developmentReceipt"]["taskId"]) not in work_items:
+                raise core.AdapterError("releaseMergePlan来源未绑定交棒开发任务。")
+            if str(bundle["qaReceipt"]["taskId"]) not in test_evidence and \
+                    str(bundle["qaResult"]["executionId"]) not in test_evidence:
+                raise core.AdapterError("releaseMergePlan来源未绑定交棒QA任务/执行。")
+            used_scopes.add(scope_key)
+    if used_scopes != set(bundle_by_scope):
+        raise core.AdapterError("releaseMergePlan含未绑定当前来源的releaseHandoffs。")
+    def item_sources(item: dict[str, Any]) -> list[dict[str, Any]]:
+        return [source for source in item.get("sources") or [] if isinstance(source, dict)]
+
+    def item_branches(item: dict[str, Any],
+                      source: dict[str, Any] | None = None) -> set[str]:
+        branches = {
+            str(value) for value in (
+                item.get("targetBranch"), item.get("sourceBranch"),
+                item.get("candidateBranch"), item.get("releaseBranch"),
+            ) if str(value or "")
+        }
+        selected = [source] if source is not None else item_sources(item)
+        branches.update(str(row.get("sourceBranch")) for row in selected
+                        if str(row.get("sourceBranch") or ""))
+        return branches
+
+    def item_revisions(item: dict[str, Any],
+                       source: dict[str, Any] | None = None) -> set[str]:
+        revisions = {
+            str(value) for value in (
+                item.get("targetBaseCommit"), item.get("orchestrationRevisionSha"),
+                item.get("rollbackChangeOrderVersion"),
+            ) if str(value or "")
+        }
+        selected = [source] if source is not None else item_sources(item)
+        for row in selected:
+            revisions.update(str(value) for value in (
+                row.get("sourceHead"), row.get("handoffDeliveryVersion"),
+            ) if str(value or ""))
+            revisions.update(str(value) for value in row.get("exactCommitIds") or [] if str(value))
+        return revisions
+
+    def structured_parameter_matches(item: dict[str, Any], action_args: list[str],
+                                     flag: str, source: dict[str, Any]) -> bool:
+        raw = flag_value(action_args, flag)
+        if raw is None:
+            return True
+        try:
+            value = json.loads(raw)
+        except json.JSONDecodeError as error:
+            raise core.AdapterError(f"{flag}必须是JSON对象。") from error
+        if not isinstance(value, dict):
+            raise core.AdapterError(f"{flag}必须是JSON对象。")
+        branches = item_branches(item, source)
+        revisions = item_revisions(item, source)
+
+        def walk(node: Any, key: str = "") -> bool:
+            if isinstance(node, dict):
+                return all(walk(child, str(child_key)) for child_key, child in node.items())
+            if isinstance(node, list):
+                return all(walk(child, key) for child in node)
+            lowered = key.lower().replace("_", "-")
+            text = str(node)
+            if "branch" in lowered:
+                return text in branches
+            if any(token in lowered for token in ("version", "revision", "commit", "sha")):
+                return text in revisions
+            return True
+
+        return walk(value)
+
+    for action in actions:
+        operation = action["operation"]
+        action_args = action["args"]
+        if operation.startswith("codeup-"):
+            repository_id = str(flag_value(action_args, "--repository-id") or "")
+            candidates = [
+                item for item in items
+                if str(item.get("repositoryId") or "") == repository_id
+            ]
+            if not repository_id or not candidates:
+                raise core.AdapterError(
+                    f"生产动作{operation}的repositoryId未绑定冻结mergePlan。"
+                )
+            if operation in {
+                "codeup-update-change-request",
+                "codeup-update-change-request-related-person",
+                "codeup-merge-change-request",
+            }:
+                mr_id = str(flag_value(action_args, "--local-id") or
+                            flag_value(action_args, "--change-request-id") or "")
+                candidates = [
+                    item for item in candidates
+                    if any(str(source.get("mr") or "") == mr_id
+                           for source in item_sources(item))
+                ]
+                if not mr_id or not candidates:
+                    raise core.AdapterError(f"生产动作{operation}的MR未绑定冻结mergePlan。")
+            if operation == "codeup-create-change-request":
+                source_branch = str(flag_value(action_args, "--source-branch") or "")
+                target_branch = str(flag_value(action_args, "--target-branch") or "")
+                candidates = [
+                    item for item in candidates
+                    if str(item.get("targetBranch") or "") == target_branch
+                    and any(str(source.get("sourceBranch") or "") == source_branch
+                            for source in item_sources(item))
+                ]
+                if not candidates:
+                    raise core.AdapterError("生产MR的源/目标分支未绑定同一冻结item。")
+        if operation.startswith("flow-"):
+            pipeline_id = str(flag_value(action_args, "--pipeline-id") or "")
+            candidates = [
+                item for item in items
+                if str(item.get("pipelineId") or "") == pipeline_id
+                and any(structured_parameter_matches(item, action_args, "--params", source)
+                        for source in item_sources(item))
+            ]
+            if not pipeline_id or not candidates:
+                raise core.AdapterError("生产流水线pipelineId未绑定冻结mergePlan。")
+        if operation.startswith("app-stack-"):
+            app_name = str(flag_value(action_args, "--app-name") or "")
+            candidates = [
+                item for item in items
+                if str(item.get("appName") or "") == app_name
+            ]
+            if not app_name or not candidates:
+                raise core.AdapterError("AppStack appName未绑定冻结mergePlan。")
+            for flag, field, label in (
+                ("--release-workflow-sn", "releaseWorkflowSn", "releaseWorkflowSn"),
+                ("--release-stage-sn", "releaseStageSn", "releaseStageSn"),
+            ):
+                identifier = flag_value(action_args, flag)
+                if identifier is not None:
+                    candidates = [
+                        item for item in candidates
+                        if str(item.get(field) or "") == str(identifier)
+                    ]
+                    if not candidates:
+                        raise core.AdapterError(f"AppStack {label}未绑定同一冻结item。")
+            if operation == "app-stack-create-change-request":
+                repo_sn = str(flag_value(action_args, "--app-code-repo-sn") or "")
+                candidates = [
+                    item for item in candidates
+                    if str(item.get("appCodeRepoSn") or "") == repo_sn
+                ]
+                if not repo_sn or not flag_value(action_args, "--branch-name") or not candidates:
+                    raise core.AdapterError(
+                        "AppStack repo/branch未绑定同一冻结item。"
+                    )
+            revision = flag_value(action_args, "--orchestration-revision-sha")
+            rollback_version = flag_value(action_args, "--rollback-change-order-version")
+            branch = flag_value(action_args, "--branch-name")
+            candidates = [item for item in candidates if any(
+                (branch is None or str(branch) in item_branches(item, source))
+                and (revision is None or str(revision) in item_revisions(item, source))
+                and (rollback_version is None or
+                     str(rollback_version) in item_revisions(item, source))
+                and structured_parameter_matches(item, action_args, "--params", source)
+                and structured_parameter_matches(item, action_args, "--envs", source)
+                for source in item_sources(item)
+            )]
+            if not candidates:
+                raise core.AdapterError("AppStack分支/版本参数未绑定同一冻结item。")
+    release_task_id = str(value.get("releaseTaskId") or "")
+    if not release_task_id:
+        raise core.AdapterError("releaseMergePlan缺当前发版任务ID。")
+    release_guard = any(
+        guard.get("operation") == "projex-get-workitem"
+        and flag_value(guard.get("args") or [], "--id") == release_task_id
+        and isinstance(guard.get("expect"), dict)
+        and str(guard["expect"].get("id") or "") == release_task_id
+        for guard in guards
+    )
+    if not release_guard:
+        raise core.AdapterError("生产事务缺发版任务官方ID读回guard。")
+    return value
+
+
 def validate_plan(value: dict[str, Any]) -> dict[str, Any]:
     assert_no_secrets(source_safe_plan(value))
     if value.get("schema") != PLAN_SCHEMA:
@@ -534,6 +823,22 @@ def validate_plan(value: dict[str, Any]) -> dict[str, Any]:
                      for item in value.get("verifications", [])]
     if not guards or not actions or not verifications:
         raise core.AdapterError("事务计划必须同时包含guards、actions和verifications。")
+    gate_stage = str(value.get("releaseGateStage") or "").strip()
+    needs_release_gate = release_gate_required(actions)
+    if needs_release_gate and gate_stage != "release":
+        raise core.AdapterError(
+            "发布准备/流水线/合并操作必须显式提供releaseGateStage。"
+        )
+    if needs_release_gate:
+        release_handoffs = validate_release_handoffs(value.get("releaseHandoffs"))
+    else:
+        if gate_stage or value.get("releaseHandoffs") not in (None, []):
+            raise core.AdapterError("非发布写事务不得携带releaseGateStage/releaseHandoffs。")
+        release_handoffs = []
+    production_actions = any(action["operation"] in RELEASE_GATE_OPERATIONS for action in actions)
+    release_merge_plan = validate_release_merge_plan(
+        value.get("releaseMergePlan"), release_handoffs, guards, actions,
+    ) if production_actions else None
     release_create_indexes: list[int] = []
     managed_comment_targets: set[str] = set()
     for index, action in enumerate(actions):
@@ -568,6 +873,9 @@ def validate_plan(value: dict[str, Any]) -> dict[str, Any]:
         "guards": guards,
         "actions": actions,
         "verifications": verifications,
+        "releaseGateStage": gate_stage,
+        "releaseHandoffs": release_handoffs,
+        "releaseMergePlan": release_merge_plan,
         "destructiveConfirmation": bool(value.get("destructiveConfirmation", False)),
     }
 
@@ -599,6 +907,8 @@ def cmd_preflight(args: argparse.Namespace) -> int:
     executable = core.find_aliyun()
     core.require_auth_env()
     plan = validate_plan(load_object(args.plan))
+    if plan["releaseHandoffs"]:
+        verify_release_handoffs(executable, plan["releaseHandoffs"])
     guard_receipts = []
     for index, guard in enumerate(plan["guards"]):
         value = execute_read(executable, guard)
@@ -641,6 +951,8 @@ def cmd_apply(args: argparse.Namespace) -> int:
         assert_expect(value, guard.get("expect"), f"guard[{index}]")
         if index >= len(expected_guards) or stable_hash(value) != expected_guards[index].get("sha256"):
             raise core.AdapterError(f"guard[{index}]发生漂移，拒绝写入。")
+    if plan["releaseHandoffs"]:
+        verify_release_handoffs(executable, plan["releaseHandoffs"])
     action_outputs: list[Any] = []
     for action in plan["actions"]:
         resolved = resolve_args(action["args"], action_outputs)

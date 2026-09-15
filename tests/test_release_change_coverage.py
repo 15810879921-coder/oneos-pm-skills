@@ -9,6 +9,8 @@ import sys
 import tempfile
 import unittest
 
+from tests.handoff_fixtures import make_bundle
+
 SCRIPTS = Path(os.environ.get("ONEOS_RELEASE_TEST_SCRIPTS",
                str(Path(__file__).parents[1] / "skills/yunxiao-release-operations/scripts")))
 sys.path.insert(0, str(SCRIPTS))
@@ -91,7 +93,9 @@ class CoverageTests(unittest.TestCase):
     def data(self, base=None):
         base = base or self.base
         history = C.collect("R", self.c, base, self.reader)
+        bundle = make_bundle("release")
         return {"schemaVersion": P.INPUT_SCHEMA, "releaseTaskId": "REL-TEST",
+                "releaseHandoffs": [bundle],
                 "dependencyGroupIds": ["DEP-TEST"], "items": [{
                     "repositoryId": "R", "componentId": "web", "targetBranch": "production",
                     "targetBranchVerified": True, "targetBaseCommit": base,
@@ -99,8 +103,12 @@ class CoverageTests(unittest.TestCase):
                     "dependencyGroupId": "DEP-TEST", "sourceBranch": "feature/DEV-1",
                     "sourceHead": self.c, "branchPurity": "pure", "exactCommitIds": [self.a, self.b, self.c],
                     "sourceHistoryComplete": True, "sourceHistoryEvidenceId": "official-fixture",
-                    "sourceWorkItemIds": ["DELIVERY-1"], "deliveryUnitIds": ["DU-1"],
-                    "testEvidenceIds": ["TEST-FIXTURE"], "historySnapshot": history,
+                    "sourceWorkItemIds": ["DELIVERY-1", bundle["developmentReceipt"]["taskId"]],
+                    "deliveryUnitIds": ["DU-1", bundle["manifest"]["scope"]["deliveryId"]],
+                    "testEvidenceIds": ["TEST-FIXTURE", bundle["qaReceipt"]["taskId"]],
+                    "handoffScope": bundle["manifest"]["scope"],
+                    "handoffDeliveryVersion": bundle["deliveryVersion"],
+                    "historySnapshot": history,
                     "branchOwner": {"type": "development_task", "workItemId": "DEV-1", "relationEvidenceId": "REL-1"},
                     "sourceCommitHistory": [{"commitId": sha, "include": True, "evidenceId": "scope-" + sha}
                                             for sha in [self.a, self.b, self.c]]}]}

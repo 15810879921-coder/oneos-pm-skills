@@ -14,6 +14,7 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 import yunxiao_cli_runtime as core
+import handoff_gate as hg
 from yunxiao_cli_testhub import normalize_status, read_plan_case
 
 
@@ -111,6 +112,90 @@ def relation_ids(executable: str, workitem_id: str,
     ]), f"{relation_type}关系查询")
     return sorted({str(row.get("resourceId")) for row in values
                    if row.get("resourceId")})
+
+
+def load_handoff_bundle(path: str) -> dict[str, Any]:
+    value = json.loads(Path(path).read_text(encoding="utf-8-sig"))
+    if not isinstance(value, dict):
+        raise core.AdapterError("交棒证据文件必须是JSON对象。")
+    return value
+
+
+def current_test_scope(test: dict[str, Any], req: dict[str, Any],
+                       delivery_id: str) -> dict[str, Any]:
+    try:
+        scope = parse_json_block(
+            str(test.get("description") or ""), TEST_SCOPE_START, TEST_SCOPE_END,
+        )
+    except (ValueError, json.JSONDecodeError) as error:
+        raise core.AdapterError(str(error)) from error
+    if scope.get("schemaVersion") != TEST_SCOPE_SCHEMA:
+        raise core.AdapterError("测试任务范围schema无效。")
+    if str(scope.get("requirementId") or "") not in {
+        str(req.get("id") or ""), str(req.get("serialNumber") or ""),
+    } or str(scope.get("deliveryId") or "") != delivery_id:
+        raise core.AdapterError("测试任务范围与当前需求/交付关系不一致。")
+    for field in ("scopeId", "developmentTaskId"):
+        if not valid_ref(scope.get(field)):
+            raise core.AdapterError(f"测试任务范围缺{field}。")
+    return scope
+
+
+def validate_handoff_bundle(executable: str, bundle: dict[str, Any], stage: str,
+                            project_id: str, requirement_id: str,
+                            delivery_id: str, scope_id: str,
+                            development_task_id: str, test_task_id: str,
+                            delivery_version: str | None = None,
+                            qa_execution_id: str | None = None) -> dict[str, Any]:
+    manifest = bundle.get("manifest") if isinstance(bundle, dict) else None
+    scope = manifest.get("scope") if isinstance(manifest, dict) else None
+    expected_scope = {
+        "projectId": project_id,
+        "requirementId": requirement_id,
+        "deliveryId": delivery_id,
+        "scopeId": scope_id,
+    }
+    try:
+        if str((bundle.get("developmentReceipt") or {}).get("taskId") or "") != development_task_id:
+            raise ValueError("交棒门禁：开发理解回执未绑定当前测试scope的开发任务")
+        if str((bundle.get("qaReceipt") or {}).get("taskId") or "") != test_task_id:
+            raise ValueError("交棒门禁：QA理解回执未绑定当前测试任务")
+        development_item = get_workitem(executable, development_task_id)
+        development_bundle = hg.bundle_from_description(
+            str(development_item.get("description") or "")
+        )
+        hg.validate_bundle(
+            development_bundle, "development", expected_scope=expected_scope,
+        )
+        trusted_version = str(development_bundle.get("deliveryVersion") or "")
+        if delivery_version is not None and trusted_version != delivery_version:
+            raise ValueError("交棒门禁：当前test部署/测试版本与开发交棒版本不一致")
+        hg.verify_live_bundle(
+            bundle, stage,
+            lambda item_id: get_workitem(executable, item_id),
+            expected_scope=expected_scope,
+            delivery_version=trusted_version,
+        )
+        if qa_execution_id is not None and str(
+                (bundle.get("qaResult") or {}).get("executionId") or "") != qa_execution_id:
+            raise ValueError("交棒门禁：qaResult.executionId与实际TestHub执行不一致")
+        document_hashes = hg.verify_documents(bundle["manifest"])
+    except (ValueError, OSError) as error:
+        raise core.AdapterError(str(error)) from error
+    return {"bundle": bundle, "scope": expected_scope,
+            "documentHashes": document_hashes}
+
+
+def handoff_bundle_readback(test: dict[str, Any], expected: dict[str, Any],
+                            stage: str) -> dict[str, Any]:
+    try:
+        value = hg.bundle_from_description(str(test.get("description") or ""))
+        hg.validate_bundle(value, stage)
+    except ValueError as error:
+        raise core.AdapterError(str(error)) from error
+    if value != expected:
+        raise core.AdapterError("交棒证据写入后回读不一致。")
+    return value
 
 
 def parse_json_block(content: str, start_marker: str,
@@ -662,11 +747,27 @@ def run(args: argparse.Namespace) -> int:
         return run_manual_complete(
             args, executable, auth, test, req, before, parents, associated,
         )
+    if not args.handoff_bundle:
+        raise core.AdapterError("start/record/complete必须提供--handoff-bundle。")
+    test_scope = current_test_scope(test, req, parents[0])
+    bundle = load_handoff_bundle(args.handoff_bundle)
+    handoff_stage = "qa-complete" if args.command == "complete" else "qa-start"
     if args.command == "start":
         if status_name(test) not in {"待处理", "处理中"} or \
                 status_name(req) not in {"开发中", "开发完成", "待测试", "测试中"}:
             raise core.AdapterError(f"开始测试状态门禁失败：{before}")
+        deployment = validate_deployment(test, req, args.space_id)
+        expected_version = None if is_skip_deployment(deployment) else \
+            str(deployment["deployedVersion"])
+        handoff = validate_handoff_bundle(
+            executable, bundle, handoff_stage,
+            args.space_id, str(req["id"]), parents[0],
+            str(test_scope["scopeId"]), str(test_scope["developmentTaskId"]),
+            str(test["id"]), delivery_version=expected_version,
+        )
         actions = [
+            {"operation": "projex-update-workitem", "target": args.test_sn,
+             "fields": ["oneos.handoff-evidence/v1"]},
             {"operation": "projex-update-workitem", "target": args.test_sn,
              "status": "处理中"},
             {"operation": "projex-update-workitem", "target": args.req_sn,
@@ -678,9 +779,30 @@ def run(args: argparse.Namespace) -> int:
             "command": "start", "organizationId": auth["organizationId"],
             "projectId": args.space_id, "before": before,
             "relations": {"parentIds": parents, "associatedIds": associated},
+            "handoff": {"stage": handoff_stage, "scope": handoff["scope"],
+                        "handoffSha256": handoff["bundle"]["manifest"]["sha256"],
+                        "documentHashes": handoff["documentHashes"]},
             "plannedActions": actions, "verified": False,
         }
         if args.apply:
+            latest_test = get_workitem(executable, str(test["id"]))
+            if str(latest_test.get("serialNumber") or "") != str(test.get("serialNumber") or "") or \
+                    status_name(latest_test) != status_name(test):
+                raise core.AdapterError("开始测试写入前任务身份或状态已变化。")
+            if current_test_scope(latest_test, req, parents[0]) != test_scope:
+                raise core.AdapterError("开始测试写入前测试scope已变化。")
+            handoff_description = hg.upsert_bundle(
+                str(latest_test.get("description") or ""), handoff["bundle"],
+            )
+            test = latest_test
+            if handoff_description != str(test.get("description") or ""):
+                test = update_item(executable, str(test["id"]), {
+                    "description": handoff_description,
+                    "formatType": str(test.get("formatType") or "MARKDOWN"),
+                })
+            handoff_readback = handoff_bundle_readback(
+                test, handoff["bundle"], handoff_stage,
+            )
             if status_name(test) != "处理中":
                 test = update_item(executable, str(test["id"]), {
                     "status": status_id(executable, args.space_id, test, "处理中")
@@ -691,6 +813,10 @@ def run(args: argparse.Namespace) -> int:
                 })
             receipt["after"] = {
                 "test": item_snapshot(test), "requirement": item_snapshot(req),
+            }
+            receipt["handoffReadback"] = {
+                "schemaVersion": handoff_readback["schemaVersion"],
+                "handoffSha256": handoff_readback["manifest"]["sha256"],
             }
             receipt["verified"] = status_name(test) == "处理中" and \
                 status_name(req) == "测试中"
@@ -737,6 +863,16 @@ def run(args: argparse.Namespace) -> int:
     )
     live_testhub = validate_testhub(
         executable, evidence, testcase_id, require_complete=args.command == "complete",
+    )
+    expected_version = None if is_skip_deployment(deployment) else \
+        str(deployment["deployedVersion"])
+    handoff = validate_handoff_bundle(
+        executable, bundle, handoff_stage,
+        args.space_id, str(req["id"]), parents[0],
+        str(test_scope["scopeId"]), str(test_scope["developmentTaskId"]),
+        str(test["id"]), delivery_version=expected_version,
+        qa_execution_id=(str(evidence["caseRun"]["id"])
+                         if args.command == "complete" else None),
     )
     approvals = parse_approvals(args.risk_approval)
     bugs = collect_bugs(executable, args.space_id, str(test["id"]),
@@ -791,7 +927,10 @@ def run(args: argparse.Namespace) -> int:
         "completedAt": completed_at,
         "idempotencyKey": args.idempotency_key,
     }
-    description = replace_block(str(test.get("description") or ""), managed_block(payload))
+    description = replace_block(
+        hg.upsert_bundle(str(test.get("description") or ""), handoff["bundle"]),
+        managed_block(payload),
+    )
     actions = [{"operation": "projex-update-workitem", "target": args.test_sn,
                 "fields": ["description"]}]
     if deployment_repair is not None:
@@ -809,10 +948,26 @@ def run(args: argparse.Namespace) -> int:
         "projectId": args.space_id, "before": before, "relations": {
             "parentIds": parents, "associatedIds": associated,
         }, "deployment": deployment, "testHub": live_testhub,
+        "handoff": {"stage": handoff_stage, "scope": handoff["scope"],
+                    "handoffSha256": handoff["bundle"]["manifest"]["sha256"],
+                    "documentHashes": handoff["documentHashes"]},
         "bugs": bugs, "aggregate": aggregate, "manifestSha256": evidence["manifestSha256"],
         "plannedActions": actions, "verified": False,
     }
     if args.apply:
+        latest_test = get_workitem(executable, str(test["id"]))
+        if str(latest_test.get("serialNumber") or "") != str(test.get("serialNumber") or "") or \
+                status_name(latest_test) != status_name(test):
+            raise core.AdapterError("测试证据写入前任务身份或状态已变化。")
+        if current_test_scope(latest_test, req, parents[0]) != test_scope:
+            raise core.AdapterError("测试证据写入前测试scope已变化。")
+        description = replace_block(
+            hg.upsert_bundle(
+                str(latest_test.get("description") or ""), handoff["bundle"],
+            ),
+            managed_block(payload),
+        )
+        test = latest_test
         if description != str(test.get("description") or ""):
             test = update_item(executable, str(test["id"]), {
                 "description": description,
@@ -821,6 +976,9 @@ def run(args: argparse.Namespace) -> int:
         reread_payload = parse_json_block(str(test.get("description") or ""), QA_START, QA_END)
         if reread_payload.get("manifestSha256") != evidence["manifestSha256"]:
             raise core.AdapterError("QA证据区块写入后回读失败。")
+        handoff_readback = handoff_bundle_readback(
+            test, handoff["bundle"], handoff_stage,
+        )
         if args.command == "complete":
             if status_name(test) != "已完成":
                 test = update_item(executable, str(test["id"]), {
@@ -832,6 +990,10 @@ def run(args: argparse.Namespace) -> int:
                 })
         receipt["after"] = {"test": item_snapshot(test), "requirement": item_snapshot(req)}
         receipt["evidenceReadback"] = reread_payload
+        receipt["handoffReadback"] = {
+            "schemaVersion": handoff_readback["schemaVersion"],
+            "handoffSha256": handoff_readback["manifest"]["sha256"],
+        }
         receipt["verified"] = status_name(test) == (
             "已完成" if args.command == "complete" else before["test"]["status"]
         ) and status_name(req) == (
@@ -862,6 +1024,8 @@ def main() -> int:
     parser.add_argument("--deployment-evidence")
     parser.add_argument("--risk-approval", action="append", default=[])
     parser.add_argument("--reason", help="人工确认测试通过的说明；仅manual-complete使用")
+    parser.add_argument("--handoff-bundle",
+                        help="已完成开发/QA理解回执的oneos.handoff-evidence/v1 JSON")
     parser.add_argument("--aggregate-complete", action="store_true",
                         help="仅当本需求所有关联开发/测试范围均已闭环时推进需求测试完成")
     parser.add_argument("--idempotency-key", required=True)

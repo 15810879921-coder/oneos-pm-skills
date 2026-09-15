@@ -13,12 +13,13 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import handoff_gate as hg
 import validate_release_change_coverage as coverage
 
 
 INPUT_SCHEMA = "oneos.release-merge-input/v1"
 PLAN_SCHEMA = "oneos.release-merge-plan/v1"
-SUITE_VERSION = "10.1.3"
+SUITE_VERSION = "10.2.0"
 PURITY_ACTIONS = {
     "pure": "MERGE_SOURCE_BRANCH",
     "mixed": "BUILD_CLEAN_CANDIDATE",
@@ -104,6 +105,8 @@ def normalize_source(source: dict[str, Any], label: str) -> tuple[dict[str, Any]
         "containmentEvidenceId": source.get("containmentEvidenceId"),
         "historySnapshot": source.get("historySnapshot"),
         "branchOwner": source.get("branchOwner"),
+        "handoffScope": source.get("handoffScope"),
+        "handoffDeliveryVersion": source.get("handoffDeliveryVersion"),
     }
     return normalized, blockers
 
@@ -141,6 +144,26 @@ def build(data: dict[str, Any], previous: dict[str, Any] | None = None,
     dependency_group_ids = {str(value) for value in data.get("dependencyGroupIds") or [] if str(value)}
     items: list[dict[str, Any]] = []
     blockers: list[str] = []
+    raw_handoffs = data.get("releaseHandoffs")
+    release_handoffs: list[dict[str, Any]] = []
+    handoff_scopes: set[tuple[str, str, str, str]] = set()
+    handoff_by_scope: dict[tuple[str, str, str, str], dict[str, Any]] = {}
+    used_handoff_scopes: set[tuple[str, str, str, str]] = set()
+    if not isinstance(raw_handoffs, list) or not raw_handoffs:
+        blockers.append("缺少完整releaseHandoffs，禁止冻结生产mergePlan")
+    else:
+        for index, bundle in enumerate(raw_handoffs):
+            try:
+                hg.validate_bundle(bundle, "release")
+                scope = bundle["manifest"]["scope"]
+                key = tuple(str(scope[name]) for name in hg.SCOPE_KEYS)
+                if key in handoff_scopes:
+                    raise ValueError("重复scope")
+                handoff_scopes.add(key)
+                handoff_by_scope[key] = bundle
+                release_handoffs.append(json.loads(json.dumps(bundle)))
+            except (ValueError, TypeError, KeyError) as error:
+                blockers.append(f"releaseHandoffs[{index}]失败：{error}")
     seen: set[str] = set()
     for index, raw in enumerate(raw_items):
         if not isinstance(raw, dict):
@@ -177,6 +200,8 @@ def build(data: dict[str, Any], previous: dict[str, Any] | None = None,
                 "containmentEvidenceId": raw.get("containmentEvidenceId"),
                 "historySnapshot": raw.get("historySnapshot"),
                 "branchOwner": raw.get("branchOwner"),
+                "handoffScope": raw.get("handoffScope"),
+                "handoffDeliveryVersion": raw.get("handoffDeliveryVersion"),
             }]
         if not isinstance(raw_sources, list) or not raw_sources or not all(isinstance(source, dict) for source in raw_sources):
             blockers.append(f"{key}: sources必须是非空对象数组")
@@ -185,6 +210,42 @@ def build(data: dict[str, Any], previous: dict[str, Any] | None = None,
         source_blockers: list[str] = []
         for source_index, source in enumerate(raw_sources):
             normalized, normalized_blockers = normalize_source(source, f"source[{source_index}]")
+            source_label = f"source[{source_index}]"
+            scope = normalized.get("handoffScope")
+            if not isinstance(scope, dict) or set(scope) != set(hg.SCOPE_KEYS):
+                normalized_blockers.append(
+                    f"{source_label}: 缺精确handoffScope，无法绑定本次来源到交棒scope"
+                )
+            else:
+                scope_key = tuple(str(scope.get(name) or "") for name in hg.SCOPE_KEYS)
+                handoff_bundle = handoff_by_scope.get(scope_key)
+                if handoff_bundle is None:
+                    normalized_blockers.append(f"{source_label}: handoffScope未匹配本次releaseHandoffs")
+                else:
+                    handoff_version = str(normalized.get("handoffDeliveryVersion") or "")
+                    try:
+                        hg.validate_bundle(
+                            handoff_bundle, "release", expected_scope=scope,
+                            delivery_version=handoff_version,
+                        )
+                    except (ValueError, TypeError, KeyError) as error:
+                        normalized_blockers.append(f"{source_label}: 交棒版本/范围不匹配：{error}")
+                    else:
+                        used_handoff_scopes.add(scope_key)
+                        development_task = str(
+                            handoff_bundle["developmentReceipt"]["taskId"]
+                        )
+                        qa_task = str(handoff_bundle["qaReceipt"]["taskId"])
+                        execution_id = str(handoff_bundle["qaResult"]["executionId"])
+                        if development_task not in normalized["sourceWorkItemIds"]:
+                            normalized_blockers.append(
+                                f"{source_label}: sourceWorkItemIds未包含交棒开发任务{development_task}"
+                            )
+                        if qa_task not in normalized["testEvidenceIds"] and \
+                                execution_id not in normalized["testEvidenceIds"]:
+                            normalized_blockers.append(
+                                f"{source_label}: testEvidenceIds未包含交棒QA任务或执行ID"
+                            )
             sources.append(normalized)
             source_blockers.extend(normalized_blockers)
         purities = {source["branchPurity"] for source in sources}
@@ -223,6 +284,10 @@ def build(data: dict[str, Any], previous: dict[str, Any] | None = None,
         item = {
             "repositoryId": repository_id,
             "componentId": component_id,
+            "appName": raw.get("appName"),
+            "appCodeRepoSn": raw.get("appCodeRepoSn"),
+            "releaseWorkflowSn": raw.get("releaseWorkflowSn"),
+            "releaseStageSn": raw.get("releaseStageSn"),
             "sourceWorkItemIds": work_items,
             "deliveryUnitIds": delivery_units,
             "sources": sources,
@@ -255,6 +320,13 @@ def build(data: dict[str, Any], previous: dict[str, Any] | None = None,
             blockers.extend(f"{key}: {reason}" for reason in item_blockers)
         items.append(item)
 
+    unused_handoffs = sorted(handoff_scopes - used_handoff_scopes)
+    if unused_handoffs:
+        blockers.extend(
+            "releaseHandoffs包含未绑定任何merge来源的scope：" + "|".join(scope)
+            for scope in unused_handoffs
+        )
+
     core = {
         "schemaVersion": PLAN_SCHEMA,
         "suiteVersion": SUITE_VERSION,
@@ -266,6 +338,7 @@ def build(data: dict[str, Any], previous: dict[str, Any] | None = None,
         "frozenAt": str(data.get("frozenAt") or datetime.now(ZoneInfo("Asia/Shanghai")).isoformat(timespec="seconds")),
         "items": items,
         "dependencyGroupIds": sorted(dependency_group_ids),
+        "releaseHandoffs": release_handoffs,
         "status": "BLOCKED" if blockers else "READY",
         "blockers": blockers,
     }

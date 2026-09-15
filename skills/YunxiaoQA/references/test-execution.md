@@ -41,7 +41,7 @@ $YunxiaoQA
 
 执行：
 
-1. 按编号精确读取【测试】，验证`TASK_SUB→【交付】`和`ASSOCIATED→需求`。
+1. 按编号精确读取【测试】，验证`TASK_SUB→【交付】`和`ASSOCIATED→需求`。同时从需求/交付 managed manifest 及开发任务实时回读 `oneos.handoff-evidence/v1`，按 `qa-start` 验证 scope、交棒哈希、文档哈希、开发/测试理解回执、当前交付版本及阻断本阶段的工程决策。
 2. 口令给需求时必须与正式关系一致；未给时从正式关系唯一反查。
 3. 验证【测试】=`待处理`；需求可为`开发中`、`开发完成`、`待测试`或`测试中`。首个正式范围不等待兄弟开发任务。
 4. 先预检，再在同一已确认 Plan 中加`--apply`执行：
@@ -51,10 +51,11 @@ skill-run yunxiao_cli_test_lifecycle.py start `
   --space-id <项目ID> `
   --test-sn ONEOS-xx `
   --req-sn ONEOS-yy `
+  --handoff-bundle '.\evidence\ONEOS-xx.handoff.json' `
   --idempotency-key 'qa-start-ONEOS-xx'
 ```
 
-5. 回读两侧编号、标题和状态。任一失败时报告部分状态，不用浏览器补写。
+5. 先把已验证 bundle 写入测试任务受管区块并回读，再推进状态；回读两侧编号、标题、状态和 bundle 哈希。任一失败时报告部分状态，不用浏览器补写。
 
 ## 测试证据
 
@@ -93,6 +94,7 @@ skill-run yunxiao_cli_test_lifecycle.py record `
   --space-id <项目ID> `
   --test-sn ONEOS-xx `
   --req-sn ONEOS-yy `
+  --handoff-bundle '.\evidence\ONEOS-xx.handoff.json' `
   --evidence-manifest '.\evidence\ONEOS-xx.qa.json' `
   --idempotency-key 'qa-ONEOS-xx-<版本>'
 ```
@@ -113,6 +115,7 @@ skill-run yunxiao_cli_test_lifecycle.py complete `
   --space-id <项目ID> `
   --test-sn ONEOS-xx `
   --req-sn ONEOS-yy `
+  --handoff-bundle '.\evidence\ONEOS-xx.handoff.json' `
   --evidence-manifest '.\evidence\ONEOS-xx.qa.json' `
   --risk-approval 'ONEOS-901=王冕|APPROVAL-ID-or-URL' `
   --idempotency-key 'qa-ONEOS-xx-<版本>'
@@ -120,6 +123,7 @@ skill-run yunxiao_cli_test_lifecycle.py complete `
 
 预检成功后加`--apply`。脚本必须满足：
 
+- 重新从云效需求/交付/开发/测试任务回读当前 `oneos.handoff-evidence/v1`，按 `qa-complete` 验证：合同哈希与开测时一致、交付版本一致、两个角色回执覆盖全部必需文档/验收项、无阻断 QA 的 `PENDING`，且 `qaResult.formal=true`、每个必需验收项精确一条 `PASS` 证据。
 - 【测试】=`处理中`、需求=`测试中`。
 - 测试任务含开发侧写入并回读的`oneos.test-deployment/v1`；**Web**要求环境=`test`且部署成功，版本、项目、迭代、需求和测试任务一致；**小程序**要求`deliveryEnd=小程序`、`testPipeline=skipped`、`status=skipped`且含`reason`，项目、迭代、需求、测试任务一致。
 - 用例未执行/失败/阻塞均为0。
@@ -139,7 +143,7 @@ $YunxiaoQA
 完成测试：测试任务=ONEOS-xx；需求=ONEOS-yy；人工确认通过=是；[说明=测试人员确认通过]
 ```
 
-该完整命令本身就是本次写入授权，不再要求第二次确认。内部执行：
+该完整命令本身就是本次写入授权，不再要求第二次确认。这是行政状态整理路径，不强迫用户伪造正式 QA bundle；无 bundle 仍只能记为 `formal:false`。内部执行：
 
 ```powershell
 skill-run yunxiao_cli_test_lifecycle.py manual-complete `
@@ -151,7 +155,7 @@ skill-run yunxiao_cli_test_lifecycle.py manual-complete `
   --apply
 ```
 
-这条路径可跳过test部署、TestHub测试计划/用例结果、QA manifest和未关闭缺陷业务门禁，但不能跳过需求范围聚合。仍必须满足：项目与编号唯一、测试任务正式`PARENT/ASSOCIATED`关系正确、每个非取消开发任务唯一映射测试任务、兄弟测试任务均已完成、状态在允许边界内、确认人可由当前PAT用户回读、关联缺陷快照已记录，写入后两侧状态和`oneos.qa-manual-complete/v1`审计区块可回读。脚本不关闭、不改状态也不删除任何Bug，不把人工确认伪造成普通QA证据；该结果标记为非正式发布候选。
+这条路径可跳过test部署、TestHub测试计划/用例结果、QA manifest、正式交棒 bundle 和未关闭缺陷业务门禁，但不能跳过需求范围聚合。仍必须满足：项目与编号唯一、测试任务正式`PARENT/ASSOCIATED`关系正确、每个非取消开发任务唯一映射测试任务、兄弟测试任务均已完成、状态在允许边界内、确认人可由当前PAT用户回读、关联缺陷快照已记录，写入后两侧状态和`oneos.qa-manual-complete/v1`审计区块可回读。脚本不关闭、不改状态也不删除任何Bug，不把人工确认伪造成普通QA证据；该结果标记为 `formal:false`，下游发布必须拒绝。
 
 ## 发布候选交接
 

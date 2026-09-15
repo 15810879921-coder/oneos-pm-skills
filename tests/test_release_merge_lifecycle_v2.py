@@ -5,6 +5,8 @@ import unittest
 import copy
 from pathlib import Path
 
+from tests.handoff_fixtures import make_bundle
+
 
 ROOT = Path(__file__).parents[1]
 
@@ -43,8 +45,24 @@ LEDGER = load_module(
 def build_fixture_plan(value, *args):
     """Synthetic histories for the existing state-machine fixtures, not collector tests."""
     value = copy.deepcopy(value)
+    bundle = value["releaseHandoffs"][0]
+    handoff_scope = bundle["manifest"]["scope"]
+    handoff_version = bundle["deliveryVersion"]
+    development_task = bundle["developmentReceipt"]["taskId"]
+    qa_task = bundle["qaReceipt"]["taskId"]
     for item in value["items"]:
         for source in item.get("sources", [item]):
+            source.setdefault("handoffScope", handoff_scope)
+            source.setdefault("handoffDeliveryVersion", handoff_version)
+            source.setdefault("sourceWorkItemIds", [])
+            source.setdefault("deliveryUnitIds", [])
+            source.setdefault("testEvidenceIds", [])
+            for collection, identifier in (
+                (source["sourceWorkItemIds"], development_task),
+                (source["testEvidenceIds"], qa_task),
+            ):
+                if identifier not in collection:
+                    collection.append(identifier)
             history = source.get("sourceCommitHistory", [])
             for row in history:
                 if not row["include"]:
@@ -116,6 +134,7 @@ def plan_input():
     return {
         "schemaVersion": PLAN.INPUT_SCHEMA,
         "releaseTaskId": "REL-1",
+        "releaseHandoffs": [make_bundle("release")],
         "dependencyGroupIds": ["DEP-1"],
         "items": [
             {**common, "repositoryId": "WEB", "componentId": "web",
@@ -235,6 +254,24 @@ class ReleaseMergeLifecycleV2Tests(unittest.TestCase):
         self.assertEqual(revised["previousMergePlanId"], result["mergePlanId"])
         with self.assertRaisesRegex(ValueError, "revisionReason"):
             build_fixture_plan(plan_input(), result)
+
+    def test_merge_source_cannot_reuse_unrelated_handoff_scope(self):
+        value = plan_input()
+        value["items"][0]["handoffScope"] = {
+            **value["releaseHandoffs"][0]["manifest"]["scope"],
+            "requirementId": "REQ-OTHER",
+        }
+        result = build_fixture_plan(value)
+        self.assertEqual(result["status"], "BLOCKED")
+        self.assertTrue(any("handoffScope" in blocker for blocker in result["blockers"]))
+
+    def test_merge_source_must_bind_exact_handoff_delivery_version(self):
+        value = plan_input()
+        value["items"][0]["handoffDeliveryVersion"] = "commit:other"
+        result = build_fixture_plan(value)
+        self.assertEqual(result["status"], "BLOCKED")
+        self.assertTrue(any("交棒版本/范围不匹配" in blocker
+                            for blocker in result["blockers"]))
 
     def test_multiple_bug_branches_become_one_clean_repository_candidate(self):
         value = plan_input()

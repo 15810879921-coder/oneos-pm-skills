@@ -9,6 +9,9 @@ import sys
 from pathlib import Path
 from typing import Any
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import handoff_gate as hg
+
 
 DEPLOY_SCHEMA = "oneos.test-deployment/v1"
 QA_SCHEMA = "oneos.qa-evidence/v1"
@@ -255,6 +258,75 @@ def qa_gaps(item: dict[str, Any]) -> list[str]:
                 gaps.append(
                     f"Bug {bug.get('serialNumber') or bug.get('id')}未关闭：{status or '(空)'}"
                 )
+    # Legacy auxiliary records are optional. If a caller supplies either one,
+    # validate the pair instead of leaving this evidence parser disconnected.
+    if item.get("testDeployment") is not None or item.get("qaEvidence") is not None:
+        gaps.extend(structured_evidence_gaps(item))
+    gaps.extend(handoff_gaps(item, development_tasks, test_tasks))
+    return gaps
+
+
+def handoff_gaps(item: dict[str, Any], development_tasks: list[dict[str, Any]],
+                 test_tasks: list[dict[str, Any]]) -> list[str]:
+    """Require one current formal handoff bundle for every active development scope."""
+    gaps: list[str] = []
+    active = {
+        str(task.get("id") or ""): task
+        for task in development_tasks
+        if isinstance(task, dict) and str(task.get("status") or "") != "已取消"
+        and valid_ref(task.get("id"))
+    }
+    mapped_tests: dict[str, list[str]] = {}
+    for test in test_tasks:
+        if not isinstance(test, dict):
+            continue
+        development_id = str(test.get("developmentTaskId") or "")
+        test_id = str(test.get("id") or "")
+        if development_id in active and valid_ref(test_id):
+            mapped_tests.setdefault(development_id, []).append(test_id)
+    bundles = item.get("releaseHandoffs")
+    if not isinstance(bundles, list):
+        return ["缺少完整releaseHandoffs数组"]
+    seen: set[str] = set()
+    for bundle in bundles:
+        if not isinstance(bundle, dict):
+            gaps.append("发布交棒bundle格式错误")
+            continue
+        receipt = bundle.get("developmentReceipt")
+        development_id = str(receipt.get("taskId") or "") if isinstance(receipt, dict) else ""
+        if development_id not in active:
+            gaps.append(f"交棒bundle未映射本需求有效开发任务：{development_id or '(空)'}")
+            continue
+        if development_id in seen:
+            gaps.append(f"开发任务{development_id}存在多个发布交棒bundle")
+            continue
+        seen.add(development_id)
+        development = active[development_id]
+        missing = [field for field in ("deliveryId", "scopeId", "deliveryVersion")
+                   if not valid_ref(development.get(field))]
+        if missing:
+            gaps.append(f"开发任务{development_id}缺交棒范围字段：{','.join(missing)}")
+            continue
+        expected_scope = {
+            "projectId": str(item.get("projectId") or ""),
+            "requirementId": str(item.get("id") or ""),
+            "deliveryId": str(development["deliveryId"]),
+            "scopeId": str(development["scopeId"]),
+        }
+        try:
+            hg.validate_bundle(
+                bundle, "release", expected_scope=expected_scope,
+                delivery_version=str(development["deliveryVersion"]),
+            )
+        except ValueError as error:
+            gaps.append(f"开发任务{development_id}交棒门禁失败：{error}")
+            continue
+        expected_tests = mapped_tests.get(development_id, [])
+        qa_receipt = bundle.get("qaReceipt") or {}
+        if len(expected_tests) != 1 or qa_receipt.get("taskId") != expected_tests[0]:
+            gaps.append(f"开发任务{development_id}的QA回执未精确绑定唯一测试任务")
+    for development_id in sorted(set(active) - seen):
+        gaps.append(f"开发任务{development_id}缺当前正式发布交棒bundle")
     return gaps
 
 

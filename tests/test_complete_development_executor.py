@@ -7,7 +7,9 @@ import json
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
+from handoff_fixtures import make_bundle
 
 
 ROOT = Path(__file__).parents[1]
@@ -68,7 +70,7 @@ def test_task_readbacks() -> list[dict]:
 
 def valid_plan() -> dict:
     test_readbacks = test_task_readbacks()
-    return {
+    plan = {
         "schemaVersion": EXECUTOR.SCHEMA,
         "suiteVersion": EXECUTOR.SUITE_VERSION,
         "idempotencyKey": "complete-DEV-1-v1",
@@ -162,6 +164,14 @@ def valid_plan() -> dict:
             *copy.deepcopy(test_readbacks),
         ],
     }
+    bundle = make_bundle("development")
+    plan["evidence"]["handoffEvidence"] = bundle
+    description = EXECUTOR.hg.upsert_bundle("开发人员的人工说明", bundle)
+    stage = plan["stages"]["developmentComplete"]
+    stage["actions"][0]["args"].extend(["--description", description])
+    stage["verifications"][0]["expect"]["description"] = description
+    plan["finalReadbacks"][0]["expect"]["description"] = description
+    return plan
 
 
 def suite_state() -> dict:
@@ -296,10 +306,11 @@ class CompleteDevelopmentExecutorTests(unittest.TestCase):
         state = suite_state()
         self.assertTrue(EXECUTOR._verify_suite_state(state)["verified"])
         state["suiteVersion"] = "10.1.0"
-        with self.assertRaisesRegex(GATEWAY.core.AdapterError, "必须全部回读为10.1.3"):
+        with self.assertRaisesRegex(GATEWAY.core.AdapterError, "必须全部回读为10.2.0"):
             EXECUTOR._verify_suite_state(state)
 
-    def test_critical_failure_stops_later_stages_and_persists_partial_receipt(self):
+    @mock.patch.object(EXECUTOR, "_verify_handoff")
+    def test_critical_failure_stops_later_stages_and_persists_partial_receipt(self, _gate):
         plan = EXECUTOR.validate_plan(valid_plan())
         original_apply = EXECUTOR.gateway.cmd_apply
         calls: list[str] = []
@@ -340,7 +351,8 @@ class CompleteDevelopmentExecutorTests(unittest.TestCase):
         finally:
             EXECUTOR.gateway.cmd_apply = original_apply
 
-    def test_apply_uses_fixed_stage_order_and_finishes_with_final_readbacks(self):
+    @mock.patch.object(EXECUTOR, "_verify_handoff")
+    def test_apply_uses_fixed_stage_order_and_finishes_with_final_readbacks(self, _gate):
         raw = valid_plan()
         raw["stages"]["requirementDevelopmentComplete"] = transaction(
             "requirement-development-complete-DEV-1-v1",

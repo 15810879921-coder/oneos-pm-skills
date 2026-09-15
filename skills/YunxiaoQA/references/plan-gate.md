@@ -44,6 +44,7 @@
 
 ## 开始测试
 
+- [ ] 已从需求/交付/开发任务官方回读当前 `oneos.handoff-evidence/v1`，必读资料实际内容 SHA-256 与 manifest 一致，`qa-start` scope/版本/回执/工程决策门禁通过
 - [ ] 【测试】=`待处理`；需求=`开发中|开发完成|待测试|测试中`，并确认是否为首个正式范围
 - [ ] 【测试】唯一父【交付】、正式关联需求与口令一致
 - [ ] 已回读`oneos.test-deployment/v1`的`deliveryEnd`（`Web` / `小程序`；`PC`视为`Web`）
@@ -53,6 +54,7 @@
 
 ## 完成测试
 
+- [ ] `qa-complete` 已重读当前 manifest 与开发/QA bundle；`qaResult.formal=true`，当前交付版本一致，所有必需验收项精确覆盖且为 `PASS`，无阻断 QA 的 `PENDING`
 - [ ] 【测试】=`处理中`、需求=`测试中`；若要推进需求测试完成，已明确本次为最后范围并传`--aggregate-complete`
 - [ ] 已提供真实JSON证据清单文件，schema=`oneos.qa-evidence/v1`；不接受口令逐项自报
 - [ ] 清单中的项目、迭代、需求、测试任务、部署执行与待测版本均和云效受管证据精确一致（**小程序**：`testDeployment`写`deliveryEnd=小程序`+`testPipeline=skipped`，不比对执行ID/部署版本/证据URL）
@@ -68,6 +70,7 @@
 
 ## 完成测试（人工确认分支）
 
+- [ ] 已明确该分支只整理行政状态；可无正式 bundle，但交接必须标记 `formal:false`，下游发布不得使用
 - [ ] 用户已明确给出`完成测试：测试任务=...；需求=...；人工确认通过=是`；该完整命令本身就是授权，不重复索要确认
 - [ ] 项目、测试任务和需求编号唯一，正式`PARENT/ASSOCIATED`关系一致
 - [ ] 当前PAT用户已回读，将作为人工确认人写入审计区块

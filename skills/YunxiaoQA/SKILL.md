@@ -38,7 +38,7 @@ node <本 Skill 目录>/scripts/ensure-daily-skill-update.mjs --current-skill Yu
 
 与 **YunxiaoPM（需求任务）**、开发交付 Skill 分工：本 Skill **只做测试侧**读写。
 
-云效生命周期套件版本：`10.1.3`。
+云效生命周期套件版本：`10.2.0`。
 
 ## Plan 模式门禁（强制 · 凡写云效）
 
@@ -96,7 +96,7 @@ node <本 Skill 目录>/scripts/ensure-daily-skill-update.mjs --current-skill Yu
 
 ## 跨 Skill 逻辑交接（强制）
 
-- 只接收/输出正式 Skill 名、需求/交付/开发/测试/发版任务编号、当前状态、正式 `ASSOCIATED`/`TASK_SUB` 关系，以及测试计划、用例、缺陷、流水线、报告和幂等证据标识。
+- 只接收/输出正式 Skill 名、需求/交付/开发/测试/发版任务编号、当前状态、正式 `ASSOCIATED`/`TASK_SUB` 关系，以及测试计划、用例、缺陷、流水线、报告和幂等证据标识。正式开测及完成测试还必须接收并回读 `oneos.handoff-evidence/v1`，不得只相信交接文字。
 - 禁止定位、读取、复制或要求用户提供其他 Skill 的安装目录。本 Skill 只读取自身包内资源；缺少人员、项目或状态信息时按交接编号实时查询云效。
 - 上游开发正式名为 `yunxiao-development-delivery`，下游发布正式名为 `yunxiao-release-operations`，产品回退正式名为 `YunxiaoPM`；选择器必须使用 `$<正式名称>`。
 
@@ -174,7 +174,7 @@ node <本 Skill 目录>/scripts/ensure-daily-skill-update.mjs --current-skill Yu
 
 执行`完成测试`前必须同时满足：
 
-1. 【测试】=`处理中`且正式`TASK_SUB→【交付】`、`ASSOCIATED→需求`。
+1. 【测试】=`处理中`且正式`TASK_SUB→【交付】`、`ASSOCIATED→需求`。正式开测时已从云效需求/交付及开发任务回读当前 `oneos.handoff-evidence/v1`，通过 `qa-start` 门禁并写入测试任务；完成前再按 `qa-complete` 重新回读验证。
 2. 需求=`测试中`。
 3. 开发交接中的`oneos.test-deployment/v1`区块按`deliveryEnd`分流：**Web**表明版本已成功部署到test，且项目、迭代、需求、测试任务、执行ID和部署版本均一致；**小程序**为`testPipeline=skipped`、`status=skipped`且含`reason`，项目、迭代、需求、测试任务一致，不要求test流水线与自动化测试证据。
 4. `oneos.qa-evidence/v1`证据清单已从真实测试资产读取并校验，包含计划ID/URL、用例执行ID/URL、报告ID/URL、test部署执行和SHA-256；禁止用聊天参数、自填“0失败”或占位链接代替。
@@ -183,8 +183,9 @@ node <本 Skill 目录>/scripts/ensure-daily-skill-update.mjs --current-skill Yu
 7. 每条`暂不修复`缺陷都有明确批准人和证据；只有状态没有批准证据仍阻塞。
 8. 证据块写入并回读后，先推进当前【测试】→`已完成`；仅`--aggregate-complete`且所有关联开发/测试范围已闭环时才推进需求→`测试完成`。
 9. 输出项目、必填迭代、需求、交付、测试任务、部署版本、缺陷状态、证据清单哈希、完成时间和幂等键，交给`$yunxiao-release-operations`组建发布批次。
+10. `qa-complete` 只接受与当前 scope、当前交付版本和当前 managed manifest 完全一致的开发/测试理解回执；`requiredAcceptanceIds` 必须被 `qaResult.cases` 精确覆盖且全部 `PASS`，任何 `NOT_RUN`、旧合同哈希、缺回执或会阻断 QA 的 `PENDING` 工程决策都零写入。“今晚发版”或“节省 token”不构成例外。
 
-`完成测试`中显式的`人工确认通过=是`是上述证据门禁的唯一例外：可不要求部署证据、TestHub计划/用例、QA manifest或缺陷关闭，但不得跳过开发任务与测试任务的一一映射和需求范围聚合。全部非取消开发任务均有唯一测试任务、兄弟测试任务已完成后，才将当前【测试】推进`已完成`并把需求推进`测试完成`。必须把当前登录测试用户、时间、说明、幂等键、跳过项、范围聚合和关联缺陷快照写入`oneos.qa-manual-complete/v1`并回读；关联Bug保持原状，禁止伪造成普通测试证据，交接标记为非正式发布候选。
+`完成测试`中显式的`人工确认通过=是`仅是行政状态整理例外：可不要求部署证据、TestHub计划/用例、QA manifest、交棒 bundle 或缺陷关闭，但不得跳过开发任务与测试任务的一一映射和需求范围聚合。全部非取消开发任务均有唯一测试任务、兄弟测试任务已完成后，才将当前【测试】推进`已完成`并把需求推进`测试完成`。必须把当前登录测试用户、时间、说明、幂等键、跳过项、范围聚合和关联缺陷快照写入`oneos.qa-manual-complete/v1`并回读；关联Bug保持原状，禁止伪造成普通测试证据，交接标记为 `formal:false`。下游发布必须拒绝这一结果；“先发再补”不改变非正式性质。
 
 ## 本 Skill 终点与明确不做
 

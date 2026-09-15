@@ -28,7 +28,7 @@ node <本 Skill 目录>/scripts/ensure-daily-skill-update.mjs --current-skill Yu
 - 共用更新范围固定为 `YunxiaoPM`、`yunxiao-development-delivery`、`development-brain`、`YunxiaoQA`、`yunxiao-release-operations` 的用户级全局安装；不得借此修改项目级 Skill、业务仓、云效数据、流水线或生产环境。不得手工伪造或提前写入每日成功状态。
 
 产品部云效自动化。正式 Skill 名 **`YunxiaoPM`**，选择器 **`$YunxiaoPM`**；对外中文名 **需求任务**。
-云效生命周期套件版本：`10.1.3`。
+云效生命周期套件版本：`10.2.0`。
 
 **自洽成篇**；**禁止** fork / include / 「对齐」已下架的旧 lifecycle。  
 产品经理会话**不要**同时挂载旧 lifecycle Skill。
@@ -36,6 +36,10 @@ node <本 Skill 目录>/scripts/ensure-daily-skill-update.mjs --current-skill Yu
 > **已定口径（优先读）** → [references/settled-rules.md](references/settled-rules.md)
 
 ## 0. 本轮组装要点（速记）
+
+正式交棒/刷新前先读 [版本化交棒门禁](references/handoff-gate.md)：提供本范围冻结合同、验收与工程决策清单，在需求/交付同时回读 manifest；新快照预检必须带 `--handoff-file`。只有占位状态不等于正式可开发，旧资料可补录但不能冒充确认。此条取代下文旧兼容条款中的“无哈希/占位亦可正式交棒”；不额外创建开发/测试任务。
+
+10.2.0 的 `apply-standard` 仅初始化到设计完成，返回 `formal:false`；禁止覆盖已有冻结资料。资料冻结并在全部当前端侧交付回读后，以 `preflight-handoff → 确认 → apply-handoff` 正式推进待开发。同一已确认 Plan 若已明确包含这些范围/清单，可串行继续；仅初始化授权不得扩大为正式交棒。快轨与编号直推同样执行此门禁。
 
 1. **类型只有** `【新增】` / `【优化】`（无【修复】前缀）
 2. **本 Skill 不建**【开发】/【测试】；交棒终点 = 待开发 +【交付】负责人已由命令或项目配置明确并官方回读
@@ -49,7 +53,7 @@ node <本 Skill 目录>/scripts/ensure-daily-skill-update.mjs --current-skill Yu
 ## 官方 CLI 运行时（强制）
 
 1. 运行 `skill-run yunxiao_cli_pm.py doctor`，认证只读取本机环境变量中的 PAT、组织ID或 Region API 地址
-2. 写入前按命令分别预检：标准流程由 `preflight-standard` 冻结原有范围；产品快照由 `preflight-product-snapshot` 单独冻结快照哈希及目标需求/交付
+2. 写入前按命令分别预检：初始化由 `preflight-standard` 冻结范围并止于设计完成；产品快照由 `preflight-product-snapshot` 冻结快照/manifest；正式待开发由 `preflight-handoff` 核验全部端侧清单及当前归属
 3. 需确认的事务在用户通过 Plan 门禁后运行 apply；同一已授权批次的幂等刷新、续跑、补回读可直接续行。两类 apply 都必须重新读取守卫，发生漂移时零写入
 4. 写入后按工作项内部ID回读状态、负责人、正式关系、迭代和文档；不得按标题猜测成功
 5. 旧 `list_projects.py`、`list_tags.py`、`live_create_fast.py` 和 Cookie API 仅属历史实现，不得执行
@@ -157,14 +161,14 @@ node <本 Skill 目录>/scripts/ensure-daily-skill-update.mjs --current-skill Yu
 
 ## 本 Skill 的两个边界
 
-1. 开发前：交棒完成（需求=待开发；【交付】负责人来自命令或项目配置且已官方回读；非占位交棒已回读产品快照编号/哈希）→「请技术经理使用开发 Skill」。
+1. 开发前：正式交棒完成（需求=待开发；全部当前端侧【交付】负责人已官方回读；同版产品快照与完整清单通过正式交棒入口回读，`formal:true`）→「请技术经理使用开发 Skill」。占位/初始化不得报此结论。
 2. 生产后：按发版任务执行产品验收（**不以**发布生产证据区块为前置硬门；范围支持发版→需求或发版→【交付】→需求）。未指定子范围时验收冻结清单全部范围；指定组件/部署目标时只写该子范围验收事件，不关闭整批需求/交付/发版任务，并输出精确分支清理候选。全部范围通过后逐项、幂等地关闭需求、交付容器和发版任务；部分成功时重试只续跑未完成对象；不通过则记录统一证据、尝试将发版任务标为发布失败并正式交给测试侧发起修复回流。
 
 例外：交棒后「创建迭代并关联交付」仍属本 Skill。
 
 ## §0.1 五条补齐（摘要）
 
-1. **交棒占位**：标准路径交付仍为 `等待设计任务完成后自动填入` 时允许交棒，Plan 勾风险、回报标红；快轨有正文/原型时禁止占位  
+1. **占位资料**：允许保留、调查和补录，明确 `formal:false`；不得推进待开发或报正式交棒，补齐冻结合同、验收与工程决策清单后再校验；快轨有正文/原型时禁止用占位替代
 2. **预计工时**：标准路径=阶段日历工时；快轨待开发需求默认预计/实际各 2  
 3. **编号真相源**在「工作项编号（系统）」；新建后立即 PATCH  
 4. **无单快轨**：【设计】描述同步需求；计划起止=当日；SUB→交付后补 ASSOCIATED→需求；交付描述手工或 AutoPRD；同标签；设计当日完成态  
