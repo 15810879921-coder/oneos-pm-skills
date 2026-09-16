@@ -85,6 +85,20 @@ class ReleaseComponentMatrixTests(unittest.TestCase):
         errors, _ = MODULE.validate(value)
         self.assertIn("codeAnchors[0].branchInstanceId is required for suiteVersion 10.2.0", errors)
 
+    def test_current_10_2_1_matrix_is_supported(self):
+        value = matrix()
+        value["suiteVersion"] = "10.2.1"
+        value["ledgerValidation"] = {"status": "passed"}
+        value["codeAnchors"][0].update(
+            deliveryUnitId="DU-1",
+            branchInstanceId="BR-1",
+            ledgerEventId="EVT-1",
+            exactCommitIds=["abc123"],
+        )
+        errors, result = MODULE.validate(value)
+        self.assertEqual(errors, [])
+        self.assertEqual(result["suiteVersion"], "10.2.1")
+
     def test_legacy_10_0_matrix_remains_readable(self):
         value = matrix()
         value["suiteVersion"] = "10.0.0"

@@ -10,7 +10,7 @@
 
 正式台账归属在一个工作项评论中，只追加、不覆盖。TEMPDEV尚无正式工作项时，同格式事件先保存在当前机器的受管交付台账文件；正式事项补齐后追加`DELIVERY_ADOPTED`并把完整事件链写入正式事项。不得伪造历史云效评论时间，原本地时间放`occurredAt`，迁入时间由评论平台回读。
 
-新台账云效写入有套件开关：只有五个生命周期Skill的用户级安装版本都经官方列表/文件回读为`10.2.0`，并生成`oneos.lifecycle-suite-state/v1`且`verified=true`，`yunxiao_cli_delivery_ledger.py append --transaction-plan ... --suite-state ...`才允许产生评论事务。未对齐时继续兼容读取旧评论和维护本地TEMPDEV台账，不向云效混写新格式；这只延迟台账迁入，不阻止编码、本地提交或test验证。
+新台账云效写入有套件开关：只有五个生命周期Skill的用户级安装版本都经官方列表/文件回读为`10.2.1`，并生成`oneos.lifecycle-suite-state/v1`且`verified=true`，`yunxiao_cli_delivery_ledger.py append --transaction-plan ... --suite-state ...`才允许产生评论事务。未对齐时继续兼容读取旧评论和维护本地TEMPDEV台账，不向云效混写新格式；这只延迟台账迁入，不阻止编码、本地提交或test验证。
 
 每条事件至少包含：
 
@@ -44,7 +44,7 @@ skill-run yunxiao_cli_delivery_ledger.py append --existing <ledger.json> --event
 skill-run yunxiao_cli_delivery_ledger.py summary --events <ledger.json>
 ```
 
-生成的事务计划必须再交`yunxiao_cli_gateway.py preflight/apply`执行并通过官方评论回读；脚本本身不绕过Plan、权限或漂移门禁。读取器兼容`10.0.0`、`10.1.0`、`10.1.1`、`10.1.2`、`10.1.3`和`10.2.0`记录；只有五个生命周期Skill均回读`suiteVersion=10.2.0`时才允许新格式写入，版本不一致时保持只读。
+生成的事务计划必须再交`yunxiao_cli_gateway.py preflight/apply`执行并通过官方评论回读；脚本本身不绕过Plan、权限或漂移门禁。读取器兼容`10.0.0`、`10.1.0`、`10.1.1`、`10.1.2`、`10.1.3`、`10.2.0`和`10.2.1`记录；只有五个生命周期Skill均回读`suiteVersion=10.2.1`时才允许新格式写入，版本不一致时保持只读。
 
 ## 分支实例与基线
 

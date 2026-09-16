@@ -21,7 +21,7 @@
 
 10.2.0 新增必需 `evidence.handoffEvidence`，字段见 [交棒门禁](handoff-gate.md)。`developmentReceipt.taskId` 必须等于当前开发任务；`deliveryVersion` 必须等于 `trustedDeliveryVersion`。开发完成的唯一状态更新同时写 `upsert_bundle(当前人工描述,bundle)`；阶段及最终读回包含完整描述。预检、apply 和各阶段写前重新检查需求/交付清单、必读资料真实字节与人工描述，变化则停止受影响阶段，不声称全部零写入（前序成功阶段仍保留）。
 
-计划使用`oneos.complete-development-plan/v1`，套件版本为`10.2.0`。生成计划前必须通过只读CLI冻结以下事实：
+计划使用`oneos.complete-development-plan/v1`，套件版本为`10.2.1`。生成计划前必须通过只读CLI冻结以下事实：
 
 - 项目、开发任务、需求和源交付任务唯一；计划同时保存开发任务/需求的内部ID与编号，源交付仍为`处理中`。
 - 全部适用仓库已有可信交付版本，Web最终版本验证通过；小程序有规则化跳过证据。
@@ -54,7 +54,7 @@ skill-run yunxiao_cli_complete_development.py preflight --plan <完成开发计�
 skill-run yunxiao_cli_complete_development.py apply --preflight <完成开发预检JSON> --output <完成开发回执JSON>
 ```
 
-`preflight`先实时读取`suite-state`中的五个安装路径，要求版本全部为`10.2.0`，再验证总计划并为各阶段生成通用网关计划和预检回执。`apply`会再次实时回读安装路径。任何关键阶段预检失败时零写入；只有可选工时阶段可以标记跳过。
+`preflight`先实时读取`suite-state`中的五个安装路径，要求版本全部为`10.2.1`，再验证总计划并为各阶段生成通用网关计划和预检回执。`apply`会再次实时回读安装路径。任何关键阶段预检失败时零写入；只有可选工时阶段可以标记跳过。
 
 `apply`严格串行执行。每个阶段结束后立即落盘主回执；关键阶段失败时结果为`partial`并记录`failedStage`，后续阶段不执行。再次使用相同预检和输出路径时，已成功阶段不会重复执行，只从尚未完成的阶段继续。若某个通用网关阶段在内部发生部分写入，其网关回执会拒绝盲目重放，需要根据官方当前状态生成新的审核计划。
 

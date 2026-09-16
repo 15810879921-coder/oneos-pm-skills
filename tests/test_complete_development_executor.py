@@ -306,7 +306,7 @@ class CompleteDevelopmentExecutorTests(unittest.TestCase):
         state = suite_state()
         self.assertTrue(EXECUTOR._verify_suite_state(state)["verified"])
         state["suiteVersion"] = "10.1.0"
-        with self.assertRaisesRegex(GATEWAY.core.AdapterError, "必须全部回读为10.2.0"):
+        with self.assertRaisesRegex(GATEWAY.core.AdapterError, "必须全部回读为10.2.1"):
             EXECUTOR._verify_suite_state(state)
 
     @mock.patch.object(EXECUTOR, "_verify_handoff")
