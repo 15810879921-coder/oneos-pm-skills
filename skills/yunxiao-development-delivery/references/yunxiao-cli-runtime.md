@@ -1,6 +1,6 @@
 # 云效 CLI 统一执行运行时
 
-本 Skill 中所有云效 Projex、Codeup、Flow 和 AppStack 的读取、写入、日志查询与结果回读都必须使用官方 `aliyun devops` CLI。禁止使用浏览器、视觉点选、截图/OCR、DOM、Cookie、连接器或网页内部接口；CLI 失败时停止并报告缺失能力，不得切换执行通道。
+本 Skill 中所有云效 Projex、Codeup、Flow 和 AppStack 的读取、写入、日志查询与结果回读都必须使用官方 `aliyun devops` CLI。禁止使用浏览器、视觉点选、截图/OCR、DOM、Cookie、连接器或网页内部接口；CLI 失败时默认停止并报告缺失能力，不得切换执行通道。唯一的阶段跳过例外是`完成开发`读取TestHub测试计划：遇到明确可重试的读取失败时，先用`aliyun plugin update --name aliyun-cli-devops`更新插件并重试一次；仍失败则只跳过正式计划/用例验证阶段并输出完整诊断，后续仍走CLI创建必需测试任务。该例外不得扩展到鉴权、权限、参数、归属冲突或任何写操作。
 
 ## 环境
 

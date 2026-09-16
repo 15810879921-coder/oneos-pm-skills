@@ -4,11 +4,11 @@ OneOS 产品团队自用的 AI Agent Skills 合集，支持 `npx skills` 一键�
 
 **同事安装页（一键复制安装/更新）：** https://15810879921-coder.github.io/oneos-pm-skills/
 
-## 云效生命周期 10.2.1 · Codex 更新
+## 云效生命周期 10.2.2 · Codex 更新
 
-本次统一更新 `YunxiaoPM`、`yunxiao-development-delivery`、`development-brain`、`YunxiaoQA`、`yunxiao-release-operations`。开发大脑新增安装版本强制回读约束；每日更新器支持 `--force`，同一天出现新发布或安装漂移时可绕过“今日已更新”缓存重新同步。保留 10.2.0 的交棒、测试和发布门禁。
+本次统一更新 `YunxiaoPM`、`yunxiao-development-delivery`、`development-brain`、`YunxiaoQA`、`yunxiao-release-operations`。`完成开发`读取TestHub计划失败时会定向更新DevOps插件并重试；读取成功但无关联计划时跳过正式计划验证，重试仍失败时只跳过该阶段并在最终回报披露诊断。测试任务完成仍是发版红线。
 
-团队请打开 [10.2.1 更新入口](https://15810879921-coder.github.io/oneos-pm-skills/#lifecycle-10-2-1)，复制给各自 Codex 执行，完成后新开会话并核对五个版本均为 `10.2.1`。当天自动更新已经运行过也需要本次主动更新，不能把“今日已更新”当作新版本已安装。
+团队请打开 [10.2.2 更新入口](https://15810879921-coder.github.io/oneos-pm-skills/#lifecycle-10-2-2)，复制给各自 Codex 执行，完成后新开会话并核对五个版本均为 `10.2.2`。当天自动更新已经运行过也需要本次主动更新，不能把“今日已更新”当作新版本已安装。
 
 ```text
 npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoPM -a codex -g -y
@@ -18,7 +18,7 @@ npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoQA -a codex -g -
 npx skills add 15810879921-coder/oneos-pm-skills --skill yunxiao-release-operations -a codex -g -y
 ```
 
-协议与接入边界见 [版本化交棒说明](skills/YunxiaoPM/references/handoff-gate.md)；本次变化和验证见 [10.2.1 发布记录](docs/releases/10.2.1.md)，交棒协议变化见 [10.2.0 发布记录](docs/releases/10.2.0.md)。旧任务可以调查与补录，但不能用缺失资料、旧版回执或人工状态完成绕过正式 QA/发布。只维护 Codex；Cursor 历史包保留不动。仓库发布不等于同事已更新，也不等于服务端 CI/云效组织门禁已部署。
+协议与接入边界见 [版本化交棒说明](skills/YunxiaoPM/references/handoff-gate.md)；本次变化和验证见 [10.2.2 发布记录](docs/releases/10.2.2.md)，安装回读约束见 [10.2.1 发布记录](docs/releases/10.2.1.md)。旧任务可以调查与补录，但不能用缺失资料、旧版回执或人工状态完成绕过正式 QA/发布。只维护 Codex；Cursor 历史包保留不动。仓库发布不等于同事已更新，也不等于服务端 CI/云效组织门禁已部署。
 
 维护者在无 PowerShell 的环境可用 `python3 scripts/build-codex-packages.py` 打包，`--check` 校验五包文件清单、逐文件字节与 SHA。发布前另运行全部测试、`scripts/test-daily-skill-update.mjs` 和 `scripts/sync-handoff-gate.py --check`。
 

@@ -21,11 +21,11 @@
 
 10.2.0 新增必需 `evidence.handoffEvidence`，字段见 [交棒门禁](handoff-gate.md)。`developmentReceipt.taskId` 必须等于当前开发任务；`deliveryVersion` 必须等于 `trustedDeliveryVersion`。开发完成的唯一状态更新同时写 `upsert_bundle(当前人工描述,bundle)`；阶段及最终读回包含完整描述。预检、apply 和各阶段写前重新检查需求/交付清单、必读资料真实字节与人工描述，变化则停止受影响阶段，不声称全部零写入（前序成功阶段仍保留）。
 
-计划使用`oneos.complete-development-plan/v1`，套件版本为`10.2.1`。生成计划前必须通过只读CLI冻结以下事实：
+计划使用`oneos.complete-development-plan/v1`，套件版本为`10.2.2`。生成计划前必须通过只读CLI冻结以下事实：
 
 - 项目、开发任务、需求和源交付任务唯一；计划同时保存开发任务/需求的内部ID与编号，源交付仍为`处理中`。
 - 全部适用仓库已有可信交付版本，Web最终版本验证通过；小程序有规则化跳过证据。
-- `yunxiao_cli_test_scope.py resolve`已生成`oneos.test-scope-resolution/v2`回执；其中项目、需求编号、开发任务编号和端侧必须与主计划一致。测试模式为`formal-plan`或`mandatory-test-task`，不得使用`lightweight-verification`。正式计划还必须有唯一计划ID、非空端侧目录和非空具体用例ID，且与主计划及测试任务受管区块完全一致。
+- `yunxiao_cli_test_scope.py resolve`已生成`oneos.test-scope-resolution/v2`回执；其中项目、需求编号、开发任务编号和端侧必须与主计划一致。测试模式为`formal-plan`或`mandatory-test-task`，不得使用`lightweight-verification`。正式计划还必须有唯一计划ID、非空端侧目录和非空具体用例ID，且与主计划及测试任务受管区块完全一致。无计划结论必须来自成功读取回执；`plan-read-skipped`必须证明已定向更新`aliyun-cli-devops`并重试，保存升级前后版本、两次错误及可取得的traceId，最终回报不得省略。
 - 同一`项目+需求+交付+开发任务`只有零个或一个测试任务。
 - 当前项目`测试主管`恰好一人，并冻结其用户ID。
 - 测试建议和临时需求变更点已能确定；存在影响验收但未确认的变化时不生成写计划。
@@ -54,7 +54,7 @@ skill-run yunxiao_cli_complete_development.py preflight --plan <完成开发计�
 skill-run yunxiao_cli_complete_development.py apply --preflight <完成开发预检JSON> --output <完成开发回执JSON>
 ```
 
-`preflight`先实时读取`suite-state`中的五个安装路径，要求版本全部为`10.2.1`，再验证总计划并为各阶段生成通用网关计划和预检回执。`apply`会再次实时回读安装路径。任何关键阶段预检失败时零写入；只有可选工时阶段可以标记跳过。
+`preflight`先实时读取`suite-state`中的五个安装路径，要求版本全部为`10.2.2`，再验证总计划并为各阶段生成通用网关计划和预检回执。`apply`会再次实时回读安装路径。任何关键阶段预检失败时零写入；只有可选工时阶段可以标记跳过。
 
 `apply`严格串行执行。每个阶段结束后立即落盘主回执；关键阶段失败时结果为`partial`并记录`failedStage`，后续阶段不执行。再次使用相同预检和输出路径时，已成功阶段不会重复执行，只从尚未完成的阶段继续。若某个通用网关阶段在内部发生部分写入，其网关回执会拒绝盲目重放，需要根据官方当前状态生成新的审核计划。
 

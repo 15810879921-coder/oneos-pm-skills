@@ -109,6 +109,17 @@ def valid_plan() -> dict:
                 "directoryIds": [],
                 "selectedCaseIds": [],
                 "selectedCaseResults": [],
+                "formalTestValidationSkipped": True,
+                "skipReason": "no-associated-test-plan",
+                "planDiscovery": {
+                    "status": "available",
+                    "plugin": "aliyun-cli-devops",
+                    "versionBefore": "0.9.0",
+                    "versionAfter": "0.9.0",
+                    "upgradeAttempted": False,
+                    "retryAttempted": False,
+                    "traceIds": [],
+                },
             },
         },
         "stages": {
@@ -236,6 +247,7 @@ class CompleteDevelopmentExecutorTests(unittest.TestCase):
         plan["evidence"]["testScopeResolution"].update(
             decision="scope-empty", testPlan={"id": "PLAN-1"},
             scopeDirectories=[{"id": "DIR-1"}], directoryIds=["DIR-1"],
+            formalTestValidationSkipped=True, skipReason="scope-empty",
         )
         self.assertEqual(EXECUTOR.validate_plan(plan)["scope"]["testMode"],
                          "mandatory-test-task")
@@ -244,6 +256,53 @@ class CompleteDevelopmentExecutorTests(unittest.TestCase):
         plan = valid_plan()
         plan["scope"]["selectedCaseIds"] = ["CASE-1"]
         with self.assertRaisesRegex(GATEWAY.core.AdapterError, "不得伪造"):
+            EXECUTOR.validate_plan(plan)
+
+    def test_plan_read_skip_requires_plugin_upgrade_diagnostics(self):
+        plan = valid_plan()
+        plan["evidence"]["testScopeResolution"].update(
+            decision="plan-read-skipped",
+            formalTestValidationSkipped=True,
+            skipReason="plan-read-unavailable-after-plugin-upgrade",
+            planDiscovery={
+                "status": "unavailable-after-plugin-upgrade",
+                "plugin": "aliyun-cli-devops",
+                "versionBefore": "0.5.2",
+                "versionAfter": "0.9.0",
+                "upgradeAttempted": True,
+                "retryAttempted": True,
+                "initialError": "StatusCode: 500 traceId=TRACE-1",
+                "retryError": "StatusCode: 500 traceId=TRACE-2",
+                "traceIds": ["TRACE-1", "TRACE-2"],
+            },
+        )
+        validated = EXECUTOR.validate_plan(plan)
+        self.assertEqual(
+            validated["evidence"]["testScopeResolution"]["decision"],
+            "plan-read-skipped",
+        )
+
+    def test_plan_read_skip_without_retry_diagnostics_is_rejected(self):
+        plan = valid_plan()
+        plan["evidence"]["testScopeResolution"].update(
+            decision="plan-read-skipped",
+            planDiscovery={"status": "unavailable-after-plugin-upgrade"},
+        )
+        with self.assertRaisesRegex(GATEWAY.core.AdapterError, "插件升级、重试"):
+            EXECUTOR.validate_plan(plan)
+
+    def test_no_plan_without_successful_discovery_is_rejected(self):
+        plan = valid_plan()
+        plan["evidence"]["testScopeResolution"]["planDiscovery"] = {
+            "status": "unavailable-after-plugin-upgrade",
+        }
+        with self.assertRaisesRegex(GATEWAY.core.AdapterError, "成功的测试计划读取回执"):
+            EXECUTOR.validate_plan(plan)
+
+    def test_no_plan_must_explicitly_skip_formal_validation(self):
+        plan = valid_plan()
+        plan["evidence"]["testScopeResolution"]["formalTestValidationSkipped"] = False
+        with self.assertRaisesRegex(GATEWAY.core.AdapterError, "显式记录跳过"):
             EXECUTOR.validate_plan(plan)
 
     def test_new_test_task_must_reference_test_handoff(self):
@@ -306,7 +365,7 @@ class CompleteDevelopmentExecutorTests(unittest.TestCase):
         state = suite_state()
         self.assertTrue(EXECUTOR._verify_suite_state(state)["verified"])
         state["suiteVersion"] = "10.1.0"
-        with self.assertRaisesRegex(GATEWAY.core.AdapterError, "必须全部回读为10.2.1"):
+        with self.assertRaisesRegex(GATEWAY.core.AdapterError, "必须全部回读为10.2.2"):
             EXECUTOR._verify_suite_state(state)
 
     @mock.patch.object(EXECUTOR, "_verify_handoff")

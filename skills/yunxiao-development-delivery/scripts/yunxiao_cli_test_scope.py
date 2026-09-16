@@ -14,6 +14,8 @@ import yunxiao_cli_runtime as core
 
 
 SCOPE_PATTERN = re.compile(r"^\[(Web|小程序|跨端)\]\s*")
+TRACE_ID_PATTERN = re.compile(r'"?traceId"?\s*[:=]\s*"?([A-Za-z0-9_-]+)', re.IGNORECASE)
+PLUGIN_NAME = "aliyun-cli-devops"
 
 
 def write_receipt(path: Path, value: dict[str, Any]) -> None:
@@ -98,6 +100,110 @@ def list_plans(executable: str, project_id: str) -> list[dict[str, Any]]:
     return result
 
 
+def plugin_version(executable: str) -> str:
+    text = core.run_raw(executable, ["plugin", "show", "--name", PLUGIN_NAME])
+    match = re.search(r"(?im)^Version:\s*([^\s]+)", text)
+    if not match:
+        raise core.AdapterError(f"无法读取{PLUGIN_NAME}版本。")
+    return match.group(1)
+
+
+def safe_plugin_version(executable: str) -> tuple[str, str | None]:
+    try:
+        return plugin_version(executable), None
+    except Exception as error:
+        return "unknown", core.scrub(str(error))
+
+
+def retryable_plan_read_error(error: Exception) -> bool:
+    text = core.scrub(str(error)).lower()
+    denied = (
+        "statuscode: 400", "statuscode: 401", "statuscode: 403", "statuscode: 404",
+        "unauthorized", "forbidden", "permission", "无权限", "鉴权", "令牌",
+    )
+    if any(marker in text for marker in denied):
+        return False
+    retryable = (
+        "statuscode: 5", "content type", "timeout", "timed out", "connection",
+        "request execution failed", "not a valid api", "unknown command", "eof",
+    )
+    return any(marker in text for marker in retryable)
+
+
+def trace_ids(*errors: str) -> list[str]:
+    result: list[str] = []
+    for error in errors:
+        for value in TRACE_ID_PATTERN.findall(error or ""):
+            if value not in result:
+                result.append(value)
+    return result
+
+
+def discover_plans(executable: str, project_id: str) -> tuple[list[dict[str, Any]] | None,
+                                                               dict[str, Any]]:
+    try:
+        plans = list_plans(executable, project_id)
+        current, version_error = safe_plugin_version(executable)
+        return plans, {
+            "status": "available",
+            "plugin": PLUGIN_NAME,
+            "versionBefore": current,
+            "versionAfter": current,
+            "versionReadError": version_error,
+            "upgradeAttempted": False,
+            "upgradeSucceeded": None,
+            "retryAttempted": False,
+            "traceIds": [],
+        }
+    except core.AdapterError as first_error:
+        if not retryable_plan_read_error(first_error):
+            raise
+        first = core.scrub(str(first_error))
+
+    before, before_error = safe_plugin_version(executable)
+    upgrade_error: str | None = None
+    try:
+        core.run_raw(executable, ["plugin", "update", "--name", PLUGIN_NAME], timeout=300)
+        upgrade_succeeded = True
+    except Exception as error:
+        upgrade_succeeded = False
+        upgrade_error = core.scrub(str(error))
+    after, after_error = safe_plugin_version(executable)
+    try:
+        plans = list_plans(executable, project_id)
+        return plans, {
+            "status": "recovered-after-plugin-upgrade",
+            "plugin": PLUGIN_NAME,
+            "versionBefore": before,
+            "versionAfter": after,
+            "versionBeforeReadError": before_error,
+            "versionAfterReadError": after_error,
+            "upgradeAttempted": True,
+            "upgradeSucceeded": upgrade_succeeded,
+            "upgradeError": upgrade_error,
+            "retryAttempted": True,
+            "initialError": first,
+            "traceIds": trace_ids(first),
+        }
+    except core.AdapterError as retry_error:
+        second = core.scrub(str(retry_error))
+        return None, {
+            "status": "unavailable-after-plugin-upgrade",
+            "plugin": PLUGIN_NAME,
+            "versionBefore": before,
+            "versionAfter": after,
+            "versionBeforeReadError": before_error,
+            "versionAfterReadError": after_error,
+            "upgradeAttempted": True,
+            "upgradeSucceeded": upgrade_succeeded,
+            "upgradeError": upgrade_error,
+            "retryAttempted": True,
+            "initialError": first,
+            "retryError": second,
+            "traceIds": trace_ids(first, second),
+        }
+
+
 def flatten_directories(value: Any) -> list[dict[str, Any]]:
     flattened: list[dict[str, Any]] = []
 
@@ -139,7 +245,31 @@ def command_resolve(args: argparse.Namespace) -> int:
     end = "Web" if args.delivery_end == "PC" else args.delivery_end
     target = Path(args.output) if args.output else core.output_dir() / \
         f"test-scope-{args.requirement_sn.lower()}-{end.lower()}-{args.development_task_sn.lower()}.json"
-    plans = list_plans(executable, args.project_id)
+    plans, discovery = discover_plans(executable, args.project_id)
+    if plans is None:
+        payload = {
+            "schemaVersion": "oneos.test-scope-resolution/v2",
+            "decision": "plan-read-skipped",
+            "requirement": args.requirement_sn,
+            "projectId": args.project_id,
+            "developmentTask": args.development_task_sn,
+            "deliveryEnd": end,
+            "testTaskRequired": True,
+            "testMode": "mandatory-test-task",
+            "testPlan": None,
+            "scopeDirectories": [],
+            "directoryIds": [],
+            "selectedCaseIds": [],
+            "selectedCaseResults": [],
+            "formalTestValidationSkipped": True,
+            "skipReason": "plan-read-unavailable-after-plugin-upgrade",
+            "planDiscovery": discovery,
+            "note": "测试计划首次读取失败，尝试升级aliyun-cli-devops并重试后仍不可用；本次跳过正式TestHub计划/用例验证，仍须创建独立【测试】任务，最终回报必须披露插件升级结果、版本、错误和traceId。",
+        }
+        write_receipt(target, payload)
+        payload["receipt"] = str(target)
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+        return 0
     exact = [plan for plan in plans if exact_requirement_match(
         str(plan.get("name") or ""), args.requirement_sn)]
     selected: dict[str, Any] | None = None
@@ -174,7 +304,10 @@ def command_resolve(args: argparse.Namespace) -> int:
                    "testTaskRequired": True, "testMode": "mandatory-test-task",
                    "testPlan": None, "scopeDirectories": [], "directoryIds": [],
                    "selectedCaseIds": [], "selectedCaseResults": [],
-                   "note": "未发现正式测试计划；仍须为当前开发任务创建独立【测试】任务并由QA完成。"}
+                   "formalTestValidationSkipped": True,
+                   "skipReason": "no-associated-test-plan",
+                   "planDiscovery": discovery,
+                   "note": "已成功读取测试计划，但当前需求未关联正式计划；跳过正式TestHub计划/用例验证，仍须为当前开发任务创建独立【测试】任务并由QA完成。"}
         write_receipt(target, payload)
         payload["receipt"] = str(target)
         print(json.dumps(payload, ensure_ascii=False, indent=2))
@@ -219,6 +352,9 @@ def command_resolve(args: argparse.Namespace) -> int:
         "selectedCaseIds": [item["testcaseId"] for item in selected_cases],
         "selectedCaseResults": selected_cases,
         "untaggedDirectoryCount": len(untagged),
+        "formalTestValidationSkipped": test_mode == "mandatory-test-task",
+        "skipReason": decision if test_mode == "mandatory-test-task" else None,
+        "planDiscovery": discovery,
     }
     if decision == "scope-empty":
         payload["note"] = "已配置当前端目录但其中没有正式用例；仍创建独立【测试】任务，由QA补齐或执行人工测试。"
