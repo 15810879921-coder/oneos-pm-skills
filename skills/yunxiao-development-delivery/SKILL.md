@@ -110,7 +110,6 @@ Command state contract:
 
 | Command | Allowed lifecycle effect |
 |---|---|
-| `接收产品交棒` | Read and validate only; no task or state writes |
 | `分配任务` | Create/reuse `【开发】`; write a requirement snapshot and snapshot-bound technical plan; `【交付】待处理→已分配`; requirement stays `待开发` |
 | `开始开发` / batch development | Recheck snapshot freshness and deep-read only the task scope; refresh snapshot/plan when sources changed; then development child `待处理→处理中`, first child also moves `【交付】已分配→处理中` and requirement `待开发→开发中`; writes `【研发启动】` |
 | Natural-language development with no formal item | Before the first business-code write, create one TEMPDEV delivery unit and one branch instance per repository from the verified integration base; no Yunxiao state write |
