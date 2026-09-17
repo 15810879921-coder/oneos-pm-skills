@@ -40,10 +40,6 @@ def classify(value: dict[str, Any]) -> dict[str, Any]:
         raise ValueError(f"recoveryNeeded只能包含{sorted(RECOVERY_STEPS)}")
     if len(recovery_needed) != len(set(recovery_needed)):
         raise ValueError("recoveryNeeded不得包含重复项")
-    warnings = []
-    if "formal_handoff" in recovery_needed:
-        warnings.append("产品交接记录待产品补齐；不阻断完成开发或创建测试任务。")
-        recovery_needed = [item for item in recovery_needed if item != "formal_handoff"]
     candidate_code_refs = value.get("candidateCodeRefs", [])
     if not isinstance(candidate_code_refs, list) or any(not str(item).strip() for item in candidate_code_refs):
         raise ValueError("candidateCodeRefs必须是非空文本数组或空数组")
@@ -56,6 +52,8 @@ def classify(value: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("code_mapping恢复只适用于remoteDelivery=recoverable")
 
     hard_reasons: list[str] = []
+    if "formal_handoff" in recovery_needed:
+        hard_reasons.append("正式产品交接未通过硬门禁；补齐并重新校验前禁止完成开发或创建测试任务")
     if value["taskResolution"] != "unique":
         hard_reasons.append("开发任务未唯一定位")
     if value["scopeMatch"] == "conflict":
@@ -109,7 +107,6 @@ def classify(value: dict[str, Any]) -> dict[str, Any]:
         "developmentTask": value.get("developmentTask"),
         "remoteVersion": value.get("remoteVersion"),
         "recoveryNeeded": recovery_needed,
-        "warnings": warnings,
         "candidateCodeRefs": candidate_code_refs,
         "reasons": reasons,
         "prompt": None,

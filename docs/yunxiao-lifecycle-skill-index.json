@@ -1,6 +1,6 @@
 {
   "schemaVersion": "oneos.yunxiao-lifecycle-skill-index/v1",
-  "suiteVersion": "10.2.9",
+  "suiteVersion": "10.2.10",
   "scope": "OneOS 云效需求、开发、测试与发布生命周期",
   "skills": [
     {

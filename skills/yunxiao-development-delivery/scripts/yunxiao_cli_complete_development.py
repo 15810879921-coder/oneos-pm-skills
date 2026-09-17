@@ -21,7 +21,7 @@ import yunxiao_cli_handoff as handoff_start
 SCHEMA = "oneos.complete-development-plan/v1"
 PREFLIGHT_SCHEMA = "oneos.complete-development-preflight/v1"
 RECEIPT_SCHEMA = "oneos.complete-development-receipt/v1"
-SUITE_VERSION = "10.2.9"
+SUITE_VERSION = "10.2.10"
 TEST_SCOPE_START = "<!-- ONEOS_TEST_SCOPE_START -->"
 TEST_SCOPE_END = "<!-- ONEOS_TEST_SCOPE_END -->"
 ALLOWED_TEST_MODES = {"formal-plan", "mandatory-test-task"}
@@ -233,8 +233,13 @@ def validate_plan(value: dict[str, Any]) -> dict[str, Any]:
         raise core.AdapterError("evidence必须是对象。")
     if not valid_ref(evidence.get("trustedDeliveryVersion")):
         raise core.AdapterError("缺少可信交付版本，不能执行完成开发。")
-    evidence = dict(evidence)
-    evidence["productHandoffWarnings"] = _product_handoff_warnings(evidence, scope)
+    try:
+        bundle = hg.validate_bundle(evidence.get("handoffEvidence"), "development",
+                                    scope, evidence["trustedDeliveryVersion"])
+        hg.validate_receipt(bundle["developmentReceipt"], bundle["manifest"],
+                            "development", str(scope["developmentTaskId"]))
+    except ValueError as error:
+        raise core.AdapterError(str(error)) from error
     validation = evidence.get("developmentValidation")
     if not isinstance(validation, dict) or validation.get("status") not in {"passed", "skipped"} \
             or not valid_ref(validation.get("evidence")):
@@ -370,7 +375,7 @@ def validate_plan(value: dict[str, Any]) -> dict[str, Any]:
     development_updates = _status_updates(stages["developmentComplete"])
     if development_updates != [(str(scope["developmentTaskId"]), "已完成")]:
         raise core.AdapterError("developmentComplete阶段必须且只能把当前开发任务推进到已完成。")
-    _require_description_readback(stages["developmentComplete"], str(scope["developmentTaskId"]))
+    _require_receipt_write(stages["developmentComplete"], bundle)
 
     requirement_stage = stages.get("requirementHandoff")
     if requirement_stage is not None:
@@ -400,12 +405,13 @@ def validate_plan(value: dict[str, Any]) -> dict[str, Any]:
     )
     _require_status_readback(final_calls, str(scope["deliveryId"]), "处理中", "交付任务")
     _require_test_readbacks(final_calls, scope)
-    planned_description = gateway._description_value(stages["developmentComplete"]["actions"][0])
-    if planned_description is not None:
-        dev_readback = next(call for call in final_calls if call["operation"] == "projex-get-workitem"
-                            and _arg_value(call["args"], "--id") == str(scope["developmentTaskId"]))
-        if (dev_readback.get("expect") or {}).get("description") != planned_description:
-            raise core.AdapterError("开发描述发生写入时必须在 finalReadbacks 完整回读。")
+    dev_readback = next(call for call in final_calls if call["operation"] == "projex-get-workitem"
+                        and _arg_value(call["args"], "--id") == str(scope["developmentTaskId"]))
+    try:
+        if hg.bundle_from_description((dev_readback.get("expect") or {}).get("description", "")) != bundle:
+            raise ValueError("开发回执与计划不一致")
+    except ValueError as error:
+        raise core.AdapterError(f"交棒回执缺少 finalReadbacks：{error}") from error
 
     return {
         "schemaVersion": SCHEMA,
@@ -418,66 +424,66 @@ def validate_plan(value: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _product_handoff_warnings(evidence: dict, scope: dict) -> list[str]:
-    """Product document completeness is advisory at development completion."""
-    if not evidence.get("handoffEvidence"):
-        return ["产品交接记录待产品补齐：未提供标准交接包；不阻断完成开发或创建测试任务。"]
-    try:
-        bundle = hg.validate_bundle(evidence["handoffEvidence"], "development", scope,
-                                    evidence["trustedDeliveryVersion"])
-        hg.validate_receipt(bundle["developmentReceipt"], bundle["manifest"],
-                            "development", str(scope["developmentTaskId"]))
-    except (ValueError, TypeError, KeyError) as error:
-        return ["产品交接记录待产品补齐：" + core.scrub(str(error)) + "；不阻断完成开发或创建测试任务。"]
-    return []
-
-
-def _require_description_readback(stage: dict, task_id: str) -> None:
+def _require_receipt_write(stage: dict, bundle: dict) -> None:
     description = gateway._description_value(stage["actions"][0])
-    if description is None:
-        return
+    try:
+        if hg.bundle_from_description(description or "") != bundle:
+            raise ValueError("开发回执与计划不一致")
+    except ValueError as error:
+        raise core.AdapterError(f"交棒回执必须随开发完成写入开发任务：{error}") from error
     matches = [call for call in stage["verifications"]
                if call["operation"] == "projex-get-workitem"
-               and _arg_value(call["args"], "--id") == task_id
+               and _arg_value(call["args"], "--id") == bundle["developmentReceipt"]["taskId"]
                and (call.get("expect") or {}).get("description") == description]
     if len(matches) != 1:
-        raise core.AdapterError("开发描述发生写入时必须在阶段内完整回读。")
+        raise core.AdapterError("交棒理解回执必须在 developmentComplete 阶段内完整回读。")
 
 
-def _verify_completion_scope(plan: dict) -> None:
-    """Verify real task ownership, without fetching product manifests/documents."""
+def _verify_handoff(plan: dict) -> None:
+    """Fresh authoritative reads before preflight and every lifecycle write."""
     executable = core.find_aliyun()
     core.require_auth_env()
-    scope = plan["scope"]
-    items = {}
-    for field in ("developmentTaskId", "deliveryId", "requirementId"):
-        item_id = str(scope[field])
-        item = core.unwrap(gateway.execute_read(executable, {
-            "operation": "projex-get-workitem", "args": ["--id", item_id]}))
-        if not isinstance(item, dict) or str(item.get("id")) != item_id:
-            raise core.AdapterError("完成开发工作项身份无法唯一回读。")
-        space = item.get("space") or {}
-        project_id = str((space.get("id") if isinstance(space, dict) else "") or
-                         item.get("spaceIdentifier") or item.get("spaceId") or item.get("projectId") or "")
-        if project_id != str(scope["projectId"]):
-            raise core.AdapterError("完成开发工作项项目归属不一致或无法回读。")
-        items[field] = item
-    item = items["developmentTaskId"]
-    handoff_start.verify_task_binding(executable, item, scope)
-    relations = core.unwrap(gateway.execute_read(executable, {
-        "operation": "projex-list-workitem-relation-records",
-        "args": ["--id", str(scope["deliveryId"]), "--relation-type", "ASSOCIATED"]}))
-    if not isinstance(relations, list) or str(scope["requirementId"]) not in {
-        str(row.get("resourceId") or "") for row in relations if isinstance(row, dict)
-    }:
-        raise core.AdapterError("交付任务与需求的真实关联无法回读或不一致。")
-    planned = gateway._description_value(plan["stages"]["developmentComplete"]["actions"][0])
-    current = str(item.get("description") or "")
-    if planned is not None and planned != current:
-        bundle = plan["evidence"].get("handoffEvidence")
-        # Compatibility for a valid optional historical bundle update only.
-        if not bundle or _product_handoff_warnings(plan["evidence"], scope) or planned != hg.upsert_bundle(current, bundle):
-            raise core.AdapterError("开发描述已变化或计划覆盖了人工正文，须刷新计划；默认完成开发只更新状态。")
+    # Cache only within this fresh gate call; never reuse an earlier stage's reads.
+    items: dict[str, dict] = {}
+    def read(item_id):
+        if item_id not in items:
+            items[item_id] = core.unwrap(gateway.execute_read(executable, {
+                "operation": "projex-get-workitem", "args": ["--id", item_id]}))
+        return items[item_id]
+    bundle = plan["evidence"]["handoffEvidence"]
+    try:
+        scope = plan["scope"]
+        for field in ("developmentTaskId", "deliveryId", "requirementId"):
+            item_id = str(scope[field])
+            item = read(item_id)
+            if not isinstance(item, dict) or str(item.get("id")) != item_id:
+                raise ValueError("完成开发工作项身份无法唯一回读")
+            space = item.get("space") or {}
+            project_id = str((space.get("id") if isinstance(space, dict) else "") or
+                             item.get("spaceIdentifier") or item.get("spaceId") or item.get("projectId") or "")
+            if project_id != str(scope["projectId"]):
+                raise ValueError("完成开发工作项项目归属不一致或无法回读")
+        relations = core.unwrap(gateway.execute_read(executable, {
+            "operation": "projex-list-workitem-relation-records",
+            "args": ["--id", str(scope["deliveryId"]), "--relation-type", "ASSOCIATED"]}))
+        if not isinstance(relations, list) or str(scope["requirementId"]) not in {
+            str(row.get("resourceId") or "") for row in relations if isinstance(row, dict)
+        }:
+            raise ValueError("交付任务与需求的真实关联无法回读或不一致")
+        hg.verify_live_bundle(bundle, "development", read, plan["scope"],
+                              plan["evidence"]["trustedDeliveryVersion"])
+        hg.verify_documents(bundle["manifest"])
+        item = read(plan["scope"]["developmentTaskId"])
+        if not isinstance(item, dict) or str(item.get("id")) != plan["scope"]["developmentTaskId"]:
+            raise ValueError("官方开发任务身份无法唯一回读")
+        handoff_start.verify_task_binding(executable, item, bundle["manifest"]["scope"])
+        planned = gateway._description_value(
+            plan["stages"]["developmentComplete"]["actions"][0]
+        )
+        if planned != hg.upsert_bundle(str(item.get("description") or ""), bundle):
+            raise ValueError("开发描述已变化或计划覆盖了人工正文，须刷新计划")
+    except (ValueError, OSError) as error:
+        raise core.AdapterError(f"交棒实时校验失败：{error}") from error
 
 
 def _stage_dir(output: Path) -> Path:
@@ -491,7 +497,7 @@ def _call_gateway(func: Any, args: argparse.Namespace) -> None:
 
 def command_preflight(args: argparse.Namespace) -> int:
     plan = validate_plan(load_object(args.plan))
-    _verify_completion_scope(plan)
+    _verify_handoff(plan)
     output = Path(args.output) if args.output else core.output_dir() / \
         f"complete-development-preflight-{gateway.stable_hash(plan)[:16]}.json"
     stages_root = _stage_dir(output)
@@ -526,7 +532,7 @@ def command_preflight(args: argparse.Namespace) -> int:
     }
     gateway.write_json(output, receipt)
     print(json.dumps({"result": "ready", "preflight": str(output),
-                      "fingerprint": receipt["fingerprint"], "warnings": plan["evidence"]["productHandoffWarnings"]}, ensure_ascii=False, indent=2))
+                      "fingerprint": receipt["fingerprint"]}, ensure_ascii=False, indent=2))
     return 0
 
 
@@ -569,7 +575,7 @@ def command_apply(args: argparse.Namespace) -> int:
     fingerprint = gateway.stable_hash(plan)
     if fingerprint != preflight.get("fingerprint"):
         raise core.AdapterError("完成开发预检指纹不一致。")
-    _verify_completion_scope(plan)
+    _verify_handoff(plan)
     output = Path(args.output) if args.output else core.output_dir() / \
         f"complete-development-{gateway.stable_hash(plan['idempotencyKey'])[:16]}.json"
     progress = load_object(output) if output.is_file() else {
@@ -580,7 +586,6 @@ def command_apply(args: argparse.Namespace) -> int:
         "idempotencyKey": plan["idempotencyKey"],
         "scope": plan["scope"],
         "evidence": plan["evidence"],
-        "warnings": plan["evidence"]["productHandoffWarnings"],
         "stages": {},
         "startedAt": core.now_utc(),
     }
@@ -610,8 +615,10 @@ def command_apply(args: argparse.Namespace) -> int:
                 continue
             raise core.AdapterError(f"关键阶段{name}缺少ready预检。")
         stage_receipt_path = _stage_dir(Path(args.preflight)) / f"{name}-apply.json"
+        handoff_checked = False
         try:
-            _verify_completion_scope(plan)
+            _verify_handoff(plan)
+            handoff_checked = True
             _call_gateway(
                 gateway.cmd_apply,
                 argparse.Namespace(preflight=stage_preflight["path"],
@@ -632,7 +639,7 @@ def command_apply(args: argparse.Namespace) -> int:
             progress["failedStage"] = name
             progress["failedAt"] = core.now_utc()
             gateway.write_json(output, progress)
-            if name == "effort":
+            if name == "effort" and handoff_checked:
                 progress["stages"][name]["status"] = "skipped"
                 progress["result"] = "applying"
                 progress.pop("failedStage", None)
@@ -656,8 +663,7 @@ def command_apply(args: argparse.Namespace) -> int:
     progress.pop("failedAt", None)
     gateway.write_json(output, progress)
     print(json.dumps({"result": "complete", "receipt": str(output),
-                      "scope": progress["scope"], "verified": True,
-                      "warnings": plan["evidence"]["productHandoffWarnings"]},
+                      "scope": progress["scope"], "verified": True},
                      ensure_ascii=False, indent=2))
     return 0
 
