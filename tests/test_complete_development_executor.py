@@ -313,6 +313,31 @@ class CompleteDevelopmentExecutorTests(unittest.TestCase):
         with self.assertRaisesRegex(GATEWAY.core.AdapterError, "JSON恢复读取"):
             EXECUTOR.validate_plan(plan)
 
+    def test_default_json_read_requires_success_evidence(self):
+        plan = valid_plan()
+        discovery = plan["evidence"]["testScopeResolution"]["planDiscovery"]
+        discovery.update(status="available-json-api", jsonReadAttempted=True,
+                         jsonReadSucceeded=True, transport="official-openapi-json",
+                         contentType="application/json")
+        EXECUTOR.validate_plan(plan)
+        del discovery["jsonReadSucceeded"]
+        with self.assertRaisesRegex(GATEWAY.core.AdapterError, "JSON恢复读取"):
+            EXECUTOR.validate_plan(plan)
+
+    def test_json_failure_receipt_does_not_require_irrelevant_plugin_upgrade(self):
+        plan = valid_plan()
+        resolution = plan["evidence"]["testScopeResolution"]
+        resolution.update(decision="plan-read-skipped", skipReason="plan-read-unavailable-json-api",
+                          planDiscovery={"status": "unavailable-json-api",
+                              "transport": "official-openapi-json", "contentType": "application/json",
+                              "jsonReadAttempted": True, "jsonReadSucceeded": False,
+                              "jsonReadError": "StatusCode: 500 traceId=JSON-FAIL",
+                              "upgradeAttempted": False, "retryAttempted": False})
+        EXECUTOR.validate_plan(plan)
+        resolution["planDiscovery"]["jsonReadError"] = ""
+        with self.assertRaisesRegex(GATEWAY.core.AdapterError, "真实JSON失败"):
+            EXECUTOR.validate_plan(plan)
+
     def test_no_plan_without_successful_discovery_is_rejected(self):
         plan = valid_plan()
         plan["evidence"]["testScopeResolution"]["planDiscovery"] = {

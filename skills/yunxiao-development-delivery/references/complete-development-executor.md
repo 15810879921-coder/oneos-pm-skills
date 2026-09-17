@@ -21,11 +21,11 @@
 
 10.2.0 新增必需 `evidence.handoffEvidence`，字段见 [交棒门禁](handoff-gate.md)。`developmentReceipt.taskId` 必须等于当前开发任务；`deliveryVersion` 必须等于 `trustedDeliveryVersion`。开发完成的唯一状态更新同时写 `upsert_bundle(当前人工描述,bundle)`；阶段及最终读回包含完整描述。预检、apply 和各阶段写前重新检查需求/交付清单、必读资料真实字节与人工描述，变化则停止受影响阶段，不声称全部零写入（前序成功阶段仍保留）。
 
-计划使用`oneos.complete-development-plan/v1`，套件版本为`10.2.5`。生成计划前必须通过只读CLI（TestHub计划读取可使用受控官方JSON恢复适配器）冻结以下事实：
+计划使用`oneos.complete-development-plan/v1`，套件版本为`10.2.6`。生成计划前必须通过只读CLI（TestHub计划读取默认使用受控官方JSON适配器）冻结以下事实：
 
 - 项目、开发任务、需求和源交付任务唯一；计划同时保存开发任务/需求的内部ID与编号，源交付仍为`处理中`。
 - 全部适用仓库已有可信交付版本，Web最终版本验证通过；小程序有规则化跳过证据。
-- `yunxiao_cli_test_scope.py resolve`已生成`oneos.test-scope-resolution/v2`回执；其中项目、需求编号、开发任务编号和端侧必须与主计划一致。测试模式为`formal-plan`或`mandatory-test-task`，不得使用`lightweight-verification`。正式计划还必须有唯一计划ID、非空端侧目录和非空具体用例ID，且与主计划及测试任务受管区块完全一致。无计划结论必须来自成功读取回执（支持`recovered-after-json-api`，必须有JSON尝试、成功、官方传输和Content-Type字段）；`plan-read-skipped`必须证明已定向更新`aliyun-cli-devops`并重试，保存升级前后版本、两次CLI错误、适用JSON恢复的尝试/结果/错误及可取得的traceId，最终回报不得省略。错误原文中的SDK `<nil>`应保留为诊断，不当作业务占位符拒收。
+- `yunxiao_cli_test_scope.py resolve`已生成`oneos.test-scope-resolution/v2`回执；其中项目、需求编号、开发任务编号和端侧必须与主计划一致。测试模式为`formal-plan`或`mandatory-test-task`，不得使用`lightweight-verification`。正式计划还必须有唯一计划ID、非空端侧目录和非空具体用例ID，且与主计划及测试任务受管区块完全一致。无计划结论必须来自成功读取回执（默认`available-json-api`，必须有JSON尝试、成功、官方传输和Content-Type字段）；`plan-read-skipped`的当前回执必须为`unavailable-json-api`，保存真实JSON读取错误和可取得的traceId，跳过原因为`plan-read-unavailable-json-api`。不要求无关插件升级，也不补做旧CLI调用。历史`recovered-after-json-api`及升级重试诊断回执仍可校验读取。错误原文中的SDK `<nil>`应保留为诊断，不当作业务占位符拒收。最终回报不得省略失败原因。
 - 同一`项目+需求+交付+开发任务`只有零个或一个测试任务。
 - 当前项目`测试主管`恰好一人，并冻结其用户ID。
 - 测试建议和临时需求变更点已能确定；存在影响验收但未确认的变化时不生成写计划。

@@ -27,9 +27,9 @@
 ## 完成开发分流
 
 1. 每个完成开发任务都调用`yunxiao_cli_test_scope.py resolve`，传入需求编号、开发任务编号和端侧。
-2. 首次读取测试计划失败且属于服务端5xx、超时、连接失败、命令/能力缺失或已知Content-Type兼容问题时，只更新`aliyun-cli-devops`插件并自动重试一次。鉴权、权限、参数、项目或数据冲突不得升级后跳过，仍直接阻断。
-3. 插件升级后读取成功时，保存升级前后版本和首次错误；继续按真实计划数据判定，不把首次失败当成无计划。
-4. 插件升级命令失败时也要继续执行一次读取重试；重试仍返回`Content type ... not supported`或`Content-Type ... not supported`时，先调用`yunxiao_testhub_read_api.py`，使用官方公开ListTestPlan接口和JSON请求读取。仅支持已验证的中心域名`https://openapi-rdc.aliyuncs.com`，环境变量PAT认证、禁止重定向、逐页核验项目和计划ID；其他Region/自定义端点必须阻断并说明。JSON读取成功记录`recovered-after-json-api`并按真实数据继续；响应畸形、项目不符、鉴权和权限失败不得降级。其余可重试失败或适用JSON读取后仍遇服务/连接失败时，记录`plan-read-skipped`、升级结果、升级前后版本、升级错误、两次CLI读取错误、JSON尝试/结果/错误和traceId，跳过本次正式TestHub计划/用例验证，并在最终输出明确披露。该分支仍创建独立`mandatory-test-task`并保留测试任务完成发版红线，不得写成“确认无计划”或“测试通过”。
+2. 默认直接调用`yunxiao_testhub_read_api.py`，固定使用官方公开ListTestPlan接口及`Content-Type: application/json`，请求体为`{}`。禁止先调用已证实有form Content-Type缺陷的`test-hub-list-test-plan`，也不为计划查询读取插件版本、升级插件或重试旧CLI。
+3. 仅支持已验证的中心域名`https://openapi-rdc.aliyuncs.com`，环境变量PAT认证、禁止重定向、逐页核验项目和计划ID；其他Region/自定义端点明确阻断，不猜接口。读取成功记录`available-json-api`并按真实计划数据继续。
+4. JSON查询遇真实服务端5xx、超时或连接失败时，记录`unavailable-json-api`、`plan-read-skipped`、`plan-read-unavailable-json-api`及真实错误/traceId，跳过本次正式TestHub计划/用例验证，不执行无关插件升级。响应畸形、项目不符、鉴权和权限失败仍阻断。跳过分支仍创建独立`mandatory-test-task`并保留测试任务完成发版红线，不得写成“确认无计划”或“测试通过”。旧插件升级回执只兼容读取，不触发对应旧执行路径。
 5. 成功读取后没有与需求精确关联的正式计划时，记录`no-associated-test-plan`并跳过正式TestHub计划/用例验证；仍创建`mandatory-test-task`，由QA按需求验收点执行并记录结果。
 6. 有精确正式计划、端侧目录和非空具体用例时使用`formal-plan`；开发完成只读取、去重并冻结`directoryIds`与`selectedCaseIds`，不更新 TestHub 结果。
 7. 计划读取成功但端侧目录未配置或目录内没有正式用例时使用`mandatory-test-task`并记录对应配置缺口；仍创建测试任务，不伪造计划或用例。

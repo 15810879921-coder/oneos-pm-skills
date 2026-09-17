@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Read-only ListTestPlan JSON transport for the official CLI Content-Type defect."""
+"""Default read-only official ListTestPlan transport; Content-Type is fixed to JSON."""
 from __future__ import annotations
 
 import json

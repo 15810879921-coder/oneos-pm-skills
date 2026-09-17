@@ -17,91 +17,32 @@ SCOPE = importlib.import_module("yunxiao_cli_test_scope")
 
 
 class DevelopmentTestScopeTests(unittest.TestCase):
-    def test_content_type_failure_recovers_real_formal_scope_using_json(self):
-        error = SCOPE.core.AdapterError("StatusCode: 500 Content type 'application/x-www-form-urlencoded;charset=UTF-8' not supported")
-        plans = [{"testPlanIdentifier": "PLAN-1", "name": "ONEOS-900 正式计划"}]
-        with patch.object(SCOPE, "list_plans_json", return_value=plans) as read_json:
-            value = self.resolve({
-                "test-hub-list-test-plan": iter([error, error]),
-                "test-hub-get-test-plan-result-directory-list": [{"identifier": "D1", "displayName": "[Web] 主流程"}],
-                "test-hub-get-test-result-list": [{"testcaseIdentifier": "C1"}],
-            }, plugin_versions=["0.9.0", "0.9.0"])
-        read_json.assert_called_once_with("PROJECT-1")
-        self.assertEqual(value["decision"], "formal-plan")
-        self.assertEqual(value["selectedCaseIds"], ["C1"])
-        self.assertFalse(value["formalTestValidationSkipped"])
-        self.assertEqual(value["planDiscovery"]["status"], "recovered-after-json-api")
-
-    def test_json_empty_and_service_failure_have_different_outcomes(self):
-        error = SCOPE.core.AdapterError("StatusCode: 500 Content-Type not supported")
-        for result, decision in (([], "test-task-required"),
-                                 (SCOPE.core.AdapterError("StatusCode: 500"), "plan-read-skipped")):
-            with self.subTest(decision=decision):
-                with patch.object(SCOPE, "list_plans_json", side_effect=result if isinstance(result, Exception) else None,
-                                  return_value=result):
-                    value = self.resolve({"test-hub-list-test-plan": iter([error, error])},
-                                         plugin_versions=["0.9.0", "0.9.0"])
-                self.assertEqual(value["decision"], decision)
-                self.assertTrue(value["planDiscovery"]["jsonReadAttempted"])
-                self.assertEqual(value["planDiscovery"]["jsonReadSucceeded"], decision == "test-task-required")
-
-    def test_permission_failure_in_retry_or_json_does_not_degrade(self):
-        content_error = SCOPE.core.AdapterError("StatusCode: 500 Content type not supported")
-        denied = SCOPE.core.AdapterError("StatusCode: 403 Forbidden")
-        for second in (denied, content_error):
-            with self.subTest(second=second):
-                with patch.object(SCOPE, "list_plans_json", side_effect=denied):
-                    with self.assertRaisesRegex(SCOPE.core.AdapterError, "403"):
-                        self.resolve({"test-hub-list-test-plan": iter([content_error, second])},
-                                     plugin_versions=["0.9.0", "0.9.0"])
-
-    def resolve(self, responses: dict[str, object], *, plugin_versions: list[str] | None = None,
-                expected_result: int = 0) -> dict:
-        original_find = SCOPE.core.find_aliyun
-        original_auth = SCOPE.core.require_auth_env
-        original_run = SCOPE.core.run_devops
-        original_raw = SCOPE.core.run_raw
-        raw_calls: list[list[str]] = []
-        versions = iter(plugin_versions or ["0.9.0"])
-
-        def run_devops(_executable: str, args: list[str]):
-            operation = args[0]
-            value = responses[operation]
-            if hasattr(value, "__next__"):
-                value = next(value)
-            if isinstance(value, Exception):
-                raise value
+    def resolve(self, responses: dict[str, object], *, expected_result: int = 0) -> dict:
+        def run_devops(_executable, args):
+            self.assertNotEqual(args[0], "test-hub-list-test-plan")
+            value = responses[args[0]]
             return value(args) if callable(value) else value
 
-        def run_raw(_executable: str, args: list[str], **_kwargs):
-            raw_calls.append(args)
-            if args[:3] == ["plugin", "show", "--name"]:
-                return f"Name:\taliyun-cli-devops\nVersion:\t{next(versions)}"
-            if args[:3] == ["plugin", "update", "--name"]:
-                return "Updated: 1"
-            raise AssertionError(f"unexpected raw call: {args}")
-
-        try:
-            SCOPE.core.find_aliyun = lambda: "aliyun"
-            SCOPE.core.require_auth_env = lambda: {"organizationId": "ORG-1"}
-            SCOPE.core.run_devops = run_devops
-            SCOPE.core.run_raw = run_raw
+        value = responses["test-hub-list-test-plan"]
+        plans = value.get("items", []) if isinstance(value, dict) else value
+        with patch.object(SCOPE.core, "find_aliyun", return_value="aliyun"), \
+                patch.object(SCOPE.core, "require_auth_env"), \
+                patch.object(SCOPE.core, "run_devops", side_effect=run_devops), \
+                patch.object(SCOPE.core, "run_raw", side_effect=AssertionError("plan read must not query or upgrade plugin")) as raw, \
+                patch.object(SCOPE, "list_plans_json", return_value=plans,
+                             side_effect=plans if isinstance(plans, Exception) else None) as read_json:
             with tempfile.TemporaryDirectory() as directory:
                 output = Path(directory) / "scope.json"
                 result = SCOPE.command_resolve(argparse.Namespace(
                     project_id="PROJECT-1", requirement_sn="ONEOS-900",
                     development_task_sn="ONEOS-901", delivery_end="Web",
-                    test_plan_id=None, output=str(output),
-                ))
+                    test_plan_id=None, output=str(output)))
                 self.assertEqual(result, expected_result)
-                value = json.loads(output.read_text(encoding="utf-8"))
-                value["_rawCalls"] = raw_calls
-                return value
-        finally:
-            SCOPE.core.find_aliyun = original_find
-            SCOPE.core.require_auth_env = original_auth
-            SCOPE.core.run_devops = original_run
-            SCOPE.core.run_raw = original_raw
+                result = json.loads(output.read_text(encoding="utf-8"))
+            read_json.assert_called_once_with("PROJECT-1")
+            raw.assert_not_called()
+            result["_rawCalls"] = []
+            return result
 
     def test_formal_scope_reads_and_deduplicates_exact_cases(self):
         def results(args: list[str]):
@@ -152,110 +93,31 @@ class DevelopmentTestScopeTests(unittest.TestCase):
         self.assertEqual(value["selectedCaseIds"], [])
         self.assertTrue(value["formalTestValidationSkipped"])
         self.assertEqual(value["skipReason"], "no-associated-test-plan")
-        self.assertEqual(value["planDiscovery"]["status"], "available")
+        self.assertEqual(value["planDiscovery"]["status"], "available-json-api")
         self.assertNotIn(["plugin", "update", "--name", "aliyun-cli-devops"],
                          value["_rawCalls"])
 
-    def test_failed_plan_read_updates_only_devops_plugin_and_retries(self):
-        error = SCOPE.core.AdapterError(
-            'CLI调用失败：devops test-hub-list-test-plan；StatusCode: 500 '
-            'Content type not supported traceId":"TRACE-1"'
-        )
-        value = self.resolve({
-            "test-hub-list-test-plan": iter([error, {"items": []}]),
-        }, plugin_versions=["0.5.2", "0.9.0"])
-        self.assertEqual(value["decision"], "test-task-required")
-        self.assertEqual(value["planDiscovery"]["status"],
-                         "recovered-after-plugin-upgrade")
-        self.assertEqual(value["planDiscovery"]["versionBefore"], "0.5.2")
-        self.assertEqual(value["planDiscovery"]["versionAfter"], "0.9.0")
-        self.assertIn(["plugin", "update", "--name", "aliyun-cli-devops"],
-                      value["_rawCalls"])
-        self.assertEqual(value["planDiscovery"]["traceIds"], ["TRACE-1"])
-
-    def test_failed_retry_skips_plan_stage_with_visible_diagnostics(self):
-        first = SCOPE.core.AdapterError(
-            'CLI调用失败；StatusCode: 500 traceId":"TRACE-OLD"'
-        )
-        second = SCOPE.core.AdapterError(
-            'CLI调用失败；StatusCode: 500 traceId":"TRACE-NEW"'
-        )
-        value = self.resolve({
-            "test-hub-list-test-plan": iter([first, second]),
-        }, plugin_versions=["0.9.0", "0.9.0"])
+    def test_json_service_failure_records_actual_error_without_plugin_retry(self):
+        value = self.resolve({"test-hub-list-test-plan": SCOPE.core.AdapterError("StatusCode: 500 traceId=TRACE-JSON")})
         self.assertEqual(value["decision"], "plan-read-skipped")
-        self.assertEqual(value["testMode"], "mandatory-test-task")
-        self.assertTrue(value["formalTestValidationSkipped"])
-        self.assertEqual(value["planDiscovery"]["status"],
-                         "unavailable-after-plugin-upgrade")
-        self.assertEqual(value["planDiscovery"]["traceIds"],
-                         ["TRACE-OLD", "TRACE-NEW"])
-        self.assertIn("最终回报必须披露", value["note"])
+        self.assertEqual(value["skipReason"], "plan-read-unavailable-json-api")
+        discovery = value["planDiscovery"]
+        self.assertEqual(discovery["status"], "unavailable-json-api")
+        self.assertFalse(discovery["jsonReadSucceeded"])
+        self.assertFalse(discovery["upgradeAttempted"])
+        self.assertFalse(discovery["retryAttempted"])
+        self.assertEqual(discovery["traceIds"], ["TRACE-JSON"])
 
-    def test_plugin_upgrade_failure_still_retries_and_skips_with_diagnostics(self):
-        first = SCOPE.core.AdapterError(
-            'CLI调用失败；StatusCode: 500 traceId":"TRACE-OLD"'
-        )
-        second = SCOPE.core.AdapterError(
-            'CLI调用失败；StatusCode: 500 traceId":"TRACE-NEW"'
-        )
-        original_find = SCOPE.core.find_aliyun
-        original_auth = SCOPE.core.require_auth_env
-        original_run = SCOPE.core.run_devops
-        original_raw = SCOPE.core.run_raw
-
-        def failed_update(_executable: str, args: list[str], **_kwargs):
-            if args[:3] == ["plugin", "show", "--name"]:
-                return "Name:\taliyun-cli-devops\nVersion:\t0.9.0"
-            if args[:3] == ["plugin", "update", "--name"]:
-                raise SCOPE.core.AdapterError("plugin registry timeout")
-            raise AssertionError(f"unexpected raw call: {args}")
-
-        try:
-            SCOPE.core.find_aliyun = lambda: "aliyun"
-            SCOPE.core.require_auth_env = lambda: {"organizationId": "ORG-1"}
-            SCOPE.core.run_raw = failed_update
-            calls = iter([first, second])
-            SCOPE.core.run_devops = lambda _exe, _args: (
-                (_ for _ in ()).throw(next(calls))
-            )
-            plans, discovery = SCOPE.discover_plans("aliyun", "PROJECT-1")
-        finally:
-            SCOPE.core.find_aliyun = original_find
-            SCOPE.core.require_auth_env = original_auth
-            SCOPE.core.run_devops = original_run
-            SCOPE.core.run_raw = original_raw
-
-        self.assertIsNone(plans)
-        self.assertTrue(discovery["upgradeAttempted"])
-        self.assertFalse(discovery["upgradeSucceeded"])
-        self.assertIn("registry timeout", discovery["upgradeError"])
-        self.assertTrue(discovery["retryAttempted"])
-        self.assertEqual(discovery["traceIds"], ["TRACE-OLD", "TRACE-NEW"])
-
-    def test_permission_failure_does_not_upgrade_or_skip(self):
-        original_find = SCOPE.core.find_aliyun
-        original_auth = SCOPE.core.require_auth_env
-        original_run = SCOPE.core.run_devops
-        original_raw = SCOPE.core.run_raw
-        raw_calls: list[list[str]] = []
-        try:
-            SCOPE.core.find_aliyun = lambda: "aliyun"
-            SCOPE.core.require_auth_env = lambda: {"organizationId": "ORG-1"}
-            SCOPE.core.run_raw = lambda _exe, args, **_kwargs: (
-                raw_calls.append(args) or "Name:\taliyun-cli-devops\nVersion:\t0.9.0"
-            )
-            SCOPE.core.run_devops = lambda _exe, _args: (_ for _ in ()).throw(
-                SCOPE.core.AdapterError("StatusCode: 403 Forbidden")
-            )
-            with self.assertRaisesRegex(SCOPE.core.AdapterError, "403"):
-                SCOPE.discover_plans("aliyun", "PROJECT-1")
-            self.assertNotIn(["plugin", "update", "--name", "aliyun-cli-devops"], raw_calls)
-        finally:
-            SCOPE.core.find_aliyun = original_find
-            SCOPE.core.require_auth_env = original_auth
-            SCOPE.core.run_devops = original_run
-            SCOPE.core.run_raw = original_raw
+    def test_permission_and_invalid_response_fail_without_any_cli_probe(self):
+        for message in ("StatusCode: 403 Forbidden", "JSON响应不是计划数组", "项目不一致"):
+            with self.subTest(message=message), \
+                    patch.object(SCOPE.core, "run_raw") as raw, \
+                    patch.object(SCOPE.core, "run_devops") as cli, \
+                    patch.object(SCOPE, "list_plans_json", side_effect=SCOPE.core.AdapterError(message)):
+                with self.assertRaises(SCOPE.core.AdapterError):
+                    SCOPE.discover_plans("PROJECT-1")
+                raw.assert_not_called()
+                cli.assert_not_called()
 
 
 if __name__ == "__main__":

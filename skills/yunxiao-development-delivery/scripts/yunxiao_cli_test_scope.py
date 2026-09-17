@@ -16,7 +16,6 @@ from yunxiao_testhub_read_api import list_plans_json
 
 SCOPE_PATTERN = re.compile(r"^\[(Web|小程序|跨端)\]\s*")
 TRACE_ID_PATTERN = re.compile(r'"?traceId"?\s*[:=]\s*"?([A-Za-z0-9_-]+)', re.IGNORECASE)
-PLUGIN_NAME = "aliyun-cli-devops"
 
 
 def write_receipt(path: Path, value: dict[str, Any]) -> None:
@@ -88,34 +87,6 @@ def list_directory_cases(executable: str, plan_id: str,
     return selected
 
 
-def list_plans(executable: str, project_id: str) -> list[dict[str, Any]]:
-    result: list[dict[str, Any]] = []
-    for page in range(1, 101):
-        batch = items(core.run_devops(executable, [
-            "test-hub-list-test-plan", "--project-identifier", project_id,
-            "--page", str(page), "--per-page", "100",
-        ]))
-        result.extend(batch)
-        if len(batch) < 100:
-            break
-    return result
-
-
-def plugin_version(executable: str) -> str:
-    text = core.run_raw(executable, ["plugin", "show", "--name", PLUGIN_NAME])
-    match = re.search(r"(?im)^Version:\s*([^\s]+)", text)
-    if not match:
-        raise core.AdapterError(f"无法读取{PLUGIN_NAME}版本。")
-    return match.group(1)
-
-
-def safe_plugin_version(executable: str) -> tuple[str, str | None]:
-    try:
-        return plugin_version(executable), None
-    except Exception as error:
-        return "unknown", core.scrub(str(error))
-
-
 def retryable_plan_read_error(error: Exception) -> bool:
     text = core.scrub(str(error)).lower()
     denied = (
@@ -140,85 +111,30 @@ def trace_ids(*errors: str) -> list[str]:
     return result
 
 
-def discover_plans(executable: str, project_id: str) -> tuple[list[dict[str, Any]] | None,
-                                                               dict[str, Any]]:
+def discover_plans(project_id: str) -> tuple[list[dict[str, Any]] | None, dict[str, Any]]:
+    # The CLI form Content-Type defect is confirmed: never probe it or upgrade
+    # the plugin as a prerequisite for this independently supported public API.
+    discovery: dict[str, Any] = {
+        "status": "available-json-api",
+        "transport": "official-openapi-json",
+        "contentType": "application/json",
+        "upgradeAttempted": False,
+        "retryAttempted": False,
+        "jsonReadAttempted": True,
+        "jsonReadSucceeded": False,
+        "traceIds": [],
+    }
     try:
-        plans = list_plans(executable, project_id)
-        current, version_error = safe_plugin_version(executable)
-        return plans, {
-            "status": "available",
-            "plugin": PLUGIN_NAME,
-            "versionBefore": current,
-            "versionAfter": current,
-            "versionReadError": version_error,
-            "upgradeAttempted": False,
-            "upgradeSucceeded": None,
-            "retryAttempted": False,
-            "traceIds": [],
-        }
-    except core.AdapterError as first_error:
-        if not retryable_plan_read_error(first_error):
+        plans = list_plans_json(project_id)
+    except core.AdapterError as error:
+        if not retryable_plan_read_error(error):
             raise
-        first = core.scrub(str(first_error))
-
-    before, before_error = safe_plugin_version(executable)
-    upgrade_error: str | None = None
-    try:
-        core.run_raw(executable, ["plugin", "update", "--name", PLUGIN_NAME], timeout=300)
-        upgrade_succeeded = True
-    except Exception as error:
-        upgrade_succeeded = False
-        upgrade_error = core.scrub(str(error))
-    after, after_error = safe_plugin_version(executable)
-    try:
-        plans = list_plans(executable, project_id)
-        return plans, {
-            "status": "recovered-after-plugin-upgrade",
-            "plugin": PLUGIN_NAME,
-            "versionBefore": before,
-            "versionAfter": after,
-            "versionBeforeReadError": before_error,
-            "versionAfterReadError": after_error,
-            "upgradeAttempted": True,
-            "upgradeSucceeded": upgrade_succeeded,
-            "upgradeError": upgrade_error,
-            "retryAttempted": True,
-            "initialError": first,
-            "traceIds": trace_ids(first),
-        }
-    except core.AdapterError as retry_error:
-        if not retryable_plan_read_error(retry_error):
-            raise
-        second = core.scrub(str(retry_error))
-        discovery = {
-            "status": "unavailable-after-plugin-upgrade",
-            "plugin": PLUGIN_NAME,
-            "versionBefore": before,
-            "versionAfter": after,
-            "versionBeforeReadError": before_error,
-            "versionAfterReadError": after_error,
-            "upgradeAttempted": True,
-            "upgradeSucceeded": upgrade_succeeded,
-            "upgradeError": upgrade_error,
-            "retryAttempted": True,
-            "initialError": first,
-            "retryError": second,
-            "traceIds": trace_ids(first, second),
-        }
-        if re.search(r"content[ -]?type.*not supported", second, re.IGNORECASE):
-            discovery.update(jsonReadAttempted=True, jsonReadSucceeded=False,
-                             transport="official-openapi-json", contentType="application/json")
-            try:
-                plans = list_plans_json(project_id)
-            except core.AdapterError as json_error:
-                if not retryable_plan_read_error(json_error):
-                    raise
-                discovery["jsonReadError"] = core.scrub(str(json_error))
-                discovery["traceIds"] = trace_ids(first, second, discovery["jsonReadError"])
-            else:
-                discovery.update(status="recovered-after-json-api", jsonReadSucceeded=True)
-                return plans, discovery
+        diagnostic = core.scrub(str(error))
+        discovery.update(status="unavailable-json-api", jsonReadError=diagnostic,
+                         traceIds=trace_ids(diagnostic))
         return None, discovery
+    discovery["jsonReadSucceeded"] = True
+    return plans, discovery
 
 
 def flatten_directories(value: Any) -> list[dict[str, Any]]:
@@ -262,7 +178,7 @@ def command_resolve(args: argparse.Namespace) -> int:
     end = "Web" if args.delivery_end == "PC" else args.delivery_end
     target = Path(args.output) if args.output else core.output_dir() / \
         f"test-scope-{args.requirement_sn.lower()}-{end.lower()}-{args.development_task_sn.lower()}.json"
-    plans, discovery = discover_plans(executable, args.project_id)
+    plans, discovery = discover_plans(args.project_id)
     if plans is None:
         payload = {
             "schemaVersion": "oneos.test-scope-resolution/v2",
@@ -279,9 +195,9 @@ def command_resolve(args: argparse.Namespace) -> int:
             "selectedCaseIds": [],
             "selectedCaseResults": [],
             "formalTestValidationSkipped": True,
-            "skipReason": "plan-read-unavailable-after-plugin-upgrade",
+            "skipReason": "plan-read-unavailable-json-api",
             "planDiscovery": discovery,
-            "note": "测试计划首次读取失败，尝试升级aliyun-cli-devops并重试后仍不可用；本次跳过正式TestHub计划/用例验证，仍须创建独立【测试】任务，最终回报必须披露插件升级结果、版本、错误、traceId，以及适用JSON恢复的尝试、结果和错误。",
+            "note": "官方JSON测试计划读取失败；本次跳过正式TestHub计划/用例验证，仍须创建独立【测试】任务。最终回报必须披露真实读取错误和traceId；不得宣称无计划或测试通过，不执行无关插件升级。",
         }
         write_receipt(target, payload)
         payload["receipt"] = str(target)

@@ -21,7 +21,7 @@ import yunxiao_cli_handoff as handoff_start
 SCHEMA = "oneos.complete-development-plan/v1"
 PREFLIGHT_SCHEMA = "oneos.complete-development-preflight/v1"
 RECEIPT_SCHEMA = "oneos.complete-development-receipt/v1"
-SUITE_VERSION = "10.2.5"
+SUITE_VERSION = "10.2.6"
 TEST_SCOPE_START = "<!-- ONEOS_TEST_SCOPE_START -->"
 TEST_SCOPE_END = "<!-- ONEOS_TEST_SCOPE_END -->"
 ALLOWED_TEST_MODES = {"formal-plan", "mandatory-test-task"}
@@ -278,34 +278,47 @@ def validate_plan(value: dict[str, Any]) -> dict[str, Any]:
         "test-task-required", "scope-unconfigured", "scope-empty", "plan-read-skipped",
     }:
         raise core.AdapterError(
-            "mandatory-test-task必须来自无计划、端侧未配置、正式范围为空或插件升级重试后仍不可读的回执。"
+            "mandatory-test-task必须来自无计划、端侧未配置、正式范围为空或真实读取失败的回执。"
         )
     elif scope["testPlanId"] is not None or scope["directoryIds"] or scope["selectedCaseIds"]:
         raise core.AdapterError("mandatory-test-task不得伪造正式计划、目录或具体用例。")
     elif resolution.get("decision") == "plan-read-skipped":
         discovery = resolution.get("planDiscovery")
-        if not isinstance(discovery, dict) \
-                or discovery.get("status") != "unavailable-after-plugin-upgrade" \
-                or discovery.get("plugin") != "aliyun-cli-devops" \
-                or discovery.get("upgradeAttempted") is not True \
-                or discovery.get("retryAttempted") is not True \
-                or not valid_ref(discovery.get("versionBefore")) \
-                or not valid_ref(discovery.get("versionAfter")) \
-                or not isinstance(discovery.get("initialError"), str) \
-                or not discovery["initialError"].strip() \
-                or not isinstance(discovery.get("retryError"), str) \
-                or not discovery["retryError"].strip():
-            raise core.AdapterError("跳过测试计划读取必须携带插件升级、重试和失败诊断回执。")
-        if resolution.get("formalTestValidationSkipped") is not True \
-                or resolution.get("skipReason") != "plan-read-unavailable-after-plugin-upgrade":
-            raise core.AdapterError("插件升级重试失败后必须显式标记跳过正式测试计划验证。")
+        if isinstance(discovery, dict) and discovery.get("status") == "unavailable-json-api":
+            if discovery.get("transport") != "official-openapi-json" \
+                    or discovery.get("contentType") != "application/json" \
+                    or discovery.get("jsonReadAttempted") is not True \
+                    or discovery.get("jsonReadSucceeded") is not False \
+                    or not isinstance(discovery.get("jsonReadError"), str) \
+                    or not discovery["jsonReadError"].strip():
+                raise core.AdapterError("跳过测试计划读取必须携带真实JSON失败诊断回执。")
+            if resolution.get("formalTestValidationSkipped") is not True \
+                    or resolution.get("skipReason") != "plan-read-unavailable-json-api":
+                raise core.AdapterError("JSON读取失败必须显式标记跳过正式测试计划验证。")
+        else:
+            # Read historical receipts without requiring new calls to the broken CLI.
+            if not isinstance(discovery, dict) \
+                    or discovery.get("status") != "unavailable-after-plugin-upgrade" \
+                    or discovery.get("plugin") != "aliyun-cli-devops" \
+                    or discovery.get("upgradeAttempted") is not True \
+                    or discovery.get("retryAttempted") is not True \
+                    or not valid_ref(discovery.get("versionBefore")) \
+                    or not valid_ref(discovery.get("versionAfter")) \
+                    or not isinstance(discovery.get("initialError"), str) \
+                    or not discovery["initialError"].strip() \
+                    or not isinstance(discovery.get("retryError"), str) \
+                    or not discovery["retryError"].strip():
+                raise core.AdapterError("跳过测试计划读取必须携带插件升级、重试和失败诊断回执。")
+            if resolution.get("formalTestValidationSkipped") is not True \
+                    or resolution.get("skipReason") != "plan-read-unavailable-after-plugin-upgrade":
+                raise core.AdapterError("插件升级重试失败后必须显式标记跳过正式测试计划验证。")
     else:
         discovery = resolution.get("planDiscovery")
         if not isinstance(discovery, dict) or discovery.get("status") not in {
-            "available", "recovered-after-plugin-upgrade", "recovered-after-json-api",
+            "available", "recovered-after-plugin-upgrade", "recovered-after-json-api", "available-json-api",
         }:
             raise core.AdapterError("无正式计划或用例的结论必须来自成功的测试计划读取回执。")
-        if discovery.get("status") == "recovered-after-json-api" and (
+        if discovery.get("status") in {"recovered-after-json-api", "available-json-api"} and (
             discovery.get("jsonReadAttempted") is not True
             or discovery.get("jsonReadSucceeded") is not True
             or discovery.get("transport") != "official-openapi-json"

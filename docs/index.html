@@ -369,13 +369,13 @@
       <p class="lead">每个能力单独一张卡：看用途，一键复制「安装 / 更新 / 发给 AI」。同事粘贴到终端，或整段丢给 Cursor / Codex 代跑即可。</p>
     </header>
 
-    <section class="batch" id="lifecycle-10-2-5">
-      <h2>云效生命周期 · 10.2.5</h2>
-      <p>产品、开发、测试、发布统一更新下面五个 Skill。完成开发读取TestHub计划时，升级插件重试后仍遇Content-Type错误，会使用官方JSON请求恢复读取；成功后按真实计划继续。权限和无效响应仍阻断，确实读取失败才披露错误并跳过该验证阶段。历史代码恢复、正式交棒、测试任务必建和测试完成发版红线保持不变。</p>
+    <section class="batch" id="lifecycle-10-2-6">
+      <h2>云效生命周期 · 10.2.6</h2>
+      <p>产品、开发、测试、发布统一更新下面五个 Skill。完成开发默认直接使用官方JSON请求读取TestHub计划，固定Content-Type为application/json；不再先试错CLI或升级重试插件。成功后按真实计划继续。权限和无效响应仍阻断，确实读取失败才披露错误并跳过该验证阶段。历史代码恢复、正式交棒、测试任务必建和测试完成发版红线保持不变。</p>
       <p>按岗位选择需要更新的 Skill，完成后新开会话并回读实际版本。开发台账及完成开发已取消五个 Skill 全部安装且同版的门禁；开发大脑预检与真实交付、验证和交棒证据仍须通过。即使今天自动更新过，也请主动执行本次更新。下方五包更新口令供完整套件维护使用，不是开发人员的必装清单。Cursor 历史包暂不维护；安装本包不等于生产 CI 或云效服务端门禁已开启。</p>
       <div class="cmd-block">
         <span class="cmd-label">Codex 用户级统一安装 / 更新</span>
-        <pre id="handoff-suite-update">请把以下五个云效 Skill 更新到 Codex 用户级，完成后逐个读取 SKILL.md 核对套件版本为 10.2.5，并告诉我需要新开会话。不要修改业务仓或云效任务。
+        <pre id="handoff-suite-update">请把以下五个云效 Skill 更新到 Codex 用户级，完成后逐个读取 SKILL.md 核对套件版本为 10.2.6，并告诉我需要新开会话。不要修改业务仓或云效任务。
 npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoPM -a codex -g -y
 npx skills add 15810879921-coder/oneos-pm-skills --skill yunxiao-development-delivery -a codex -g -y
 npx skills add 15810879921-coder/oneos-pm-skills --skill development-brain -a codex -g -y
