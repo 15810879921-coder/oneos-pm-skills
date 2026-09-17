@@ -20,6 +20,8 @@ npx skills add 15810879921-coder/oneos-pm-skills --skill yunxiao-release-operati
 
 协议与接入边界见 [版本化交棒说明](skills/YunxiaoPM/references/handoff-gate.md)；本次变化和验证见 [10.2.2 发布记录](docs/releases/10.2.2.md)，安装回读约束见 [10.2.1 发布记录](docs/releases/10.2.1.md)。旧任务可以调查与补录，但不能用缺失资料、旧版回执或人工状态完成绕过正式 QA/发布。只维护 Codex；Cursor 历史包保留不动。仓库发布不等于同事已更新，也不等于服务端 CI/云效组织门禁已部署。
 
+五个云效生命周期 Skill 的职责、自然语言路由、交接关系和关键文件统一见 [云效生命周期 Skill 索引](docs/yunxiao-lifecycle-skill-index.md)；其结构化真相源为 [`docs/yunxiao-lifecycle-skill-index.json`](docs/yunxiao-lifecycle-skill-index.json)，可用 `python scripts/build-yunxiao-skill-index.py --check` 检查版本和路径漂移。
+
 维护者在无 PowerShell 的环境可用 `python3 scripts/build-codex-packages.py` 打包，`--check` 校验五包文件清单、逐文件字节与 SHA。发布前另运行全部测试、`scripts/test-daily-skill-update.mjs` 和 `scripts/sync-handoff-gate.py --check`。
 
 > **安装范围约定：** 本仓库公开的新装和更新口令默认使用 `-g`，统一安装到当前操作系统用户的全局 Skill 目录，对该用户的所有项目生效，不再提供项目级安装口令。
