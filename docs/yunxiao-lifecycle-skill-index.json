@@ -1,6 +1,6 @@
 {
   "schemaVersion": "oneos.yunxiao-lifecycle-skill-index/v1",
-  "suiteVersion": "10.2.2",
+  "suiteVersion": "10.2.3",
   "scope": "OneOS 云效需求、开发、测试与发布生命周期",
   "skills": [
     {
@@ -39,6 +39,7 @@
       "keyReferences": [
         "skills/yunxiao-development-delivery/references/semantic-routing.md",
         "skills/yunxiao-development-delivery/references/complete-development-executor.md",
+        "skills/yunxiao-development-delivery/references/historical-code-recovery.md",
         "skills/yunxiao-development-delivery/references/handoff-gate.md"
       ],
       "keyScripts": [

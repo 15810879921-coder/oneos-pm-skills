@@ -14,8 +14,8 @@ from zoneinfo import ZoneInfo
 
 
 SCHEMA = "oneos.delivery-ledger/v1"
-SUITE_VERSION = "10.2.2"
-SUPPORTED_SUITE_VERSIONS = {"10.0.0", "10.1.0", "10.2.0", "10.2.1", SUITE_VERSION}
+SUITE_VERSION = "10.2.3"
+SUPPORTED_SUITE_VERSIONS = {"10.0.0", "10.1.0", "10.2.0", "10.2.1", "10.2.2", SUITE_VERSION}
 COMMENT_PREFIX = "【交付台账事件】"
 TRANSACTION_SCHEMA = "oneos.yunxiao-cli-transaction-plan/v1"
 EVENT_TYPES = {

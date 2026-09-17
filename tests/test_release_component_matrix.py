@@ -113,6 +113,20 @@ class ReleaseComponentMatrixTests(unittest.TestCase):
         self.assertEqual(errors, [])
         self.assertEqual(result["suiteVersion"], "10.2.2")
 
+    def test_current_10_2_3_matrix_is_supported(self):
+        value = matrix()
+        value["suiteVersion"] = "10.2.3"
+        value["ledgerValidation"] = {"status": "passed"}
+        value["codeAnchors"][0].update(
+            deliveryUnitId="DU-1",
+            branchInstanceId="BR-1",
+            ledgerEventId="EVT-1",
+            exactCommitIds=["abc123"],
+        )
+        errors, result = MODULE.validate(value)
+        self.assertEqual(errors, [])
+        self.assertEqual(result["suiteVersion"], "10.2.3")
+
     def test_legacy_10_0_matrix_remains_readable(self):
         value = matrix()
         value["suiteVersion"] = "10.0.0"

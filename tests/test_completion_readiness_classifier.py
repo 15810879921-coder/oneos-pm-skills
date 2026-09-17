@@ -63,6 +63,36 @@ class CompletionReadinessClassifierTests(unittest.TestCase):
         value["remainingTaskChanges"] = True
         self.assertEqual(CLASSIFIER.classify(value)["nextAction"], "stop_after_submit")
 
+    def test_historical_delivery_candidates_enter_recovery_instead_of_dead_end(self):
+        value = snapshot()
+        value["remoteDelivery"] = "recoverable"
+        value["remoteVersion"] = None
+        value["recoveryNeeded"] = ["formal_handoff", "code_mapping", "managed_test_scope"]
+        value["candidateCodeRefs"] = ["ln-one-os-web!555", "ln-cloud!53"]
+        result = CLASSIFIER.classify(value)
+        self.assertEqual(result["decision"], "recovery_required")
+        self.assertEqual(result["nextAction"], "recover_then_complete")
+        self.assertIn("2条历史代码候选", result["prompt"])
+        self.assertIn("代码映射", "".join(result["reasons"]))
+
+    def test_recoverable_delivery_requires_exact_candidates(self):
+        value = snapshot()
+        value["remoteDelivery"] = "recoverable"
+        value["recoveryNeeded"] = ["code_mapping"]
+        with self.assertRaisesRegex(ValueError, "candidateCodeRefs"):
+            CLASSIFIER.classify(value)
+
+    def test_recovery_never_overrides_failed_validation(self):
+        value = snapshot()
+        value["remoteDelivery"] = "recoverable"
+        value["validation"] = "failed"
+        value["recoveryNeeded"] = ["code_mapping"]
+        value["candidateCodeRefs"] = ["ln-one-os-web!555"]
+        result = CLASSIFIER.classify(value)
+        self.assertEqual(result["decision"], "incomplete")
+        self.assertEqual(result["nextAction"], "stop_after_submit")
+        self.assertIsNone(result["prompt"])
+
 
 if __name__ == "__main__":
     unittest.main()

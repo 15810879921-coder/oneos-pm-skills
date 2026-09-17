@@ -21,7 +21,7 @@
 
 10.2.0 新增必需 `evidence.handoffEvidence`，字段见 [交棒门禁](handoff-gate.md)。`developmentReceipt.taskId` 必须等于当前开发任务；`deliveryVersion` 必须等于 `trustedDeliveryVersion`。开发完成的唯一状态更新同时写 `upsert_bundle(当前人工描述,bundle)`；阶段及最终读回包含完整描述。预检、apply 和各阶段写前重新检查需求/交付清单、必读资料真实字节与人工描述，变化则停止受影响阶段，不声称全部零写入（前序成功阶段仍保留）。
 
-计划使用`oneos.complete-development-plan/v1`，套件版本为`10.2.2`。生成计划前必须通过只读CLI冻结以下事实：
+计划使用`oneos.complete-development-plan/v1`，套件版本为`10.2.3`。生成计划前必须通过只读CLI冻结以下事实：
 
 - 项目、开发任务、需求和源交付任务唯一；计划同时保存开发任务/需求的内部ID与编号，源交付仍为`处理中`。
 - 全部适用仓库已有可信交付版本，Web最终版本验证通过；小程序有规则化跳过证据。

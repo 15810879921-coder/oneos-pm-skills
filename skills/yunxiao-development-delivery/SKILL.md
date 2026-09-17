@@ -25,7 +25,7 @@ node <本 Skill 目录>/scripts/ensure-daily-skill-update.mjs --current-skill yu
 - `failed` / `unavailable` / `cooldown`：只给一条简短提示，继续当前任务；更新失败不得阻断开发工作。
 - 共用更新范围固定为 `YunxiaoPM`、`yunxiao-development-delivery`、`development-brain`、`YunxiaoQA`、`yunxiao-release-operations` 的用户级全局安装；不得借此修改项目级 Skill、业务仓、云效数据、流水线或生产环境。不得手工伪造或提前写入每日成功状态。
 
-Operate development tasks and Codeup assets without using code activity as a substitute for real work state. Suite version: `10.2.2`.
+Operate development tasks and Codeup assets without using code activity as a substitute for real work state. Suite version: `10.2.3`.
 
 ## Load the required references
 
@@ -48,6 +48,7 @@ Read each selected file completely before acting:
 - Test-task handoff without a test-pipeline gate, plus release-repair re-entry: [references/test-deployment-handoff.md](references/test-deployment-handoff.md).
 - Requirement-level TestHub plan discovery, delivery-end case scope, lightweight verification, and requirement completion aggregation: [references/test-scope-aggregation.md](references/test-scope-aggregation.md).
 - Post-submit completion assessment and automatic/confirm/stop decisions: [references/completion-readiness.md](references/completion-readiness.md).
+- Historical tasks whose branches, commits or MRs predate the task or lack task relations: [references/historical-code-recovery.md](references/historical-code-recovery.md). Recover the exact mapping from official Codeup evidence; do not treat a missing live source branch as missing delivery when a merged MR still proves it, and do not adopt all same-module changes by author or date.
 - Authorization, live-change safety, evidence, and cross-skill handoff: [references/safety-handoff.md](references/safety-handoff.md).
 - Independent release-task branch cleanup, retention, remote deletion, and current-machine local cleanup: [references/release-branch-cleanup.md](references/release-branch-cleanup.md).
 - For every Yunxiao platform read/write not already covered by a specialized adapter, read the official CLI gateway, transaction-plan, idempotency, and performance rules: [references/yunxiao-cli-runtime.md](references/yunxiao-cli-runtime.md).

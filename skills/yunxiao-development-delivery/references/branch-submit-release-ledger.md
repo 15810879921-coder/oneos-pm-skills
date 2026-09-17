@@ -36,6 +36,8 @@ DEVELOPMENT_STARTED
 
 后置认领与补录使用`DELIVERY_ADOPTED`、`DEVELOPMENT_TASK_AGGREGATED`、`EXTERNAL_COMMIT_DISCOVERED`或`DELIVERY_MAPPING_CORRECTED`；撤销提交使用`COMMIT_REVERTED`，不得删除旧事件。评论写入失败时保留Git事实并标记`证据待补`，下一次提交、完成开发或准备发布时从Codeup/Flow恢复后追加`LEDGER_REPAIRED`。
 
+开发任务晚于代码创建、任务没有代码关系，或源分支已删除但合并MR仍可官方读回时，完整执行[历史代码交付恢复](historical-code-recovery.md)。物理分支存在不等于已经绑定任务；源分支已删除也不等于没有交付。门禁判断依据是精确MR/提交到当前任务的可核验映射。
+
 执行器：
 
 ```text
