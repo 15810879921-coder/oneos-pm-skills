@@ -282,8 +282,8 @@ class CompleteDevelopmentExecutorTests(unittest.TestCase):
                 "versionAfter": "0.9.0",
                 "upgradeAttempted": True,
                 "retryAttempted": True,
-                "initialError": "StatusCode: 500 traceId=TRACE-1",
-                "retryError": "StatusCode: 500 traceId=TRACE-2",
+                "initialError": "StatusCode: 500 Code: <nil> traceId=TRACE-1",
+                "retryError": "StatusCode: 500 Detail: <nil> traceId=TRACE-2",
                 "traceIds": ["TRACE-1", "TRACE-2"],
             },
         )
@@ -300,6 +300,17 @@ class CompleteDevelopmentExecutorTests(unittest.TestCase):
             planDiscovery={"status": "unavailable-after-plugin-upgrade"},
         )
         with self.assertRaisesRegex(GATEWAY.core.AdapterError, "插件升级、重试"):
+            EXECUTOR.validate_plan(plan)
+
+    def test_json_recovery_requires_success_evidence(self):
+        plan = valid_plan()
+        discovery = plan["evidence"]["testScopeResolution"]["planDiscovery"]
+        discovery.update(status="recovered-after-json-api", jsonReadAttempted=True,
+                         jsonReadSucceeded=True, transport="official-openapi-json",
+                         contentType="application/json")
+        EXECUTOR.validate_plan(plan)
+        discovery["jsonReadSucceeded"] = False
+        with self.assertRaisesRegex(GATEWAY.core.AdapterError, "JSON恢复读取"):
             EXECUTOR.validate_plan(plan)
 
     def test_no_plan_without_successful_discovery_is_rejected(self):

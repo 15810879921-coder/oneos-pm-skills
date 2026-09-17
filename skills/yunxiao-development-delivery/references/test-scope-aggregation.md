@@ -22,12 +22,14 @@
 
 `PC`归为`Web`。一个目录只能属于一个范围；没有端侧前缀的目录不自动纳入任一端。计划存在但当前端没有可识别目录时，记录`scope-unconfigured`；目录存在但没有正式用例时记录`scope-empty`。两种情况都创建`mandatory-test-task`测试任务并报告计划配置缺口；不得猜测或更新整份计划的用例结果。
 
+官方JSON接口文档：[ListTestPlan](https://help.aliyun.com/en/yunxiao/developer-reference/listtestplan-get-a-list-of-test-plans)。此POST是查询，不创建或更新测试计划；仅ListTestPlan允许此窄范围传输适配，其他云效操作继续使用既有官方CLI。
+
 ## 完成开发分流
 
 1. 每个完成开发任务都调用`yunxiao_cli_test_scope.py resolve`，传入需求编号、开发任务编号和端侧。
 2. 首次读取测试计划失败且属于服务端5xx、超时、连接失败、命令/能力缺失或已知Content-Type兼容问题时，只更新`aliyun-cli-devops`插件并自动重试一次。鉴权、权限、参数、项目或数据冲突不得升级后跳过，仍直接阻断。
 3. 插件升级后读取成功时，保存升级前后版本和首次错误；继续按真实计划数据判定，不把首次失败当成无计划。
-4. 插件升级命令失败时也要继续执行一次读取重试；升级命令失败或升级后重试仍失败时，记录`plan-read-skipped`、升级结果、升级前后版本、升级错误、两次读取错误和traceId，跳过本次正式TestHub计划/用例验证，并在最终输出明确披露。该分支仍创建独立`mandatory-test-task`并保留测试任务完成发版红线，不得写成“确认无计划”或“测试通过”。
+4. 插件升级命令失败时也要继续执行一次读取重试；重试仍返回`Content type ... not supported`或`Content-Type ... not supported`时，先调用`yunxiao_testhub_read_api.py`，使用官方公开ListTestPlan接口和JSON请求读取。仅支持已验证的中心域名`https://openapi-rdc.aliyuncs.com`，环境变量PAT认证、禁止重定向、逐页核验项目和计划ID；其他Region/自定义端点必须阻断并说明。JSON读取成功记录`recovered-after-json-api`并按真实数据继续；响应畸形、项目不符、鉴权和权限失败不得降级。其余可重试失败或适用JSON读取后仍遇服务/连接失败时，记录`plan-read-skipped`、升级结果、升级前后版本、升级错误、两次CLI读取错误、JSON尝试/结果/错误和traceId，跳过本次正式TestHub计划/用例验证，并在最终输出明确披露。该分支仍创建独立`mandatory-test-task`并保留测试任务完成发版红线，不得写成“确认无计划”或“测试通过”。
 5. 成功读取后没有与需求精确关联的正式计划时，记录`no-associated-test-plan`并跳过正式TestHub计划/用例验证；仍创建`mandatory-test-task`，由QA按需求验收点执行并记录结果。
 6. 有精确正式计划、端侧目录和非空具体用例时使用`formal-plan`；开发完成只读取、去重并冻结`directoryIds`与`selectedCaseIds`，不更新 TestHub 结果。
 7. 计划读取成功但端侧目录未配置或目录内没有正式用例时使用`mandatory-test-task`并记录对应配置缺口；仍创建测试任务，不伪造计划或用例。

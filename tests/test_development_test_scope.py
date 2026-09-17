@@ -6,6 +6,7 @@ import json
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 
@@ -16,6 +17,44 @@ SCOPE = importlib.import_module("yunxiao_cli_test_scope")
 
 
 class DevelopmentTestScopeTests(unittest.TestCase):
+    def test_content_type_failure_recovers_real_formal_scope_using_json(self):
+        error = SCOPE.core.AdapterError("StatusCode: 500 Content type 'application/x-www-form-urlencoded;charset=UTF-8' not supported")
+        plans = [{"testPlanIdentifier": "PLAN-1", "name": "ONEOS-900 正式计划"}]
+        with patch.object(SCOPE, "list_plans_json", return_value=plans) as read_json:
+            value = self.resolve({
+                "test-hub-list-test-plan": iter([error, error]),
+                "test-hub-get-test-plan-result-directory-list": [{"identifier": "D1", "displayName": "[Web] 主流程"}],
+                "test-hub-get-test-result-list": [{"testcaseIdentifier": "C1"}],
+            }, plugin_versions=["0.9.0", "0.9.0"])
+        read_json.assert_called_once_with("PROJECT-1")
+        self.assertEqual(value["decision"], "formal-plan")
+        self.assertEqual(value["selectedCaseIds"], ["C1"])
+        self.assertFalse(value["formalTestValidationSkipped"])
+        self.assertEqual(value["planDiscovery"]["status"], "recovered-after-json-api")
+
+    def test_json_empty_and_service_failure_have_different_outcomes(self):
+        error = SCOPE.core.AdapterError("StatusCode: 500 Content-Type not supported")
+        for result, decision in (([], "test-task-required"),
+                                 (SCOPE.core.AdapterError("StatusCode: 500"), "plan-read-skipped")):
+            with self.subTest(decision=decision):
+                with patch.object(SCOPE, "list_plans_json", side_effect=result if isinstance(result, Exception) else None,
+                                  return_value=result):
+                    value = self.resolve({"test-hub-list-test-plan": iter([error, error])},
+                                         plugin_versions=["0.9.0", "0.9.0"])
+                self.assertEqual(value["decision"], decision)
+                self.assertTrue(value["planDiscovery"]["jsonReadAttempted"])
+                self.assertEqual(value["planDiscovery"]["jsonReadSucceeded"], decision == "test-task-required")
+
+    def test_permission_failure_in_retry_or_json_does_not_degrade(self):
+        content_error = SCOPE.core.AdapterError("StatusCode: 500 Content type not supported")
+        denied = SCOPE.core.AdapterError("StatusCode: 403 Forbidden")
+        for second in (denied, content_error):
+            with self.subTest(second=second):
+                with patch.object(SCOPE, "list_plans_json", side_effect=denied):
+                    with self.assertRaisesRegex(SCOPE.core.AdapterError, "403"):
+                        self.resolve({"test-hub-list-test-plan": iter([content_error, second])},
+                                     plugin_versions=["0.9.0", "0.9.0"])
+
     def resolve(self, responses: dict[str, object], *, plugin_versions: list[str] | None = None,
                 expected_result: int = 0) -> dict:
         original_find = SCOPE.core.find_aliyun

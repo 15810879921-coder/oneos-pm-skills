@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 import yunxiao_cli_runtime as core
+from yunxiao_testhub_read_api import list_plans_json
 
 
 SCOPE_PATTERN = re.compile(r"^\[(Web|小程序|跨端)\]\s*")
@@ -186,8 +187,10 @@ def discover_plans(executable: str, project_id: str) -> tuple[list[dict[str, Any
             "traceIds": trace_ids(first),
         }
     except core.AdapterError as retry_error:
+        if not retryable_plan_read_error(retry_error):
+            raise
         second = core.scrub(str(retry_error))
-        return None, {
+        discovery = {
             "status": "unavailable-after-plugin-upgrade",
             "plugin": PLUGIN_NAME,
             "versionBefore": before,
@@ -202,6 +205,20 @@ def discover_plans(executable: str, project_id: str) -> tuple[list[dict[str, Any
             "retryError": second,
             "traceIds": trace_ids(first, second),
         }
+        if re.search(r"content[ -]?type.*not supported", second, re.IGNORECASE):
+            discovery.update(jsonReadAttempted=True, jsonReadSucceeded=False,
+                             transport="official-openapi-json", contentType="application/json")
+            try:
+                plans = list_plans_json(project_id)
+            except core.AdapterError as json_error:
+                if not retryable_plan_read_error(json_error):
+                    raise
+                discovery["jsonReadError"] = core.scrub(str(json_error))
+                discovery["traceIds"] = trace_ids(first, second, discovery["jsonReadError"])
+            else:
+                discovery.update(status="recovered-after-json-api", jsonReadSucceeded=True)
+                return plans, discovery
+        return None, discovery
 
 
 def flatten_directories(value: Any) -> list[dict[str, Any]]:
@@ -264,7 +281,7 @@ def command_resolve(args: argparse.Namespace) -> int:
             "formalTestValidationSkipped": True,
             "skipReason": "plan-read-unavailable-after-plugin-upgrade",
             "planDiscovery": discovery,
-            "note": "测试计划首次读取失败，尝试升级aliyun-cli-devops并重试后仍不可用；本次跳过正式TestHub计划/用例验证，仍须创建独立【测试】任务，最终回报必须披露插件升级结果、版本、错误和traceId。",
+            "note": "测试计划首次读取失败，尝试升级aliyun-cli-devops并重试后仍不可用；本次跳过正式TestHub计划/用例验证，仍须创建独立【测试】任务，最终回报必须披露插件升级结果、版本、错误、traceId，以及适用JSON恢复的尝试、结果和错误。",
         }
         write_receipt(target, payload)
         payload["receipt"] = str(target)

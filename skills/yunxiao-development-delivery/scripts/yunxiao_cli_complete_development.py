@@ -21,7 +21,7 @@ import yunxiao_cli_handoff as handoff_start
 SCHEMA = "oneos.complete-development-plan/v1"
 PREFLIGHT_SCHEMA = "oneos.complete-development-preflight/v1"
 RECEIPT_SCHEMA = "oneos.complete-development-receipt/v1"
-SUITE_VERSION = "10.2.4"
+SUITE_VERSION = "10.2.5"
 TEST_SCOPE_START = "<!-- ONEOS_TEST_SCOPE_START -->"
 TEST_SCOPE_END = "<!-- ONEOS_TEST_SCOPE_END -->"
 ALLOWED_TEST_MODES = {"formal-plan", "mandatory-test-task"}
@@ -291,8 +291,10 @@ def validate_plan(value: dict[str, Any]) -> dict[str, Any]:
                 or discovery.get("retryAttempted") is not True \
                 or not valid_ref(discovery.get("versionBefore")) \
                 or not valid_ref(discovery.get("versionAfter")) \
-                or not valid_ref(discovery.get("initialError")) \
-                or not valid_ref(discovery.get("retryError")):
+                or not isinstance(discovery.get("initialError"), str) \
+                or not discovery["initialError"].strip() \
+                or not isinstance(discovery.get("retryError"), str) \
+                or not discovery["retryError"].strip():
             raise core.AdapterError("跳过测试计划读取必须携带插件升级、重试和失败诊断回执。")
         if resolution.get("formalTestValidationSkipped") is not True \
                 or resolution.get("skipReason") != "plan-read-unavailable-after-plugin-upgrade":
@@ -300,9 +302,16 @@ def validate_plan(value: dict[str, Any]) -> dict[str, Any]:
     else:
         discovery = resolution.get("planDiscovery")
         if not isinstance(discovery, dict) or discovery.get("status") not in {
-            "available", "recovered-after-plugin-upgrade",
+            "available", "recovered-after-plugin-upgrade", "recovered-after-json-api",
         }:
             raise core.AdapterError("无正式计划或用例的结论必须来自成功的测试计划读取回执。")
+        if discovery.get("status") == "recovered-after-json-api" and (
+            discovery.get("jsonReadAttempted") is not True
+            or discovery.get("jsonReadSucceeded") is not True
+            or discovery.get("transport") != "official-openapi-json"
+            or discovery.get("contentType") != "application/json"
+        ):
+            raise core.AdapterError("JSON恢复读取必须携带成功的官方API读取回执。")
         expected_skip_reason = {
             "test-task-required": "no-associated-test-plan",
             "scope-unconfigured": "scope-unconfigured",
