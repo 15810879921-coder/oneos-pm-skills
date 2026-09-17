@@ -47,21 +47,23 @@ class HandoffAdapterTests(unittest.TestCase):
         plan["stages"]["developmentComplete"]["verifications"][0]["expect"].pop("description")
         with self.assertRaisesRegex(EXECUTOR.core.AdapterError, "阶段内完整回读"):
             EXECUTOR.validate_plan(plan)
-    def test_live_development_gate_rechecks_materials_and_preserves_human_text(self):
+    def test_live_completion_checks_scope_without_fetching_product_materials(self):
         plan = valid_plan()
         b = plan["evidence"]["handoffEvidence"]
-        docs = {i: {"id": i, "description": EXECUTOR.hg.upsert_manifest("", b["manifest"])}
+        docs = {i: {"id": i, "spaceIdentifier": "PROJECT-1", "description": "旧版产品快照"}
                 for i in ("REQ-1", "DEL-1")}
         docs["DEV-1"] = {"id": "DEV-1", "description": "开发人员的人工说明",
                          "spaceIdentifier": "PROJECT-1", "parentId": "DEL-1"}
         with mock.patch.object(EXECUTOR.core, "find_aliyun", return_value="aliyun"), \
              mock.patch.object(EXECUTOR.core, "require_auth_env"), \
-             mock.patch.object(EXECUTOR.gateway, "execute_read", side_effect=lambda _, c: docs[c["args"][1]]), \
-             mock.patch.object(EXECUTOR.hg, "read_document", side_effect=lambda d: d["kind"].encode()):
-            EXECUTOR._verify_handoff(plan)
+             mock.patch.object(EXECUTOR.gateway, "execute_read", side_effect=lambda _, c:
+                               [{"resourceId": "REQ-1"}] if c["operation"].endswith("relation-records") else docs[c["args"][1]]), \
+             mock.patch.object(EXECUTOR.hg, "read_document", side_effect=AssertionError("完成开发不得重新读取产品资料")) as document:
+            EXECUTOR._verify_completion_scope(plan)
+            document.assert_not_called()
             docs["DEV-1"]["description"] += "\n新的人工修改"
             with self.assertRaisesRegex(EXECUTOR.core.AdapterError, "人工正文"):
-                EXECUTOR._verify_handoff(plan)
+                EXECUTOR._verify_completion_scope(plan)
 
     def test_changed_live_handoff_blocks_apply_before_any_stage_write(self):
         plan = EXECUTOR.validate_plan(valid_plan())
@@ -70,9 +72,9 @@ class HandoffAdapterTests(unittest.TestCase):
             path.write_text(json.dumps({"schemaVersion": EXECUTOR.PREFLIGHT_SCHEMA,
                 "result": "ready", "plan": plan,
                 "fingerprint": EXECUTOR.gateway.stable_hash(plan)}))
-            with mock.patch.object(EXECUTOR, "_verify_handoff", side_effect=EXECUTOR.core.AdapterError("交棒已变化")), \
+            with mock.patch.object(EXECUTOR, "_verify_completion_scope", side_effect=EXECUTOR.core.AdapterError("任务归属已变化")), \
                  mock.patch.object(EXECUTOR.gateway, "cmd_apply") as write:
-                with self.assertRaisesRegex(EXECUTOR.core.AdapterError, "交棒已变化"):
+                with self.assertRaisesRegex(EXECUTOR.core.AdapterError, "任务归属已变化"):
                     EXECUTOR.command_apply(argparse.Namespace(preflight=str(path), output=None))
                 write.assert_not_called()
 
@@ -89,21 +91,21 @@ class HandoffAdapterTests(unittest.TestCase):
                 with self.assertRaisesRegex(PM.core.AdapterError, "实际内容"):
                     PM.load_handoff_manifest(str(path), scope)
 
-    def test_development_completion_refuses_no_understanding_receipt(self):
+    def test_development_completion_reports_missing_product_record_without_blocking(self):
         plan = valid_plan()
         plan["evidence"].pop("handoffEvidence", None)
-        with self.assertRaisesRegex(EXECUTOR.core.AdapterError, "交棒"):
-            EXECUTOR.validate_plan(plan)
+        checked = EXECUTOR.validate_plan(plan)
+        self.assertIn("待产品补齐", checked["evidence"]["productHandoffWarnings"][0])
 
-    def test_development_completion_refuses_wrong_task_receipt(self):
+    def test_old_product_receipt_is_advisory_not_trusted_for_task_binding(self):
         plan = valid_plan()
         b = make_bundle("development")
         b["developmentReceipt"]["taskId"] = "DEV-OTHER"
         from handoff_fixtures import seal
         b["developmentReceipt"] = seal(b["developmentReceipt"])
         plan["evidence"]["handoffEvidence"] = b
-        with self.assertRaisesRegex(EXECUTOR.core.AdapterError, "交棒"):
-            EXECUTOR.validate_plan(plan)
+        checked = EXECUTOR.validate_plan(plan)
+        self.assertTrue(checked["evidence"]["productHandoffWarnings"])
 
     def test_pm_snapshot_preflight_refuses_missing_handoff_manifest(self):
         with mock.patch.object(PM.core, "find_aliyun", return_value="aliyun"), \

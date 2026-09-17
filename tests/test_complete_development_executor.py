@@ -198,6 +198,40 @@ def valid_plan() -> dict:
 
 
 class CompleteDevelopmentExecutorTests(unittest.TestCase):
+    def test_status_only_completion_without_product_bundle_passes_live_scope(self):
+        plan = valid_plan()
+        plan["evidence"].pop("handoffEvidence")
+        stage = plan["stages"]["developmentComplete"]
+        stage["actions"][0]["args"][-1] = update_body(status="STATUS-COMPLETE")
+        stage["verifications"][0]["expect"].pop("description")
+        plan["finalReadbacks"][0]["expect"].pop("description")
+        plan = EXECUTOR.validate_plan(plan)
+        items = {i: {"id": i, "spaceIdentifier": "PROJECT-1", "description": "旧产品记录"}
+                 for i in ("DEV-1", "DEL-1", "REQ-1")}
+        items["DEV-1"]["parentId"] = "DEL-1"
+        def read(_cli, call):
+            return [{"resourceId": "REQ-1"}] if call["operation"].endswith("relation-records") else items[call["args"][1]]
+        with mock.patch.object(EXECUTOR.core, "find_aliyun", return_value="aliyun"), \
+                mock.patch.object(EXECUTOR.core, "require_auth_env"), \
+                mock.patch.object(GATEWAY, "execute_read", side_effect=read), \
+                mock.patch.object(EXECUTOR.hg, "verify_documents", side_effect=AssertionError("no product reads")):
+            EXECUTOR._verify_completion_scope(plan)
+            items["DEV-1"]["parentId"] = "OTHER-DELIVERY"
+            with self.assertRaisesRegex(GATEWAY.core.AdapterError, "父交付"):
+                EXECUTOR._verify_completion_scope(plan)
+            items["DEV-1"]["parentId"] = "DEL-1"
+            items["REQ-1"]["spaceIdentifier"] = "OTHER-PROJECT"
+            with self.assertRaisesRegex(GATEWAY.core.AdapterError, "项目归属"):
+                EXECUTOR._verify_completion_scope(plan)
+
+    def test_missing_product_record_does_not_waive_version_or_validation(self):
+        for field in ("trustedDeliveryVersion", "developmentValidation"):
+            plan = valid_plan()
+            plan["evidence"].pop("handoffEvidence")
+            plan["evidence"].pop(field)
+            with self.subTest(field=field), self.assertRaises(GATEWAY.core.AdapterError):
+                EXECUTOR.validate_plan(plan)
+
     def test_update_actions_use_official_cli_biz_body(self):
         plan = valid_plan()
         for stage_name in ("testHandoff", "developmentComplete", "requirementHandoff"):
@@ -408,7 +442,7 @@ class CompleteDevelopmentExecutorTests(unittest.TestCase):
         with self.assertRaisesRegex(GATEWAY.core.AdapterError, "越权写操作"):
             EXECUTOR.validate_plan(plan)
 
-    @mock.patch.object(EXECUTOR, "_verify_handoff")
+    @mock.patch.object(EXECUTOR, "_verify_completion_scope")
     def test_preflight_without_other_skill_installations_or_suite_state(self, handoff):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -454,17 +488,17 @@ class CompleteDevelopmentExecutorTests(unittest.TestCase):
             self.assertIn("缺少可信交付版本", json.loads(result.stderr)["error"])
             self.assertNotIn("生命周期Skill", result.stderr)
 
-    @mock.patch.object(EXECUTOR, "_verify_handoff", side_effect=GATEWAY.core.AdapterError("交棒证据失效"))
+    @mock.patch.object(EXECUTOR, "_verify_completion_scope", side_effect=GATEWAY.core.AdapterError("任务归属失效"))
     def test_no_suite_gate_does_not_bypass_live_handoff(self, _handoff):
         with tempfile.TemporaryDirectory() as directory:
             plan_path = Path(directory) / "plan.json"
             plan_path.write_text(json.dumps(valid_plan()), encoding="utf-8")
             with mock.patch.object(GATEWAY, "cmd_preflight") as stage:
-                with self.assertRaisesRegex(GATEWAY.core.AdapterError, "交棒证据失效"):
+                with self.assertRaisesRegex(GATEWAY.core.AdapterError, "任务归属失效"):
                     EXECUTOR.command_preflight(argparse.Namespace(plan=str(plan_path), output=None))
                 stage.assert_not_called()
 
-    @mock.patch.object(EXECUTOR, "_verify_handoff")
+    @mock.patch.object(EXECUTOR, "_verify_completion_scope")
     def test_critical_failure_stops_later_stages_and_persists_partial_receipt(self, _gate):
         plan = EXECUTOR.validate_plan(valid_plan())
         original_apply = EXECUTOR.gateway.cmd_apply
@@ -505,7 +539,7 @@ class CompleteDevelopmentExecutorTests(unittest.TestCase):
         finally:
             EXECUTOR.gateway.cmd_apply = original_apply
 
-    @mock.patch.object(EXECUTOR, "_verify_handoff")
+    @mock.patch.object(EXECUTOR, "_verify_completion_scope")
     def test_apply_uses_fixed_stage_order_and_finishes_with_final_readbacks(self, _gate):
         raw = valid_plan()
         raw["stages"]["requirementDevelopmentComplete"] = transaction(

@@ -19,9 +19,11 @@
 
 ## 输入计划
 
-10.2.0 新增必需 `evidence.handoffEvidence`，字段见 [交棒门禁](handoff-gate.md)。`developmentReceipt.taskId` 必须等于当前开发任务；`deliveryVersion` 必须等于 `trustedDeliveryVersion`。开发完成的唯一状态更新同时写 `upsert_bundle(当前人工描述,bundle)`；阶段及最终读回包含完整描述。预检、apply 和各阶段写前重新检查需求/交付清单、必读资料真实字节与人工描述，变化则停止受影响阶段，不声称全部零写入（前序成功阶段仍保留）。
+产品交接资料由产品负责，在正式开始开发时检查。`完成开发`不再要求`evidence.handoffEvidence`、`oneos.delivery-handoff/v1`、产品资料SHA或理解回执；缺失、旧版、格式不完整只生成`evidence.productHandoffWarnings`和最终`warnings`，明确“待产品补齐，不阻断完成开发或创建测试任务”。不把格式缺失加入`knownBlockers`，不要求旧任务重新交棒，不伪造记录。
 
-计划使用`oneos.complete-development-plan/v1`，套件版本为`10.2.7`。生成计划前必须通过只读CLI（TestHub计划读取默认使用受控官方JSON适配器）冻结以下事实：
+完成开发仍实时核对开发任务、交付和需求的项目归属及真实关系，保留可信交付版本、开发验证和测试任务门禁。默认关闭开发任务仅更新状态，保留原有描述；兼容携带有效旧交接包的描述更新，但必须保护人工正文并在阶段及最终完整回读。预检、apply及写前检查不再读取产品清单或下载产品资料。
+
+计划使用`oneos.complete-development-plan/v1`，套件版本为`10.2.8`。生成计划前必须通过只读CLI（TestHub计划读取默认使用受控官方JSON适配器）冻结以下事实：
 
 - 项目、开发任务、需求和源交付任务唯一；计划同时保存开发任务/需求的内部ID与编号，源交付仍为`处理中`。
 - 全部适用仓库已有可信交付版本，Web最终版本验证通过；小程序有规则化跳过证据。
@@ -53,9 +55,9 @@ skill-run yunxiao_cli_complete_development.py preflight --plan <完成开发计�
 skill-run yunxiao_cli_complete_development.py apply --preflight <完成开发预检JSON> --output <完成开发回执JSON>
 ```
 
-`preflight`验证总计划、版本化交棒与真实证据，并为各阶段生成通用网关计划和预检回执；`apply`重新校验计划指纹、交棒与写前事实。两者均不读取其他生命周期 Skill 的安装路径，不要求开发人员安装产品、测试、发布 Skill 或对齐其版本。计划中的`suiteVersion`仍表示当前执行器支持的数据版本，不能当作本机安装清单。
+`preflight`验证总计划、真实范围与交付/验证证据，并为各阶段生成通用网关计划和预检回执；`apply`重新校验计划指纹、真实任务归属与写前事实。两者均不读取其他生命周期 Skill 的安装路径，不要求开发人员安装产品、测试、发布 Skill 或对齐其版本。计划中的`suiteVersion`仍表示当前执行器支持的数据版本，不能当作本机安装清单。
 
-旧命令中的`--suite-state`保留为已弃用的可选参数，不读取其文件；旧预检中的`suiteState`同样不参与放行。旧回执仍须通过现有计划指纹、交棒和实时预检，不能仅凭历史通过继续写入。`verify_lifecycle_suite.py`仅保留为可选维护诊断工具，不再是开发流转前置步骤。任何关键业务阶段预检失败时零写入；只有可选工时阶段可以标记跳过。
+旧命令中的`--suite-state`保留为已弃用的可选参数，不读取其文件；旧预检中的`suiteState`同样不参与放行。旧回执仍须通过现有计划指纹、交付/验证证据和实时预检，不能仅凭历史通过继续写入。`verify_lifecycle_suite.py`仅保留为可选维护诊断工具，不再是开发流转前置步骤。任何关键业务阶段预检失败时零写入；只有可选工时阶段可以标记跳过。
 
 `apply`严格串行执行。每个阶段结束后立即落盘主回执；关键阶段失败时结果为`partial`并记录`failedStage`，后续阶段不执行。再次使用相同预检和输出路径时，已成功阶段不会重复执行，只从尚未完成的阶段继续；网关自动采用受控`resume`。全部写入已有成功回执、仅回读失败时补回读，不重复创建或更新。结果不明的写请求仍停止，先核对官方状态，不得换幂等键盲目重放。
 

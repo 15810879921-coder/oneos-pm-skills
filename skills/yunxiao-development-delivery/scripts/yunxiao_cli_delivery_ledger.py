@@ -14,7 +14,7 @@ from zoneinfo import ZoneInfo
 
 
 SCHEMA = "oneos.delivery-ledger/v1"
-SUITE_VERSION = "10.2.7"
+SUITE_VERSION = "10.2.8"
 SUPPORTED_SUITE_VERSIONS = {
     "10.0.0", "10.1.0", "10.2.0", "10.2.1", "10.2.2", "10.2.3", SUITE_VERSION,
 }

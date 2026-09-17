@@ -29,6 +29,22 @@ def snapshot() -> dict:
 
 
 class CompletionReadinessClassifierTests(unittest.TestCase):
+    def test_product_handoff_gap_only_warns_and_allows_completion(self):
+        value = snapshot()
+        value["recoveryNeeded"] = ["formal_handoff"]
+        result = CLASSIFIER.classify(value)
+        self.assertEqual(result["nextAction"], "auto_complete")
+        self.assertEqual(result["recoveryNeeded"], [])
+        self.assertTrue(result["warnings"])
+
+    def test_product_warning_never_waives_failed_validation(self):
+        value = snapshot()
+        value["recoveryNeeded"] = ["formal_handoff"]
+        value["validation"] = "failed"
+        result = CLASSIFIER.classify(value)
+        self.assertEqual(result["nextAction"], "stop_after_submit")
+        self.assertIn("开发验证失败", result["reasons"])
+
     def test_confirmed_completion_continues_without_second_command(self):
         value = CLASSIFIER.classify(snapshot())
         self.assertEqual(value["decision"], "confirmed")

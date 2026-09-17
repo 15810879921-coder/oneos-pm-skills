@@ -228,12 +228,18 @@ class GatewayRecoveryTests(unittest.TestCase):
             G.cmd_apply(args)
         self.assertEqual(len(self.writes), 1)
 
-    def prepare_completion(self):
+    def prepare_completion(self, without_product_record=False):
         self.items["TEST-1"]["status"] = {"id": "WAIT", "displayName": "待处理"}
         plan = valid_plan()
+        if without_product_record:
+            plan["evidence"].pop("handoffEvidence")
+            stage = plan["stages"]["developmentComplete"]
+            stage["actions"][0]["args"][-1] = json.dumps({"status": "STATUS-COMPLETE"})
+            stage["verifications"][0]["expect"].pop("description")
+            plan["finalReadbacks"][0]["expect"].pop("description")
         path, preflight, output = (self.root / name for name in ("plan.json", "preflight.json", "completion.json"))
         G.write_json(path, plan)
-        self.stack.enter_context(mock.patch.object(E, "_verify_handoff"))
+        self.stack.enter_context(mock.patch.object(E, "_verify_completion_scope"))
         E.command_preflight(argparse.Namespace(plan=str(path), output=str(preflight)))
         return argparse.Namespace(preflight=str(preflight), output=str(output))
 
@@ -245,6 +251,15 @@ class GatewayRecoveryTests(unittest.TestCase):
                          ["TEST-1", "DEV-1", "REQ-1"])
         E.command_apply(args)
         self.assertEqual(len(self.writes), 3)
+
+    def test_missing_product_record_completes_real_gateway_chain_with_warning(self):
+        args = self.prepare_completion(without_product_record=True)
+        self.assertEqual(E.command_apply(args), 0)
+        receipt = G.load_object(args.output)
+        self.assertEqual(receipt["result"], "complete")
+        self.assertTrue(receipt["warnings"])
+        self.assertEqual([G._arg_value(call, "--id") for call in self.writes],
+                         ["TEST-1", "DEV-1", "REQ-1"])
 
     def test_stage_carry_does_not_hide_concurrent_owner_change(self):
         args = self.prepare_completion()

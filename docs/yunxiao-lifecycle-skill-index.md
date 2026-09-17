@@ -2,7 +2,7 @@
 
 > 本文件由 `scripts/build-yunxiao-skill-index.py` 从 `docs/yunxiao-lifecycle-skill-index.json` 生成，请勿手工修改。
 
-- 套件版本：`10.2.7`
+- 套件版本：`10.2.8`
 - 范围：OneOS 云效需求、开发、测试与发布生命周期
 - 权威入口：各 Skill 的 `SKILL.md`；本索引只负责定位，不替代运行时规则。
 

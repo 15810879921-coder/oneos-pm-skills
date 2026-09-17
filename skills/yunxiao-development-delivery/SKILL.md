@@ -25,11 +25,12 @@ node <本 Skill 目录>/scripts/ensure-daily-skill-update.mjs --current-skill yu
 - `failed` / `unavailable` / `cooldown`：只给一条简短提示，继续当前任务；更新失败不得阻断开发工作。
 - 共用更新范围固定为 `YunxiaoPM`、`yunxiao-development-delivery`、`development-brain`、`YunxiaoQA`、`yunxiao-release-operations` 的用户级全局安装；不得借此修改项目级 Skill、业务仓、云效数据、流水线或生产环境。不得手工伪造或提前写入每日成功状态。
 
-Operate development tasks and Codeup assets without using code activity as a substitute for real work state. Suite version: `10.2.7`.
+Operate development tasks and Codeup assets without using code activity as a substitute for real work state. Suite version: `10.2.8`.
 
 ## Load the required references
 
-- Before a formal development start or completion, read [version-bound handoff gates](references/handoff-gate.md). Read the current scoped contract and required materials, return a reviewed understanding receipt and explicit engineering decisions; never infer product decisions. Immediately before formal start/resume or the first business-code write, run `yunxiao_cli_handoff.py verify --bundle <bundle.json> --task-id <exact internal development ID>`: it reads the live requirement and delivery through official CLI and checks actual material bytes. An old local-only PASS or an earlier preflight never substitutes for this fresh check. At completion provide `evidence.handoffEvidence` to the dedicated executor; it checks live product manifests, content hashes, task/version binding and writes the receipt into the development task. Historical recovery may gather evidence but cannot waive this formal gate. This scoped gate overrides older optional-hash / missing-evidence compatibility wording below; no need to load unrelated full PRDs or this PM's local subagents.
+- Before a formal development start, read [version-bound handoff gates](references/handoff-gate.md), the scoped contract and required materials; return a reviewed understanding receipt. Immediately before start/resume or the first business-code write, run `yunxiao_cli_handoff.py verify --bundle <bundle.json> --task-id <exact internal development ID>` to check live ownership and materials. Do not infer product decisions.
+- At `完成开发`, product handoff format is advisory: `oneos.delivery-handoff/v1`, product document hashes and `evidence.handoffEvidence` are not completion or test-task creation gates. Missing, old or incomplete product records produce a product-owned supplement warning; never require product re-handoff before testing, fabricate a bundle or put format-only deficiencies in completion blockers. Require real task/project/requirement/delivery binding, trusted delivered version, developer validation evidence and mandatory test handoff. Default the development-close action to a status-only update and preserve its description. Optional historical description writes require preservation and full read-back. The executor does not refetch product documents or force a product understanding receipt during completion. This completion-specific rule overrides older start/completion coupling in references; business scope conflicts and failed validation still block.
 
 Read each selected file completely before acting:
 
@@ -279,6 +280,7 @@ All Yunxiao Projex, Codeup, Flow, and AppStack discovery, state reads, relation 
 项目/迭代：
 需求/交付任务/开发任务：
 测试任务/父交付任务/关联需求：
+产品交接记录：已提供|待产品补齐（仅提示，不阻断完成开发或建测试任务）
 TestHub计划读取：JSON直接读取成功|JSON读取失败后跳过（真实错误/traceId）；不探测旧CLI，不触发插件升级
 正式测试计划验证：已冻结用例|已跳过（无关联计划|端侧未配置|范围为空|官方JSON读取失败）
 负责人/计划开始/计划完成/预计工时：
