@@ -2,6 +2,29 @@
 
 产品经理可将已交棒（或已有编号）的多条【交付】任务打进同一云效迭代。
 
+## 整批验收后的 Web 两期自动补建
+
+该路径由 [release-acceptance.md](release-acceptance.md) 触发，不使用下文人工创建的“版本类型”选择，也不挂任何工作项：
+
+1. 以验收 Plan 明确给出的本批 Web 来源迭代内部ID为唯一基线，从其名称解析版本；`V1.4.11`只生成`V1.4.12`、`V1.4.13`。禁止查询实时最高版本后继续递增。
+2. 保留来源名称前缀和 Web 端别；每一期沿用来源周期的含首尾天数及全部负责人，并紧接上一期。
+3. 同名目标必须唯一，且名称、Web端别、起止日期、负责人完全一致才可复用；任一不一致或同名多条均停止，不改已有迭代。
+4. 只在整批验收通过且需求、源交付、发版任务等必要关闭全部回读成功后应用。局部验收、不通过、关闭未完成都不补建。
+5. 新迭代为空：不挂需求或交付，不创建开发/测试任务；不修改旧迭代日期或负责人。
+6. dry-run把来源、两期目标和预检哈希写入持久文件并列入同次验收 Plan。重复执行只续跑冻结目标；补建失败单独报告为可续跑，不改写验收结论。
+
+官方 CLI 入口：
+
+```bash
+python3 scripts/yunxiao_cli_pm.py preflight-followup-sprints \
+  --space-id <项目ID> --source-sprint-id <来源迭代ID> \
+  --idempotency-key <验收幂等键> --output <预检文件>
+python3 scripts/yunxiao_cli_pm.py apply-followup-sprints \
+  --preflight <预检文件> --receipt <回执文件>
+```
+
+正常验收应由`accept_release.py`统一调用这两个能力，避免绕开“全部关闭成功后触发”的顺序门禁。
+
 ## 口令
 
 ```text

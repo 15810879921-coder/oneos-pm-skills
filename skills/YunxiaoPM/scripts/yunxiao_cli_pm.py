@@ -12,6 +12,7 @@ import re
 import sys
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import yunxiao_cli_runtime as core
 import handoff_gate as hg
@@ -236,6 +237,290 @@ def list_sprints(executable: str, project_id: str) -> list[dict[str, Any]]:
         if len(batch) < 100:
             break
     return result
+
+
+VERSIONED_SPRINT_RE = re.compile(
+    r"^(?P<prefix>.*?(?P<endpoint>web端|Web端|WEB端|小程序端))V"
+    r"(?P<major>\d+)\.(?P<minor>\d+)(?:\.(?P<patch>\d+))?$"
+)
+
+
+def sprint_id(item: dict[str, Any]) -> str:
+    return str(item.get("id") or item.get("identifier") or "")
+
+
+def sprint_owner_ids(item: dict[str, Any]) -> list[str]:
+    value = item.get("owners") or item.get("owner") or []
+    if isinstance(value, dict):
+        value = [value]
+    if not isinstance(value, list):
+        value = []
+    result = sorted({
+        str(row.get("id") or row.get("identifier") or row.get("userId") or "")
+        for row in value if isinstance(row, dict)
+    } - {""})
+    if not result:
+        raise core.AdapterError(f"迭代{item.get('name') or sprint_id(item)}负责人无法官方回读。")
+    return result
+
+
+def sprint_day(value: Any, label: str) -> dt.date:
+    if isinstance(value, (int, float)):
+        seconds = float(value) / (1000 if abs(float(value)) > 10_000_000_000 else 1)
+        return dt.datetime.fromtimestamp(
+            seconds, tz=ZoneInfo("Asia/Shanghai")
+        ).date()
+    text = str(value or "").strip()
+    if not text:
+        raise core.AdapterError(f"{label}为空。")
+    if text.isdigit():
+        return sprint_day(int(text), label)
+    try:
+        if "T" in text or " " in text:
+            timestamp = dt.datetime.fromisoformat(text.replace("Z", "+00:00"))
+            if timestamp.tzinfo is None:
+                timestamp = timestamp.replace(tzinfo=ZoneInfo("Asia/Shanghai"))
+            return timestamp.astimezone(ZoneInfo("Asia/Shanghai")).date()
+        return dt.date.fromisoformat(text[:10])
+    except ValueError as exc:
+        raise core.AdapterError(f"{label}不是可识别日期：{text}") from exc
+
+
+def parse_versioned_sprint(item: dict[str, Any]) -> dict[str, Any]:
+    name = str(item.get("name") or "").strip()
+    match = VERSIONED_SPRINT_RE.fullmatch(name)
+    if not match:
+        raise core.AdapterError(f"来源迭代名称不是受支持的端侧版本：{name or '<empty>'}")
+    endpoint_text = match.group("endpoint")
+    endpoint = "Web" if "web" in endpoint_text.lower() else "小程序"
+    return {
+        "name": name,
+        "prefix": match.group("prefix"),
+        "endpoint": endpoint,
+        "version": (
+            int(match.group("major")),
+            int(match.group("minor")),
+            int(match.group("patch") or 0),
+        ),
+    }
+
+
+def build_followup_sprint_specs(source: dict[str, Any]) -> list[dict[str, str]]:
+    """以冻结来源迭代为唯一版本基线，生成连续两个 Web 子版本。"""
+    parsed = parse_versioned_sprint(source)
+    if parsed["endpoint"] != "Web":
+        raise core.AdapterError("产品验收后自动补建仅适用于Web迭代。")
+    start = sprint_day(source.get("startDate"), "来源迭代开始日期")
+    end = sprint_day(source.get("endDate"), "来源迭代结束日期")
+    if end < start:
+        raise core.AdapterError("来源迭代结束日期早于开始日期。")
+    cadence = (end - start).days + 1
+    major, minor, patch = parsed["version"]
+    specs: list[dict[str, str]] = []
+    previous_end = end
+    for offset in (1, 2):
+        target_start = previous_end + dt.timedelta(days=1)
+        target_end = target_start + dt.timedelta(days=cadence - 1)
+        specs.append({
+            "name": f"{parsed['prefix']}V{major}.{minor}.{patch + offset}",
+            "startDate": target_start.isoformat(),
+            "endDate": target_end.isoformat(),
+        })
+        previous_end = target_end
+    return specs
+
+
+def get_sprint(executable: str, project_id: str, identifier: str) -> dict[str, Any]:
+    value = core.unwrap(core.run_devops(executable, [
+        "projex-get-sprint", "--project-id", project_id, "--id", identifier,
+    ]))
+    if not isinstance(value, dict) or not sprint_id(value):
+        raise core.AdapterError(f"迭代{identifier}无法官方回读。")
+    if sprint_id(value) != identifier:
+        raise core.AdapterError(
+            f"迭代回读ID与请求不一致：请求={identifier}，返回={sprint_id(value)}。"
+        )
+    return value
+
+
+def followup_target_snapshot(item: dict[str, Any] | None) -> dict[str, Any] | None:
+    if not item:
+        return None
+    return {
+        "id": sprint_id(item),
+        "name": str(item.get("name") or ""),
+        "endpoint": parse_versioned_sprint(item)["endpoint"],
+        "startDate": sprint_day(item.get("startDate"), "目标迭代开始日期").isoformat(),
+        "endDate": sprint_day(item.get("endDate"), "目标迭代结束日期").isoformat(),
+        "status": str(item.get("status") or ""),
+        "ownerIds": sprint_owner_ids(item),
+    }
+
+
+def build_followup_scope(executable: str, project_id: str, source_sprint_id: str,
+                         idempotency_key: str) -> dict[str, Any]:
+    project, project_name = verified_project(executable, project_id)
+    source = get_sprint(executable, project_id, source_sprint_id)
+    parsed = parse_versioned_sprint(source)
+    if parsed["endpoint"] != "Web":
+        raise core.AdapterError("产品验收后自动补建仅适用于Web迭代。")
+    source_owner_ids = sprint_owner_ids(source)
+    all_sprints = list_sprints(executable, project_id)
+    targets: list[dict[str, Any]] = []
+    for spec in build_followup_sprint_specs(source):
+        matches = [row for row in all_sprints if str(row.get("name") or "") == spec["name"]]
+        if len(matches) > 1:
+            raise core.AdapterError(f"目标迭代同名多条，拒绝复用：{spec['name']}")
+        existing = (
+            get_sprint(executable, project_id, sprint_id(matches[0])) if matches else None
+        )
+        snapshot = followup_target_snapshot(existing)
+        if snapshot and (
+            snapshot["name"] != spec["name"]
+            or snapshot["startDate"] != spec["startDate"]
+            or snapshot["endDate"] != spec["endDate"]
+            or snapshot["ownerIds"] != source_owner_ids
+            or parse_versioned_sprint(existing)["endpoint"] != "Web"
+        ):
+            raise core.AdapterError(f"目标迭代名称、端别、日期或负责人漂移：{spec['name']}")
+        targets.append({**spec, "existing": snapshot,
+                        "result": "idempotent" if snapshot else "create"})
+    return {
+        "project": {"id": str(project.get("id") or project_id), "name": project_name},
+        "source": {
+            "id": sprint_id(source), "name": parsed["name"], "endpoint": "Web",
+            "startDate": sprint_day(source.get("startDate"), "来源迭代开始日期").isoformat(),
+            "endDate": sprint_day(source.get("endDate"), "来源迭代结束日期").isoformat(),
+            "version": ".".join(str(value) for value in parsed["version"]),
+            "ownerIds": source_owner_ids,
+        },
+        "targets": targets,
+        "idempotencyKey": idempotency_key,
+    }
+
+
+def write_followup_preflight(executable: str, project_id: str, source_sprint_id: str,
+                             idempotency_key: str, output: Path) -> dict[str, Any]:
+    scope = build_followup_scope(executable, project_id, source_sprint_id, idempotency_key)
+    value = {
+        "schema": SCHEMA, "command": "preflight-followup-sprints",
+        "createdAt": core.now_utc(), "liveScope": scope,
+    }
+    value["preflightHash"] = canonical_hash(value, {"preflightHash"})
+    core.write_json(output, value)
+    return value
+
+
+def _validate_followup_apply_scope(planned: dict[str, Any], live: dict[str, Any]) -> None:
+    for key in ("project", "source", "idempotencyKey"):
+        if canonical_hash(planned.get(key)) != canonical_hash(live.get(key)):
+            raise core.AdapterError(f"后续迭代预检后{key}发生变化，零写入。")
+    planned_targets = planned.get("targets") or []
+    live_targets = live.get("targets") or []
+    if len(planned_targets) != 2 or len(live_targets) != 2:
+        raise core.AdapterError("后续迭代冻结目标必须恰好两期。")
+    for before, now in zip(planned_targets, live_targets):
+        for key in ("name", "startDate", "endDate"):
+            if before.get(key) != now.get(key):
+                raise core.AdapterError("后续迭代目标在预检后发生变化，零写入。")
+        before_existing = before.get("existing")
+        now_existing = now.get("existing")
+        if before_existing:
+            stable_keys = ("id", "name", "endpoint", "startDate", "endDate", "ownerIds")
+            if not now_existing or any(
+                before_existing.get(key) != now_existing.get(key) for key in stable_keys
+            ):
+                raise core.AdapterError(f"已复用目标迭代在预检后漂移：{before.get('name')}")
+        # 首次 apply 部分成功后，允许同一冻结目标从“不存在”变为精确匹配的已存在迭代。
+        if not before_existing and now_existing:
+            if any(now_existing.get(key) != before.get(key)
+                   for key in ("name", "startDate", "endDate")):
+                raise core.AdapterError(f"新出现的同名目标与冻结计划不一致：{before.get('name')}")
+
+
+def apply_followup_preflight(executable: str, preflight: Path,
+                             receipt_path: Path) -> dict[str, Any]:
+    plan = json.loads(preflight.read_text(encoding="utf-8"))
+    if (plan.get("schema") != SCHEMA
+            or plan.get("command") != "preflight-followup-sprints"
+            or plan.get("preflightHash") != canonical_hash(plan, {"preflightHash"})):
+        raise core.AdapterError("后续迭代预检文件格式或哈希无效。")
+    planned = plan.get("liveScope") or {}
+    source = planned.get("source") or {}
+    project = planned.get("project") or {}
+    live = build_followup_scope(
+        executable, str(project.get("id") or ""), str(source.get("id") or ""),
+        str(planned.get("idempotencyKey") or ""),
+    )
+    _validate_followup_apply_scope(planned, live)
+    results: list[dict[str, Any]] = []
+    receipt = {
+        "schema": SCHEMA, "command": "apply-followup-sprints",
+        "createdAt": core.now_utc(), "preflightHash": plan["preflightHash"],
+        "idempotencyKey": planned["idempotencyKey"], "project": live["project"],
+        "source": live["source"], "targets": results, "complete": False,
+    }
+
+    def persist_partial() -> None:
+        receipt["receiptHash"] = canonical_hash(receipt, {"receiptHash"})
+        core.write_json(receipt_path, receipt)
+
+    persist_partial()
+    for target in live["targets"]:
+        existing = target.get("existing")
+        if existing:
+            results.append({**existing, "result": "idempotent"})
+            persist_partial()
+            continue
+        value = core.unwrap(core.run_devops(executable, [
+            "projex-create-sprint", "--id", live["project"]["id"],
+            "--name", target["name"], "--owners", ",".join(live["source"]["ownerIds"]),
+            "--start-date", target["startDate"], "--end-date", target["endDate"],
+            "--description", "产品整批验收关闭成功后自动补建的空Web迭代；不挂工作项。",
+        ]))
+        created_id = sprint_id(value) if isinstance(value, dict) else ""
+        if not created_id:
+            raise core.AdapterError(f"创建目标迭代后未取得ID：{target['name']}")
+        created = followup_target_snapshot(
+            get_sprint(executable, live["project"]["id"], created_id)
+        )
+        if (
+            not created
+            or created.get("id") != created_id
+            or created.get("endpoint") != "Web"
+            or created.get("ownerIds") != live["source"]["ownerIds"]
+            or any(created.get(key) != target.get(key)
+                   for key in ("name", "startDate", "endDate"))
+        ):
+            raise core.AdapterError(f"目标迭代创建后回读不一致：{target['name']}")
+        results.append({**created, "result": "created"})
+        persist_partial()
+    receipt["complete"] = True
+    persist_partial()
+    return receipt
+
+
+def cmd_preflight_followup(args: argparse.Namespace) -> int:
+    executable = core.find_aliyun()
+    core.require_auth_env()
+    output = Path(args.output) if args.output else core.output_dir() / "pm-followup-sprints-preflight.json"
+    plan = write_followup_preflight(
+        executable, args.space_id, args.source_sprint_id, args.idempotency_key, output,
+    )
+    print(json.dumps({
+        "ready": True, "preflightPath": str(output),
+        "preflightHash": plan["preflightHash"], "scope": plan["liveScope"],
+    }, ensure_ascii=False, indent=2))
+    return 0
+
+
+def cmd_apply_followup(args: argparse.Namespace) -> int:
+    executable = core.find_aliyun()
+    core.require_auth_env()
+    receipt_path = Path(args.receipt) if args.receipt else core.output_dir() / "pm-followup-sprints-receipt.json"
+    receipt = apply_followup_preflight(executable, Path(args.preflight), receipt_path)
+    print(json.dumps({**receipt, "receiptPath": str(receipt_path)}, ensure_ascii=False, indent=2))
+    return 0
 
 
 def load_text(path: str) -> str:
@@ -1156,6 +1441,16 @@ def parser() -> argparse.ArgumentParser:
     apply_cmd.add_argument("--preflight", required=True)
     apply_cmd.add_argument("--receipt")
     apply_cmd.set_defaults(handler=cmd_apply)
+    followup_preflight = sub.add_parser("preflight-followup-sprints")
+    followup_preflight.add_argument("--space-id", required=True)
+    followup_preflight.add_argument("--source-sprint-id", required=True)
+    followup_preflight.add_argument("--idempotency-key", required=True)
+    followup_preflight.add_argument("--output")
+    followup_preflight.set_defaults(handler=cmd_preflight_followup)
+    followup_apply = sub.add_parser("apply-followup-sprints")
+    followup_apply.add_argument("--preflight", required=True)
+    followup_apply.add_argument("--receipt")
+    followup_apply.set_defaults(handler=cmd_apply_followup)
     snapshot_preflight = sub.add_parser("preflight-product-snapshot")
     for name in ("space-id", "requirement-id", "delivery-id", "snapshot-file"):
         snapshot_preflight.add_argument(f"--{name}", required=True)
