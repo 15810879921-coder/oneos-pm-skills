@@ -47,6 +47,10 @@ def transaction(key: str, actions: list[dict], verifications: list[dict]) -> dic
     }
 
 
+def update_body(**values) -> str:
+    return json.dumps(values, ensure_ascii=False, separators=(",", ":"))
+
+
 def test_task_readbacks() -> list[dict]:
     return [
         {
@@ -131,8 +135,9 @@ def valid_plan() -> dict:
                 [{
                     "operation": "projex-update-workitem",
                     "args": [
-                        "--id", "TEST-1", "--assigned-to", "QA-1",
-                        "--description", DESCRIPTION,
+                        "--id", "TEST-1", "--biz-body",
+                        update_body(assignedTo="QA-1", description=DESCRIPTION,
+                                    formatType="MARKDOWN"),
                     ],
                 }],
                 test_readbacks,
@@ -141,7 +146,8 @@ def valid_plan() -> dict:
                 "development-complete-DEV-1-v1",
                 [{
                     "operation": "projex-update-workitem",
-                    "args": ["--id", "DEV-1", "--status", "STATUS-COMPLETE"],
+                    "args": ["--id", "DEV-1", "--biz-body",
+                             update_body(status="STATUS-COMPLETE")],
                 }],
                 [{
                     "operation": "projex-get-workitem",
@@ -153,7 +159,8 @@ def valid_plan() -> dict:
                 "requirement-handoff-DEV-1-v1",
                 [{
                     "operation": "projex-update-workitem",
-                    "args": ["--id", "REQ-1", "--status", "STATUS-WAIT-TEST"],
+                    "args": ["--id", "REQ-1", "--biz-body",
+                             update_body(status="STATUS-WAIT-TEST")],
                 }],
                 [{
                     "operation": "projex-get-workitem",
@@ -182,13 +189,24 @@ def valid_plan() -> dict:
     plan["evidence"]["handoffEvidence"] = bundle
     description = EXECUTOR.hg.upsert_bundle("开发人员的人工说明", bundle)
     stage = plan["stages"]["developmentComplete"]
-    stage["actions"][0]["args"].extend(["--description", description])
+    stage["actions"][0]["args"][-1] = update_body(
+        status="STATUS-COMPLETE", description=description, formatType="MARKDOWN"
+    )
     stage["verifications"][0]["expect"]["description"] = description
     plan["finalReadbacks"][0]["expect"]["description"] = description
     return plan
 
 
 class CompleteDevelopmentExecutorTests(unittest.TestCase):
+    def test_update_actions_use_official_cli_biz_body(self):
+        plan = valid_plan()
+        for stage_name in ("testHandoff", "developmentComplete", "requirementHandoff"):
+            action = plan["stages"][stage_name]["actions"][0]
+            self.assertIn("--biz-body", action["args"])
+            self.assertNotIn("--status", action["args"])
+            self.assertNotIn("--description", action["args"])
+            self.assertNotIn("--assigned-to", action["args"])
+
     def test_valid_plan_enforces_test_handoff_before_closure(self):
         plan = EXECUTOR.validate_plan(valid_plan())
         self.assertEqual(plan["scope"]["testMode"], "mandatory-test-task")
@@ -458,7 +476,8 @@ class CompleteDevelopmentExecutorTests(unittest.TestCase):
             "requirement-development-complete-DEV-1-v1",
             [{
                 "operation": "projex-update-workitem",
-                "args": ["--id", "REQ-1", "--status", "STATUS-DEVELOPMENT-COMPLETE"],
+                "args": ["--id", "REQ-1", "--biz-body",
+                         update_body(status="STATUS-DEVELOPMENT-COMPLETE")],
             }],
             [{
                 "operation": "projex-get-workitem",

@@ -21,7 +21,7 @@
 
 10.2.0 新增必需 `evidence.handoffEvidence`，字段见 [交棒门禁](handoff-gate.md)。`developmentReceipt.taskId` 必须等于当前开发任务；`deliveryVersion` 必须等于 `trustedDeliveryVersion`。开发完成的唯一状态更新同时写 `upsert_bundle(当前人工描述,bundle)`；阶段及最终读回包含完整描述。预检、apply 和各阶段写前重新检查需求/交付清单、必读资料真实字节与人工描述，变化则停止受影响阶段，不声称全部零写入（前序成功阶段仍保留）。
 
-计划使用`oneos.complete-development-plan/v1`，套件版本为`10.2.3`。生成计划前必须通过只读CLI冻结以下事实：
+计划使用`oneos.complete-development-plan/v1`，套件版本为`10.2.4`。生成计划前必须通过只读CLI冻结以下事实：
 
 - 项目、开发任务、需求和源交付任务唯一；计划同时保存开发任务/需求的内部ID与编号，源交付仍为`处理中`。
 - 全部适用仓库已有可信交付版本，Web最终版本验证通过；小程序有规则化跳过证据。
@@ -30,7 +30,7 @@
 - 当前项目`测试主管`恰好一人，并冻结其用户ID。
 - 测试建议和临时需求变更点已能确定；存在影响验收但未确认的变化时不生成写计划。
 
-`stages`中的每项都是`oneos.yunxiao-cli-transaction-plan/v1`通用网关事务。精确operation和参数必须来自当前安装插件的`aliyun devops <operation> --help`，不可照抄历史参数。新建测试任务时，主计划的`scope.testTaskRef`使用完整值`${stage.testHandoff.action.0.id}`；该阶段内的后续动作和回读使用网关自己的完整值`${action.0.id}`。
+`stages`中的每项都是`oneos.yunxiao-cli-transaction-plan/v1`通用网关事务。精确operation和参数必须来自当前安装插件的`aliyun devops <operation> --help`，不可照抄历史参数。当前`projex-update-workitem`只接受`--id`与`--biz-body`，负责人、描述、格式和状态必须合并到同一个 JSON body；不得生成插件不支持的`--assigned-to`、`--description`或`--status`。新建测试任务时，主计划的`scope.testTaskRef`使用完整值`${stage.testHandoff.action.0.id}`；该阶段内的后续动作和回读使用网关自己的完整值`${action.0.id}`。
 
 每个阶段的写白名单是固定的：
 

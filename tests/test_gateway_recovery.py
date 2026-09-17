@@ -52,11 +52,17 @@ class GatewayRecoveryTests(unittest.TestCase):
         if self.fail_write:
             raise G.core.AdapterError("write outcome unknown")
         if operation == "projex-update-workitem":
+            body_text = G._arg_value(flags, "--biz-body")
+            body = json.loads(body_text) if body_text else {}
             for flag, field in (("--description", "description"), ("--assigned-to", "assignedTo")):
                 value = G._arg_value(flags, flag)
                 if value is not None:
                     self.items[target][field] = {"id": value} if field == "assignedTo" else value
-            status = G._arg_value(flags, "--status")
+            if "description" in body:
+                self.items[target]["description"] = body["description"]
+            if "assignedTo" in body:
+                self.items[target]["assignedTo"] = {"id": body["assignedTo"]}
+            status = G._arg_value(flags, "--status") or body.get("status")
             if status:
                 names = {"STATUS-COMPLETE": "已完成", "STATUS-WAIT-TEST": "待测试"}
                 self.items[target]["status"] = {"id": status, "displayName": names[status]}

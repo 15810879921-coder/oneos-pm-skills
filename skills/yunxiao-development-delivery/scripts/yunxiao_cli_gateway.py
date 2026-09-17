@@ -93,7 +93,7 @@ def carry_verified_changes(snapshot: Any, guard: dict[str, Any],
                 continue
             if _status_value(action) is not None:
                 fields.add("status")
-            if _arg_value(action["args"], "--description") is not None:
+            if _description_value(action) is not None:
                 fields.add("description")
         for verification in receipt.get("verifications", []):
             call = verification.get("call") or {}
@@ -272,6 +272,32 @@ def _status_value(call: dict[str, Any]) -> str | None:
     if not isinstance(body, dict):
         raise core.AdapterError("projex-update-workitem的--biz-body必须是JSON对象。")
     value = body.get("status")
+    return str(value) if value is not None else None
+
+
+def _description_value(call: dict[str, Any]) -> str | None:
+    """Read a planned work-item description from real CLI arguments.
+
+    Current aliyun-cli-devops exposes work-item updates through --biz-body.
+    Keep the old direct flag readable for historical plans, but never require
+    callers to use a CLI flag that the installed plugin does not implement.
+    """
+    if call.get("operation") != "projex-update-workitem":
+        return None
+    args = call.get("args") or []
+    direct = _arg_value(args, "--description")
+    if direct is not None:
+        return direct
+    raw_body = _arg_value(args, "--biz-body")
+    if not raw_body:
+        return None
+    try:
+        body = json.loads(raw_body)
+    except json.JSONDecodeError as exc:
+        raise core.AdapterError("projex-update-workitem的--biz-body不是有效JSON。") from exc
+    if not isinstance(body, dict):
+        raise core.AdapterError("projex-update-workitem的--biz-body必须是JSON对象。")
+    value = body.get("description")
     return str(value) if value is not None else None
 
 

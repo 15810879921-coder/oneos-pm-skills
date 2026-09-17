@@ -21,7 +21,7 @@ import yunxiao_cli_handoff as handoff_start
 SCHEMA = "oneos.complete-development-plan/v1"
 PREFLIGHT_SCHEMA = "oneos.complete-development-preflight/v1"
 RECEIPT_SCHEMA = "oneos.complete-development-receipt/v1"
-SUITE_VERSION = "10.2.3"
+SUITE_VERSION = "10.2.4"
 TEST_SCOPE_START = "<!-- ONEOS_TEST_SCOPE_START -->"
 TEST_SCOPE_END = "<!-- ONEOS_TEST_SCOPE_END -->"
 ALLOWED_TEST_MODES = {"formal-plan", "mandatory-test-task"}
@@ -403,7 +403,7 @@ def validate_plan(value: dict[str, Any]) -> dict[str, Any]:
 
 
 def _require_receipt_write(stage: dict, bundle: dict) -> None:
-    description = _arg_value(stage["actions"][0]["args"], "--description")
+    description = gateway._description_value(stage["actions"][0])
     try:
         if hg.bundle_from_description(description or "") != bundle:
             raise ValueError("开发回执与计划不一致")
@@ -433,7 +433,9 @@ def _verify_handoff(plan: dict) -> None:
         if not isinstance(item, dict) or str(item.get("id")) != plan["scope"]["developmentTaskId"]:
             raise ValueError("官方开发任务身份无法唯一回读")
         handoff_start.verify_task_binding(executable, item, bundle["manifest"]["scope"])
-        planned = _arg_value(plan["stages"]["developmentComplete"]["actions"][0]["args"], "--description")
+        planned = gateway._description_value(
+            plan["stages"]["developmentComplete"]["actions"][0]
+        )
         if planned != hg.upsert_bundle(str(item.get("description") or ""), bundle):
             raise ValueError("开发描述已变化或计划覆盖了人工正文，须刷新计划")
     except (ValueError, OSError) as error:
