@@ -35,7 +35,20 @@ finally:
         sys.modules.pop(name, None)
     sys.modules.update(saved_modules)
     sys.path.remove(str(QA_SCRIPTS))
-ACCEPT = load_module("pm_accept_release", "skills/YunxiaoPM/scripts/accept_release.py")
+PM_SCRIPTS = ROOT / "skills" / "YunxiaoPM" / "scripts"
+saved_pm_modules = {
+    name: sys.modules.pop(name)
+    for name in ("yunxiao_cli_runtime", "yunxiao_cli_pm")
+    if name in sys.modules
+}
+sys.path.insert(0, str(PM_SCRIPTS))
+try:
+    ACCEPT = load_module("pm_accept_release", "skills/YunxiaoPM/scripts/accept_release.py")
+finally:
+    for name in ("yunxiao_cli_runtime", "yunxiao_cli_pm"):
+        sys.modules.pop(name, None)
+    sys.modules.update(saved_pm_modules)
+    sys.path.remove(str(PM_SCRIPTS))
 
 
 class QaPmLifecycleV2Tests(unittest.TestCase):
