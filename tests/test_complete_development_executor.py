@@ -4,6 +4,9 @@ import argparse
 import copy
 import importlib
 import json
+import os
+import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -185,16 +188,6 @@ def valid_plan() -> dict:
     return plan
 
 
-def suite_state() -> dict:
-    names = [
-        "YunxiaoPM", "yunxiao-development-delivery", "development-brain",
-        "YunxiaoQA", "yunxiao-release-operations",
-    ]
-    return EXECUTOR.suite.verify([
-        f"{name}={ROOT / 'skills' / name / 'SKILL.md'}" for name in names
-    ])
-
-
 class CompleteDevelopmentExecutorTests(unittest.TestCase):
     def test_valid_plan_enforces_test_handoff_before_closure(self):
         plan = EXECUTOR.validate_plan(valid_plan())
@@ -361,12 +354,61 @@ class CompleteDevelopmentExecutorTests(unittest.TestCase):
         with self.assertRaisesRegex(GATEWAY.core.AdapterError, "越权写操作"):
             EXECUTOR.validate_plan(plan)
 
-    def test_suite_state_is_rechecked_from_installed_paths(self):
-        state = suite_state()
-        self.assertTrue(EXECUTOR._verify_suite_state(state)["verified"])
-        state["suiteVersion"] = "10.1.0"
-        with self.assertRaisesRegex(GATEWAY.core.AdapterError, "必须全部回读为10.2.2"):
-            EXECUTOR._verify_suite_state(state)
+    @mock.patch.object(EXECUTOR, "_verify_handoff")
+    def test_preflight_without_other_skill_installations_or_suite_state(self, handoff):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            plan_path = root / "plan.json"
+            plan_path.write_text(json.dumps(valid_plan()), encoding="utf-8")
+
+            def preflight_stage(args):
+                GATEWAY.write_json(Path(args.output), {"fingerprint": "checked"})
+
+            # A legacy path may be stale or missing; neither it nor any SKILL.md
+            # should be consulted when validating real completion evidence.
+            for legacy in ([], ["--suite-state", str(root / "missing-suite.json")]):
+                with self.subTest(legacy=legacy):
+                    output = root / "preflight.json"
+                    args = EXECUTOR.build_parser().parse_args([
+                        "preflight", "--plan", str(plan_path), "--output", str(output), *legacy,
+                    ])
+                    with mock.patch.object(GATEWAY, "cmd_preflight", side_effect=preflight_stage):
+                        self.assertEqual(args.func(args), 0)
+                    result = json.loads(output.read_text(encoding="utf-8"))
+                    self.assertEqual(result["result"], "ready")
+                    self.assertNotIn("suiteState", result)
+                    self.assertIn("testHandoff", result["stagePreflights"])
+            self.assertEqual(handoff.call_count, 2)
+
+    def test_development_only_install_still_checks_delivery_evidence(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            scripts = root / "yunxiao-development-delivery" / "scripts"
+            shutil.copytree(SCRIPTS, scripts, ignore=shutil.ignore_patterns(
+                "__pycache__", "*.pyc", "verify_lifecycle_suite.py",
+            ))
+            plan = valid_plan()
+            del plan["evidence"]["trustedDeliveryVersion"]
+            plan_path = root / "plan.json"
+            plan_path.write_text(json.dumps(plan), encoding="utf-8")
+            result = subprocess.run([
+                sys.executable, "-B", str(scripts / "yunxiao_cli_complete_development.py"),
+                "preflight", "--plan", str(plan_path),
+            ], cwd=root, capture_output=True, text=True, encoding="utf-8", timeout=30,
+                env={**os.environ, "PYTHONIOENCODING": "utf-8"})
+            self.assertEqual(result.returncode, 69, result.stderr)
+            self.assertIn("缺少可信交付版本", json.loads(result.stderr)["error"])
+            self.assertNotIn("生命周期Skill", result.stderr)
+
+    @mock.patch.object(EXECUTOR, "_verify_handoff", side_effect=GATEWAY.core.AdapterError("交棒证据失效"))
+    def test_no_suite_gate_does_not_bypass_live_handoff(self, _handoff):
+        with tempfile.TemporaryDirectory() as directory:
+            plan_path = Path(directory) / "plan.json"
+            plan_path.write_text(json.dumps(valid_plan()), encoding="utf-8")
+            with mock.patch.object(GATEWAY, "cmd_preflight") as stage:
+                with self.assertRaisesRegex(GATEWAY.core.AdapterError, "交棒证据失效"):
+                    EXECUTOR.command_preflight(argparse.Namespace(plan=str(plan_path), output=None))
+                stage.assert_not_called()
 
     @mock.patch.object(EXECUTOR, "_verify_handoff")
     def test_critical_failure_stops_later_stages_and_persists_partial_receipt(self, _gate):
@@ -389,7 +431,6 @@ class CompleteDevelopmentExecutorTests(unittest.TestCase):
                     "suiteVersion": EXECUTOR.SUITE_VERSION,
                     "result": "ready",
                     "fingerprint": GATEWAY.stable_hash(plan),
-                    "suiteState": suite_state(),
                     "plan": plan,
                     "stagePreflights": {
                         name: {"status": "ready", "path": str(stage_root / f"{name}.json")}
@@ -455,7 +496,8 @@ class CompleteDevelopmentExecutorTests(unittest.TestCase):
                     "suiteVersion": EXECUTOR.SUITE_VERSION,
                     "result": "ready",
                     "fingerprint": GATEWAY.stable_hash(plan),
-                    "suiteState": suite_state(),
+                    # Old installation metadata is informational, even when stale.
+                    "suiteState": {"verified": False, "suiteVersion": "old", "evidencePaths": {}},
                     "plan": plan,
                     "stagePreflights": stage_preflights,
                 }), encoding="utf-8")

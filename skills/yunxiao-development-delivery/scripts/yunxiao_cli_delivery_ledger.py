@@ -18,11 +18,6 @@ SUITE_VERSION = "10.2.2"
 SUPPORTED_SUITE_VERSIONS = {"10.0.0", "10.1.0", "10.2.0", "10.2.1", SUITE_VERSION}
 COMMENT_PREFIX = "【交付台账事件】"
 TRANSACTION_SCHEMA = "oneos.yunxiao-cli-transaction-plan/v1"
-SUITE_STATE_SCHEMA = "oneos.lifecycle-suite-state/v1"
-SUITE_SKILLS = {
-    "YunxiaoPM", "yunxiao-development-delivery", "development-brain",
-    "YunxiaoQA", "yunxiao-release-operations",
-}
 EVENT_TYPES = {
     "DEVELOPMENT_STARTED", "WORK_SEGMENT_RECORDED", "COMMIT_RECORDED",
     "COMMIT_REVERTED", "MR_RECORDED", "MR_MERGED", "DEVELOPMENT_COMPLETED",
@@ -201,17 +196,6 @@ def transaction_plan(work_item_id: str, serial_number: str, comment: str, event:
     }
 
 
-def validate_suite_state(value: Any) -> None:
-    if not isinstance(value, dict) or value.get("schemaVersion") != SUITE_STATE_SCHEMA:
-        raise ValueError(f"suite-state必须为{SUITE_STATE_SCHEMA}")
-    versions = value.get("skills")
-    if value.get("verified") is not True or not isinstance(versions, dict):
-        raise ValueError("suite-state尚未完成安装回读")
-    missing = sorted(name for name in SUITE_SKILLS if versions.get(name) != SUITE_VERSION)
-    if missing:
-        raise ValueError("生命周期Skill版本未对齐，禁止向云效写新台账：" + ",".join(missing))
-
-
 def summary(events: list[dict[str, Any]]) -> dict[str, Any]:
     validation = validate(events)
     branches: dict[str, dict[str, Any]] = {}
@@ -254,7 +238,7 @@ def main() -> int:
     append_parser.add_argument("--output", required=True, type=Path)
     append_parser.add_argument("--comment-output", type=Path)
     append_parser.add_argument("--transaction-plan", type=Path)
-    append_parser.add_argument("--suite-state", type=Path, help="生成云效评论事务前必须提供五Skill安装回读")
+    append_parser.add_argument("--suite-state", type=Path, help="已弃用；兼容旧命令但不读取或校验其他Skill安装")
     append_parser.add_argument("--work-item-id")
     append_parser.add_argument("--serial-number", default="")
     args = parser.parse_args()
@@ -279,9 +263,6 @@ def main() -> int:
         if args.transaction_plan:
             if not args.work_item_id:
                 raise ValueError("生成transaction-plan时必须提供--work-item-id")
-            if not args.suite_state:
-                raise ValueError("生成transaction-plan时必须提供--suite-state")
-            validate_suite_state(load_json(args.suite_state))
             write_json(args.transaction_plan, transaction_plan(args.work_item_id, args.serial_number, comment, event))
         print(json.dumps({"status": "created" if created else "reused", "event": event, "output": str(args.output)}, ensure_ascii=False, indent=2))
         return 0

@@ -12,7 +12,6 @@ from unittest import mock
 
 from handoff_fixtures import make_bundle
 from test_complete_development_executor import EXECUTOR, valid_plan
-from test_complete_development_executor import suite_state
 from test_yunxiao_cli_pm_snapshot import MODULE as PM
 
 # Each standalone skill owns a runtime with this basename; isolate imports in
@@ -69,7 +68,7 @@ class HandoffAdapterTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "preflight.json"
             path.write_text(json.dumps({"schemaVersion": EXECUTOR.PREFLIGHT_SCHEMA,
-                "result": "ready", "suiteState": suite_state(), "plan": plan,
+                "result": "ready", "plan": plan,
                 "fingerprint": EXECUTOR.gateway.stable_hash(plan)}))
             with mock.patch.object(EXECUTOR, "_verify_handoff", side_effect=EXECUTOR.core.AdapterError("交棒已变化")), \
                  mock.patch.object(EXECUTOR.gateway, "cmd_apply") as write:

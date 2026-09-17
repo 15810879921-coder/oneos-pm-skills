@@ -3,8 +3,10 @@ from __future__ import annotations
 import importlib.util
 import argparse
 import json
+import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 
@@ -198,6 +200,33 @@ class DeliveryLifecycleV2Tests(unittest.TestCase):
         self.assertEqual(LEDGER.validate([first, second])["status"], "passed")
         second["payload"]["changed"] = True
         self.assertEqual(LEDGER.validate([first, second])["status"], "blocked")
+
+    def test_ledger_transaction_does_not_require_other_installed_skills(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            spec = {
+                "eventType": "COMMIT_RECORDED",
+                "deliveryUnitId": "DU-1",
+                "ledgerOwnerItemId": "ONEOS-1",
+                "idempotencyKey": "commit-1",
+                "sourceCommitIds": ["abc"],
+                "payload": {"changeSummary": chinese_summary()},
+            }
+            event = root / "event.json"
+            event.write_text(json.dumps(spec), encoding="utf-8")
+            output = root / "events.json"
+            plan_path = root / "transaction.json"
+            for legacy in ([], ["--suite-state", str(root / "missing-suite.json")]):
+                with self.subTest(legacy=legacy), mock.patch.object(sys, "argv", [
+                    "ledger", "append", "--event", str(event), "--output", str(output),
+                    "--transaction-plan", str(plan_path), "--work-item-id", "WI-1",
+                    "--serial-number", "ONEOS-1", *legacy,
+                ]):
+                    self.assertEqual(LEDGER.main(), 0)
+                    plan = json.loads(plan_path.read_text(encoding="utf-8"))
+                    self.assertEqual(plan["guards"][0]["expect"], {"serialNumber": "ONEOS-1"})
+                    self.assertEqual(plan["actions"][0]["operation"], "projex-create-workitem-comment")
+                    self.assertEqual(plan["verifications"][0]["operation"], "projex-list-workitem-comments")
 
     def test_ledger_rejects_non_chinese_change_description(self):
         with self.assertRaisesRegex(ValueError, "中文"):

@@ -49,12 +49,13 @@
 ## 运行
 
 ```text
-skill-run verify_lifecycle_suite.py --skill <名称=SKILL.md绝对路径，五次> --output <套件回读JSON>
-skill-run yunxiao_cli_complete_development.py preflight --plan <完成开发计划JSON> --suite-state <套件回读JSON> --output <完成开发预检JSON>
+skill-run yunxiao_cli_complete_development.py preflight --plan <完成开发计划JSON> --output <完成开发预检JSON>
 skill-run yunxiao_cli_complete_development.py apply --preflight <完成开发预检JSON> --output <完成开发回执JSON>
 ```
 
-`preflight`先实时读取`suite-state`中的五个安装路径，要求版本全部为`10.2.2`，再验证总计划并为各阶段生成通用网关计划和预检回执。`apply`会再次实时回读安装路径。任何关键阶段预检失败时零写入；只有可选工时阶段可以标记跳过。
+`preflight`验证总计划、版本化交棒与真实证据，并为各阶段生成通用网关计划和预检回执；`apply`重新校验计划指纹、交棒与写前事实。两者均不读取其他生命周期 Skill 的安装路径，不要求开发人员安装产品、测试、发布 Skill 或对齐其版本。计划中的`suiteVersion`仍表示当前执行器支持的数据版本，不能当作本机安装清单。
+
+旧命令中的`--suite-state`保留为已弃用的可选参数，不读取其文件；旧预检中的`suiteState`同样不参与放行。旧回执仍须通过现有计划指纹、交棒和实时预检，不能仅凭历史通过继续写入。`verify_lifecycle_suite.py`仅保留为可选维护诊断工具，不再是开发流转前置步骤。任何关键业务阶段预检失败时零写入；只有可选工时阶段可以标记跳过。
 
 `apply`严格串行执行。每个阶段结束后立即落盘主回执；关键阶段失败时结果为`partial`并记录`failedStage`，后续阶段不执行。再次使用相同预检和输出路径时，已成功阶段不会重复执行，只从尚未完成的阶段继续。若某个通用网关阶段在内部发生部分写入，其网关回执会拒绝盲目重放，需要根据官方当前状态生成新的审核计划。
 

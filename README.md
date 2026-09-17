@@ -8,7 +8,7 @@ OneOS 产品团队自用的 AI Agent Skills 合集，支持 `npx skills` 一键�
 
 本次统一更新 `YunxiaoPM`、`yunxiao-development-delivery`、`development-brain`、`YunxiaoQA`、`yunxiao-release-operations`。`完成开发`读取TestHub计划失败时会定向更新DevOps插件并重试；读取成功但无关联计划时跳过正式计划验证，重试仍失败时只跳过该阶段并在最终回报披露诊断。测试任务完成仍是发版红线。
 
-团队请打开 [10.2.2 更新入口](https://15810879921-coder.github.io/oneos-pm-skills/#lifecycle-10-2-2)，复制给各自 Codex 执行，完成后新开会话并核对五个版本均为 `10.2.2`。当天自动更新已经运行过也需要本次主动更新，不能把“今日已更新”当作新版本已安装。
+团队请打开 [10.2.2 更新入口](https://15810879921-coder.github.io/oneos-pm-skills/#lifecycle-10-2-2)，按岗位选择需要更新的 Skill，完成后新开会话并回读所用 Skill 的实际版本。开发台账及完成开发已取消“五个 Skill 必须全部安装且同版”的门禁，不要求开发人员安装产品、测试和发布 Skill；开发大脑预检及真实交付/验证/交棒证据要求保持不变。当天自动更新已经运行过也需要本次主动更新，不能把“今日已更新”当作新版本已安装。
 
 ```text
 npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoPM -a codex -g -y

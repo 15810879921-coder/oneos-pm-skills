@@ -14,7 +14,6 @@ from typing import Any
 
 import yunxiao_cli_gateway as gateway
 import yunxiao_cli_runtime as core
-import verify_lifecycle_suite as suite
 import handoff_gate as hg
 import yunxiao_cli_handoff as handoff_start
 
@@ -177,23 +176,6 @@ def _require_stage_operations(name: str, stage: dict[str, Any]) -> None:
         "developmentComplete", "requirementDevelopmentComplete", "requirementHandoff",
     } and len(stage["actions"]) != 1:
         raise core.AdapterError(f"{name}阶段必须且只能包含一个状态写动作。")
-
-
-def _verify_suite_state(value: dict[str, Any]) -> dict[str, Any]:
-    if value.get("schemaVersion") != suite.SCHEMA:
-        raise core.AdapterError(f"suite-state必须为{suite.SCHEMA}。")
-    if value.get("suiteVersion") != SUITE_VERSION or value.get("verified") is not True:
-        raise core.AdapterError(f"五个生命周期Skill必须全部回读为{SUITE_VERSION}。")
-    evidence = value.get("evidencePaths")
-    if not isinstance(evidence, dict) or set(evidence) != suite.REQUIRED:
-        raise core.AdapterError("suite-state缺少五个生命周期Skill的精确安装路径。")
-    try:
-        actual = suite.verify([f"{name}={evidence[name]}" for name in sorted(suite.REQUIRED)])
-    except (OSError, ValueError) as error:
-        raise core.AdapterError(f"无法实时回读生命周期Skill：{error}") from error
-    if actual.get("verified") is not True or actual.get("suiteVersion") != SUITE_VERSION:
-        raise core.AdapterError(f"生命周期Skill实时版本未全部对齐{SUITE_VERSION}。")
-    return actual
 
 
 def validate_plan(value: dict[str, Any]) -> dict[str, Any]:
@@ -468,7 +450,6 @@ def _call_gateway(func: Any, args: argparse.Namespace) -> None:
 
 
 def command_preflight(args: argparse.Namespace) -> int:
-    suite_state = _verify_suite_state(load_object(args.suite_state))
     plan = validate_plan(load_object(args.plan))
     _verify_handoff(plan)
     output = Path(args.output) if args.output else core.output_dir() / \
@@ -499,7 +480,6 @@ def command_preflight(args: argparse.Namespace) -> int:
         "suiteVersion": SUITE_VERSION,
         "result": "ready",
         "fingerprint": gateway.stable_hash(plan),
-        "suiteState": suite_state,
         "plan": plan,
         "stagePreflights": stage_receipts,
         "createdAt": core.now_utc(),
@@ -545,7 +525,6 @@ def command_apply(args: argparse.Namespace) -> int:
     preflight = load_object(args.preflight)
     if preflight.get("schemaVersion") != PREFLIGHT_SCHEMA or preflight.get("result") != "ready":
         raise core.AdapterError("无效的完成开发预检回执。")
-    _verify_suite_state(preflight.get("suiteState") or {})
     plan = validate_plan(preflight.get("plan") or {})
     fingerprint = gateway.stable_hash(plan)
     if fingerprint != preflight.get("fingerprint"):
@@ -641,7 +620,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
     preflight = sub.add_parser("preflight")
     preflight.add_argument("--plan", required=True)
-    preflight.add_argument("--suite-state", required=True)
+    preflight.add_argument("--suite-state", help="已弃用；兼容旧命令但不读取或校验其他Skill安装")
     preflight.add_argument("--output")
     preflight.set_defaults(func=command_preflight)
     apply = sub.add_parser("apply")
