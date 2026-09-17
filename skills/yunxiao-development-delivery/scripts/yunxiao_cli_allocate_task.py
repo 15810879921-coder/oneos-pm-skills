@@ -702,12 +702,11 @@ def cmd_apply(args: argparse.Namespace) -> int:
         raise core.AdapterError("开发需求快照在预检后发生变化，请重新预检。")
     if not isinstance(technical_plan, dict) or technical_plan.get("sha256") != current.get("technicalPlan", {}).get("sha256"):
         raise core.AdapterError("技术方案在预检后发生变化，请重新预检。")
+    delivery_detail = get_workitem(executable, live["delivery"]["id"])
     scope = {
         **live, "input": source,
-        "workitemTypeId": str((get_workitem(executable, live["delivery"]["id"])
-                                .get("workitemType") or {}).get("id") or ""),
-        "sprintId": str((get_workitem(executable, live["delivery"]["id"])
-                         .get("sprint") or {}).get("id") or "") or None,
+        "workitemTypeId": str((delivery_detail.get("workitemType") or {}).get("id") or ""),
+        "sprintId": str((delivery_detail.get("sprint") or {}).get("id") or "") or None,
     }
     operations: list[dict[str, Any]] = []
     owner = live.get("owner")

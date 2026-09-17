@@ -25,7 +25,7 @@ node <本 Skill 目录>/scripts/ensure-daily-skill-update.mjs --current-skill yu
 - `failed` / `unavailable` / `cooldown`：只给一条简短提示，继续当前任务；更新失败不得阻断开发工作。
 - 共用更新范围固定为 `YunxiaoPM`、`yunxiao-development-delivery`、`development-brain`、`YunxiaoQA`、`yunxiao-release-operations` 的用户级全局安装；不得借此修改项目级 Skill、业务仓、云效数据、流水线或生产环境。不得手工伪造或提前写入每日成功状态。
 
-Operate development tasks and Codeup assets without using code activity as a substitute for real work state. Suite version: `10.2.6`.
+Operate development tasks and Codeup assets without using code activity as a substitute for real work state. Suite version: `10.2.7`.
 
 ## Load the required references
 
@@ -280,7 +280,7 @@ All Yunxiao Projex, Codeup, Flow, and AppStack discovery, state reads, relation 
 需求/交付任务/开发任务：
 测试任务/父交付任务/关联需求：
 TestHub计划读取：JSON直接读取成功|JSON读取失败后跳过（真实错误/traceId）；不探测旧CLI，不触发插件升级
-正式测试计划验证：已冻结用例|已跳过（无关联计划|端侧未配置|范围为空|升级重试后仍不可读）
+正式测试计划验证：已冻结用例|已跳过（无关联计划|端侧未配置|范围为空|官方JSON读取失败）
 负责人/计划开始/计划完成/预计工时：
 真实开始时间：
 实际完成时间：

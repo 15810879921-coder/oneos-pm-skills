@@ -1,6 +1,6 @@
 # 云效 CLI 统一执行运行时
 
-本 Skill 中所有云效 Projex、Codeup、Flow 和 AppStack 的读取、写入、日志查询与结果回读都必须使用官方 `aliyun devops` CLI。禁止使用浏览器、视觉点选、截图/OCR、DOM、Cookie、连接器或网页内部接口；CLI 失败时默认停止并报告缺失能力，不得切换执行通道。唯一的阶段跳过例外是`完成开发`读取TestHub测试计划：遇到明确可重试的读取失败时，先用`aliyun plugin update --name aliyun-cli-devops`更新插件并重试一次；仍失败则只跳过正式计划/用例验证阶段并输出完整诊断，后续仍走CLI创建必需测试任务。该例外不得扩展到鉴权、权限、参数、归属冲突或任何写操作。
+本 Skill 中云效 Projex、Codeup、Flow 和 AppStack 的读取、写入、日志查询与结果回读使用官方 `aliyun devops` CLI。唯一的传输例外是`完成开发`读取TestHub测试计划：默认直接使用`yunxiao_testhub_read_api.py`调用官方公开ListTestPlan接口，固定`Content-Type: application/json`；禁止先探测已知错误的计划列表CLI或为该查询升级重试插件。真实JSON服务/连接失败时只跳过正式计划/用例验证并输出真实错误和traceId，后续仍走CLI创建必需测试任务。鉴权、权限、参数、归属冲突仍阻断，该例外不适用于任何写操作。其他CLI失败默认停止并报告缺失能力；禁止浏览器、视觉点选、截图/OCR、DOM、Cookie、连接器或网页内部接口替代执行。
 
 ## 环境
 
@@ -63,7 +63,7 @@ skill-run yunxiao_cli_gateway.py read --request <请求JSON>
   "actions": [
     {
       "operation": "projex-update-workitem",
-      "args": ["--id", "工作项内部ID", "--status", "目标状态ID"]
+      "args": ["--id", "工作项内部ID", "--biz-body", "{\"status\":\"目标状态ID\"}"]
     }
   ],
   "verifications": [
@@ -98,5 +98,6 @@ skill-run yunxiao_cli_gateway.py apply --preflight <预检回执JSON> --receipt 
 - 每条业务命令只运行一次 `doctor`，不要对同一未变化事务执行第二次 `apply`。
 - 预检只读取写入门禁所需对象；成功后只回读被写字段、关系、执行或日志。
 - 独立的只读发现可并行；任何存在依赖或写入的步骤保持顺序。
+- 同一阶段内对同一对象、相同参数且中间无写入的重复读取，复用当次结果；不得跨写入阶段缓存守卫或替代最终回读。
 - 等待云效最终一致性时使用短间隔定向回读，不重新扫描整个项目。
 - 长流水线按不超过 60 秒的节奏轮询并向用户汇报，不使用一次超长阻塞等待。
