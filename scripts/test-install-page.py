@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Check the 10.2.8 installation UI without changing the user's clipboard."""
+"""Check the 10.2.9 installation UI without changing the user's clipboard."""
 import argparse
 from playwright.sync_api import sync_playwright
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--url", default="http://127.0.0.1:18761/#lifecycle-10-2-8")
+    parser.add_argument("--url", default="http://127.0.0.1:18761/#lifecycle-10-2-9")
     parser.add_argument("--screenshot")
     args = parser.parse_args()
     names = ("YunxiaoPM", "yunxiao-development-delivery", "development-brain", "YunxiaoQA", "yunxiao-release-operations")
@@ -18,11 +18,11 @@ def main():
         page.add_init_script("Object.defineProperty(navigator, 'clipboard', {value: {writeText: async text => { window.__testCopiedText = text; }}})")
         page.goto(args.url)
         page.wait_for_load_state("networkidle")
-        section = page.locator("#lifecycle-10-2-8")
+        section = page.locator("#lifecycle-10-2-9")
         assert section.is_visible()
         section.get_by_role("button", name="复制给 Codex 更新").click()
         copied = page.evaluate("window.__testCopiedText")
-        assert "10.2.8" in copied and "-a cursor" not in copied
+        assert "10.2.9" in copied and "-a cursor" not in copied
         commands = [line for line in copied.splitlines() if line.startswith("npx skills add ")]
         assert len(commands) == 5
         for name, command in zip(names, commands):
@@ -35,7 +35,7 @@ def main():
                 assert f"--skill {name} -a codex -g -y" in command
                 assert "-a cursor" not in command
         assert not errors, errors
-        page.locator("#lifecycle-10-2-8").scroll_into_view_if_needed()
+        page.locator("#lifecycle-10-2-9").scroll_into_view_if_needed()
         if args.screenshot:
             page.screenshot(path=args.screenshot, full_page=False)
         browser.close()

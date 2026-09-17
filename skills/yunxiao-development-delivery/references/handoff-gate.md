@@ -75,7 +75,7 @@ skill-run handoff_gate.py seal --input <清单或回执草稿.json> --output <�
 skill-run handoff_gate.py verify --input <bundle.json> --stage development
 ```
 
-`verify` 的阶段是 `development`、`qa-start`、`qa-complete`、`release`。它还按 URI 读取每份必读资料并比 SHA；本地 passed 不能代替云效实时读回或生产授权。若代码尚未交付，开发读取阶段可写明确的基线版本，完成时必须替换为实际可信交付版本并重校验。
+`verify` 的阶段是 `development`、`qa-start`、`qa-complete`、`release`。其中 `qa-start` 是显式验证已有交接包的协议阶段，不再是“开始测试”接收任务的必经前置；普通 QA 记录/完成与发布的现有证据校验保持有效。它还按 URI 读取每份必读资料并比 SHA；本地 passed 不能代替云效实时读回或生产授权。若代码尚未交付，开发读取阶段可写明确的基线版本，完成时必须替换为实际可信交付版本并重校验。
 
 正式开工/续工、首次业务代码写入前，开发 Skill 必须运行自身 `yunxiao_cli_handoff.py verify --bundle <bundle.json> --task-id <开发任务内部ID>`。该只读入口重新核验云效当前需求/交付清单、开发任务真实项目及父交付归属和必读文件实际 SHA；来源变化立即阻断。任务详情未含父交付时再查官方 PARENT 关系；无法唯一绑定则补齐真实归属，不能仅靠回执中自填 taskId。不能把旧的本地 PASS 或前次预检当本次允许开工的证据。
 

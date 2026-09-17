@@ -15,7 +15,7 @@ from zoneinfo import ZoneInfo
 
 import yunxiao_cli_runtime as core
 import handoff_gate as hg
-from yunxiao_cli_testhub import normalize_status, read_plan_case
+from yunxiao_cli_testhub import item_id, normalize_status, read_plan_case
 
 
 SCHEMA = "oneos.yunxiao-qa-lifecycle-cli/v1"
@@ -344,10 +344,37 @@ def load_manifest(path: str, *, test: dict[str, Any], req: dict[str, Any],
 
 
 def validate_testhub(executable: str, evidence: dict[str, Any],
-                     testcase_id: str, *, require_complete: bool) -> dict[str, Any]:
+                     testcase_id: str, *, test_scope: dict[str, Any],
+                     require_complete: bool) -> dict[str, Any]:
     plan_id = str(evidence["testPlan"]["id"])
+    if str(test_scope.get("testPlanId") or "") != plan_id:
+        raise core.AdapterError("TestHub计划与测试任务范围不一致。")
+    selected = test_scope.get("selectedCaseIds")
+    directories = test_scope.get("directoryIds")
+    if not isinstance(selected, list) or not selected or \
+            not isinstance(directories, list) or not directories or \
+            any(not valid_ref(value) for value in selected + directories):
+        raise core.AdapterError("测试任务缺少明确的目录/用例范围；不得使用整份计划代替。")
+    selected_ids = set(map(str, selected))
+    directory_ids = set(map(str, directories))
+    if testcase_id not in selected_ids:
+        raise core.AdapterError("目标用例不属于当前测试任务范围。")
     live_case = read_plan_case(executable, plan_id, testcase_id)
-    matched = live_case.get("matched")
+    scoped: dict[str, dict[str, Any]] = {}
+    for snapshot in live_case.get("results", []):
+        if str(snapshot.get("directoryId") or "") not in directory_ids:
+            continue
+        for item in snapshot.get("items", []):
+            case_id = item_id(item)
+            if case_id not in selected_ids:
+                continue
+            if case_id in scoped and scoped[case_id] != item:
+                raise core.AdapterError(f"TestHub范围用例执行结果不唯一：{case_id}")
+            scoped[case_id] = item
+    missing = selected_ids - scoped.keys()
+    if missing:
+        raise core.AdapterError(f"TestHub范围用例未完整回读：{sorted(missing)}")
+    matched = scoped.get(testcase_id)
     if not isinstance(matched, dict):
         raise core.AdapterError("TestHub目标用例无法回读。")
     if require_complete and normalize_status(matched) != "PASS":
@@ -355,29 +382,27 @@ def validate_testhub(executable: str, evidence: dict[str, Any],
     result_id = str(matched.get("testResultIdentifier") or "")
     if result_id != str(evidence["caseRun"]["id"]):
         raise core.AdapterError("TestHub用例执行ID不一致。")
-    progress = core.unwrap(core.run_devops(executable, [
-        "test-hub-get-test-plan-progress-rate", "--test-plan-identifier", plan_id,
-    ]))
-    if not isinstance(progress, dict):
-        raise core.AdapterError("TestHub计划进度回读异常。")
-    live_counts = {
-        "passed": int(progress.get("paasCount", -1)),
-        "failed": int(progress.get("failureCount", -1)),
-        "blocked": int(progress.get("postponeCount", -1)),
-        "unexecuted": int(progress.get("todoCount", -1)),
-    }
-    live_counts["total"] = sum(live_counts.values())
+    live_counts = dict.fromkeys(("passed", "failed", "blocked", "unexecuted"), 0)
+    status_fields = {"PASS": "passed", "FAILURE": "failed",
+                     "POSTPONE": "blocked", "TODO": "unexecuted"}
+    for case_id, item in scoped.items():
+        status = normalize_status(item)
+        if status not in status_fields:
+            raise core.AdapterError(f"TestHub范围用例状态无法识别：{case_id}={status}")
+        live_counts[status_fields[status]] += 1
+    live_counts["total"] = len(scoped)
     if live_counts != evidence["caseCounts"]:
-        raise core.AdapterError(f"TestHub计划计数不一致：{live_counts}")
+        raise core.AdapterError(f"TestHub当前范围计数不一致：{live_counts}")
     if live_counts["total"] <= 0:
         raise core.AdapterError("TestHub计划没有用例。")
     if require_complete and any(live_counts[name] != 0 for name in
                                 ("failed", "blocked", "unexecuted")):
-        raise core.AdapterError("TestHub计划尚未全量通过。")
+        raise core.AdapterError("TestHub当前范围尚未全量通过。")
     expected_dashboard = f"/testhub/plan/{plan_id}/dashboard"
     if expected_dashboard not in str(evidence["report"]["url"]):
         raise core.AdapterError("测试报告URL不是该计划的TestHub概览。")
-    return {"progress": progress, "matched": matched}
+    return {"scopeId": test_scope["scopeId"], "caseCounts": live_counts,
+            "selectedCaseIds": sorted(selected_ids), "matched": matched}
 
 
 def bug_retest(bug: dict[str, Any], deployed_version: str, *,
@@ -747,27 +772,14 @@ def run(args: argparse.Namespace) -> int:
         return run_manual_complete(
             args, executable, auth, test, req, before, parents, associated,
         )
-    if not args.handoff_bundle:
-        raise core.AdapterError("start/record/complete必须提供--handoff-bundle。")
     test_scope = current_test_scope(test, req, parents[0])
-    bundle = load_handoff_bundle(args.handoff_bundle)
-    handoff_stage = "qa-complete" if args.command == "complete" else "qa-start"
     if args.command == "start":
         if status_name(test) not in {"待处理", "处理中"} or \
                 status_name(req) not in {"开发中", "开发完成", "待测试", "测试中"}:
             raise core.AdapterError(f"开始测试状态门禁失败：{before}")
-        deployment = validate_deployment(test, req, args.space_id)
-        expected_version = None if is_skip_deployment(deployment) else \
-            str(deployment["deployedVersion"])
-        handoff = validate_handoff_bundle(
-            executable, bundle, handoff_stage,
-            args.space_id, str(req["id"]), parents[0],
-            str(test_scope["scopeId"]), str(test_scope["developmentTaskId"]),
-            str(test["id"]), delivery_version=expected_version,
-        )
+        warnings = ["开始测试仅接收任务；产品交接包、迭代、部署区块不作为接收门禁。"
+                    "实际执行前核对待测版本；完成测试仍须真实验收与版本证据。"]
         actions = [
-            {"operation": "projex-update-workitem", "target": args.test_sn,
-             "fields": ["oneos.handoff-evidence/v1"]},
             {"operation": "projex-update-workitem", "target": args.test_sn,
              "status": "处理中"},
             {"operation": "projex-update-workitem", "target": args.req_sn,
@@ -779,30 +791,24 @@ def run(args: argparse.Namespace) -> int:
             "command": "start", "organizationId": auth["organizationId"],
             "projectId": args.space_id, "before": before,
             "relations": {"parentIds": parents, "associatedIds": associated},
-            "handoff": {"stage": handoff_stage, "scope": handoff["scope"],
-                        "handoffSha256": handoff["bundle"]["manifest"]["sha256"],
-                        "documentHashes": handoff["documentHashes"]},
+            "testScope": test_scope, "warnings": warnings,
+            "idempotencyKey": args.idempotency_key,
             "plannedActions": actions, "verified": False,
         }
         if args.apply:
             latest_test = get_workitem(executable, str(test["id"]))
+            latest_req = get_workitem(executable, str(req["id"]))
             if str(latest_test.get("serialNumber") or "") != str(test.get("serialNumber") or "") or \
                     status_name(latest_test) != status_name(test):
                 raise core.AdapterError("开始测试写入前任务身份或状态已变化。")
-            if current_test_scope(latest_test, req, parents[0]) != test_scope:
+            if item_snapshot(latest_req) != before["requirement"] or \
+                    relation_ids(executable, str(test["id"]), "PARENT") != parents or \
+                    str(req["id"]) not in relation_ids(executable, str(test["id"]), "ASSOCIATED"):
+                raise core.AdapterError("开始测试写入前需求或正式关系已变化。")
+            if current_test_scope(latest_test, latest_req, parents[0]) != test_scope:
                 raise core.AdapterError("开始测试写入前测试scope已变化。")
-            handoff_description = hg.upsert_bundle(
-                str(latest_test.get("description") or ""), handoff["bundle"],
-            )
             test = latest_test
-            if handoff_description != str(test.get("description") or ""):
-                test = update_item(executable, str(test["id"]), {
-                    "description": handoff_description,
-                    "formatType": str(test.get("formatType") or "MARKDOWN"),
-                })
-            handoff_readback = handoff_bundle_readback(
-                test, handoff["bundle"], handoff_stage,
-            )
+            req = latest_req
             if status_name(test) != "处理中":
                 test = update_item(executable, str(test["id"]), {
                     "status": status_id(executable, args.space_id, test, "处理中")
@@ -813,10 +819,6 @@ def run(args: argparse.Namespace) -> int:
                 })
             receipt["after"] = {
                 "test": item_snapshot(test), "requirement": item_snapshot(req),
-            }
-            receipt["handoffReadback"] = {
-                "schemaVersion": handoff_readback["schemaVersion"],
-                "handoffSha256": handoff_readback["manifest"]["sha256"],
             }
             receipt["verified"] = status_name(test) == "处理中" and \
                 status_name(req) == "测试中"
@@ -829,9 +831,13 @@ def run(args: argparse.Namespace) -> int:
             "mode": receipt["mode"], "command": "start",
             "testTask": receipt.get("after", before)["test"],
             "requirement": receipt.get("after", before)["requirement"],
-            "verified": receipt["verified"], "receipt": str(target),
+            "verified": receipt["verified"], "warnings": warnings, "receipt": str(target),
         }, ensure_ascii=False, indent=2))
         return 0
+    if not args.handoff_bundle:
+        raise core.AdapterError("record/complete必须提供--handoff-bundle。")
+    bundle = load_handoff_bundle(args.handoff_bundle)
+    handoff_stage = "qa-complete" if args.command == "complete" else "qa-start"
     if status_name(test) not in {"处理中", "已完成"} or \
             status_name(req) not in {"测试中", "测试完成"}:
         raise core.AdapterError(f"状态门禁失败：{before}")
@@ -863,6 +869,7 @@ def run(args: argparse.Namespace) -> int:
     )
     live_testhub = validate_testhub(
         executable, evidence, testcase_id, require_complete=args.command == "complete",
+        test_scope=test_scope,
     )
     expected_version = None if is_skip_deployment(deployment) else \
         str(deployment["deployedVersion"])

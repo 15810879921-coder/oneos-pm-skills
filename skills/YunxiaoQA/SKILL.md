@@ -38,7 +38,7 @@ node <本 Skill 目录>/scripts/ensure-daily-skill-update.mjs --current-skill Yu
 
 与 **YunxiaoPM（需求任务）**、开发交付 Skill 分工：本 Skill **只做测试侧**读写。
 
-云效生命周期套件版本：`10.2.8`。
+云效生命周期套件版本：`10.2.9`。
 
 ## Plan 模式门禁（强制 · 凡写云效）
 
@@ -96,7 +96,7 @@ node <本 Skill 目录>/scripts/ensure-daily-skill-update.mjs --current-skill Yu
 
 ## 跨 Skill 逻辑交接（强制）
 
-- 只接收/输出正式 Skill 名、需求/交付/开发/测试/发版任务编号、当前状态、正式 `ASSOCIATED`/`TASK_SUB` 关系，以及测试计划、用例、缺陷、流水线、报告和幂等证据标识。正式开测及完成测试还必须接收并回读 `oneos.handoff-evidence/v1`，不得只相信交接文字。
+- 只接收/输出正式 Skill 名、需求/交付/开发/测试/发版任务编号、当前状态、正式 `ASSOCIATED`/`TASK_SUB` 关系，以及测试计划、用例、缺陷、流水线、报告和幂等证据标识。开始测试只接收已唯一定位且正式关系、测试范围一致的任务，不强制产品交接包、迭代或部署区块；实际执行前须核对待测版本。完成测试仍须回读正式验收及版本证据，当前普通完成执行器的 `oneos.handoff-evidence/v1` 要求见测试执行说明。
 - 禁止定位、读取、复制或要求用户提供其他 Skill 的安装目录。本 Skill 只读取自身包内资源；缺少人员、项目或状态信息时按交接编号实时查询云效。
 - 上游开发正式名为 `yunxiao-development-delivery`，下游发布正式名为 `yunxiao-release-operations`，产品回退正式名为 `YunxiaoPM`；选择器必须使用 `$<正式名称>`。
 
@@ -174,7 +174,7 @@ node <本 Skill 目录>/scripts/ensure-daily-skill-update.mjs --current-skill Yu
 
 执行`完成测试`前必须同时满足：
 
-1. 【测试】=`处理中`且正式`TASK_SUB→【交付】`、`ASSOCIATED→需求`。正式开测时已从云效需求/交付及开发任务回读当前 `oneos.handoff-evidence/v1`，通过 `qa-start` 门禁并写入测试任务；完成前再按 `qa-complete` 重新回读验证。
+1. 【测试】=`处理中`且正式`TASK_SUB→【交付】`、`ASSOCIATED→需求`。接收任务时校验正式关系和 `oneos.test-scope/v1`，保留人工描述；完成前按当前 `qa-complete` 协议回读正式验收证据。开始测试不代表测试通过，也不证明环境已就绪。
 2. 需求=`测试中`。
 3. 开发交接中的`oneos.test-deployment/v1`区块按`deliveryEnd`分流：**Web**表明版本已成功部署到test，且项目、迭代、需求、测试任务、执行ID和部署版本均一致；**小程序**为`testPipeline=skipped`、`status=skipped`且含`reason`，项目、迭代、需求、测试任务一致，不要求test流水线与自动化测试证据。
 4. `oneos.qa-evidence/v1`证据清单已从真实测试资产读取并校验，包含计划ID/URL、用例执行ID/URL、报告ID/URL、test部署执行和SHA-256；禁止用聊天参数、自填“0失败”或占位链接代替。
