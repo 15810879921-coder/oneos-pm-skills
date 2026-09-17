@@ -574,7 +574,12 @@ def command_apply(args: argparse.Namespace) -> int:
             _call_gateway(
                 gateway.cmd_apply,
                 argparse.Namespace(preflight=stage_preflight["path"],
-                                   receipt=str(stage_receipt_path)),
+                                   receipt=str(stage_receipt_path), resume=True,
+                                   predecessors=[
+                                       {"plan": plan["stages"][previous], "receipt": outcome["receipt"]}
+                                       for previous, outcome in progress["stages"].items()
+                                       if outcome.get("status") == "applied"
+                                   ]),
             )
             stage_receipt = gateway.load_object(str(stage_receipt_path))
             progress["stages"][name] = {"status": "applied", "receipt": stage_receipt}

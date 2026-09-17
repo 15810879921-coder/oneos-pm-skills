@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 import json
 import re
@@ -56,6 +57,58 @@ def stable_hash(value: Any) -> str:
         value, ensure_ascii=False, sort_keys=True, separators=(",", ":")
     ).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
+
+
+def guard_snapshot(call: dict[str, Any], value: Any) -> Any:
+    """Ignore only work-item transport metadata and top-level update clocks.
+
+    Keep status, description, ownership, scope, relations and unknown fields.
+    Other APIs retain their complete response until a specific contract exists.
+    """
+    if call["operation"] != "projex-get-workitem":
+        return copy.deepcopy(value)
+    result = copy.deepcopy(core.unwrap(value))
+    if isinstance(result, dict):
+        for key in ("modifiedAt", "updatedAt", "gmtModified", "updateTime"):
+            result.pop(key, None)
+    return result
+
+
+def carry_verified_changes(snapshot: Any, guard: dict[str, Any],
+                           predecessors: list[dict[str, Any]]) -> Any:
+    """Advance only status/description actually written and read by this chain."""
+    result = copy.deepcopy(snapshot)
+    if guard["operation"] != "projex-get-workitem" or not isinstance(result, dict):
+        return result
+    target = _arg_value(guard["args"], "--id")
+    for predecessor in predecessors:
+        plan = validate_plan(predecessor["plan"])
+        receipt = predecessor["receipt"]
+        if receipt.get("result") != "applied" or receipt.get("fingerprint") != stable_hash(plan):
+            raise core.AdapterError("前序阶段缺少匹配的成功回执。")
+        fields = set()
+        for action in plan["actions"]:
+            if action["operation"] != "projex-update-workitem" or \
+                    _arg_value(action["args"], "--id") != target:
+                continue
+            if _status_value(action) is not None:
+                fields.add("status")
+            if _arg_value(action["args"], "--description") is not None:
+                fields.add("description")
+        for verification in receipt.get("verifications", []):
+            call = verification.get("call") or {}
+            if call not in plan["verifications"] or call.get("operation") != guard["operation"] \
+                    or call.get("args") != guard["args"]:
+                continue
+            value = verification.get("value")
+            assert_expect(value, call.get("expect"), "前序阶段回读")
+            observed = guard_snapshot(call, value)
+            expected = call.get("expect") or {}
+            for field in fields:
+                proof = "status.displayName" if field == "status" else "description"
+                if proof in expected and isinstance(observed, dict) and field in observed:
+                    result[field] = copy.deepcopy(observed[field])
+    return result
 
 
 def assert_no_secrets(value: Any, path: str = "plan") -> None:
@@ -295,7 +348,9 @@ def cmd_preflight(args: argparse.Namespace) -> int:
     for index, guard in enumerate(plan["guards"]):
         value = execute_read(executable, guard)
         assert_expect(value, guard.get("expect"), f"guard[{index}]")
-        guard_receipts.append({"call": guard, "sha256": stable_hash(value)})
+        snapshot = guard_snapshot(guard, value)
+        guard_receipts.append({"call": guard, "sha256": stable_hash(snapshot),
+                               "snapshotMode": "business-v1", "snapshot": snapshot})
     lifecycle_checks = enforce_development_lifecycle(executable, plan)
     fingerprint = stable_hash(plan)
     receipt = {
@@ -312,48 +367,101 @@ def cmd_preflight(args: argparse.Namespace) -> int:
 
 
 def cmd_apply(args: argparse.Namespace) -> int:
+    # Serialize both first execution and recovery for this exact business key.
+    # Never remove an existing lock: it may belong to a still-running writer.
+    preflight = load_object(args.preflight)
+    plan = validate_plan(preflight.get("plan") or {})
+    lock = core.output_dir() / f"yunxiao-applied-{stable_hash(plan['idempotencyKey'])}.lock"
+    lock.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        handle = lock.open("x", encoding="utf-8")
+    except FileExistsError as error:
+        raise core.AdapterError("该事务已有执行锁；先核对原进程与账本，不并发重试或自动清锁。") from error
+    try:
+        with handle:
+            return _apply_locked(args, preflight, plan)
+    finally:
+        lock.unlink()
+
+
+def _apply_locked(args: argparse.Namespace, preflight: dict[str, Any],
+                  plan: dict[str, Any]) -> int:
     executable = core.find_aliyun()
     core.require_auth_env()
-    preflight = load_object(args.preflight)
     if preflight.get("schema") != SCHEMA or preflight.get("stage") != "preflight":
         raise core.AdapterError("无效的CLI事务预检回执。")
-    plan = validate_plan(preflight.get("plan") or {})
     fingerprint = stable_hash(plan)
     if fingerprint != preflight.get("fingerprint"):
         raise core.AdapterError("预检计划指纹不匹配。")
     ledger_key = stable_hash(plan["idempotencyKey"])
     ledger = core.output_dir() / f"yunxiao-applied-{ledger_key}.json"
+    prior = None
     if ledger.is_file():
         prior = load_object(str(ledger))
         if prior.get("fingerprint") != fingerprint:
             raise core.AdapterError("相同idempotencyKey已有不同计划的成功回执，拒绝重复写入。")
         if prior.get("result") == "applied":
+            if args.receipt:
+                write_json(Path(args.receipt), prior)
             print(json.dumps(prior, ensure_ascii=False, indent=2))
             return 0
-        raise core.AdapterError(
-            "相同idempotencyKey存在未完成或部分执行回执，禁止自动重放；请先按回执核对真实状态。"
-        )
+        if not getattr(args, "resume", False):
+            raise core.AdapterError("存在部分执行回执；使用apply --resume受控恢复，禁止更换幂等键重放。")
+        completed = prior.get("actions")
+        if not isinstance(completed, list) or len(completed) > len(plan["actions"]):
+            raise core.AdapterError("部分执行动作回执损坏。")
+        for index, item in enumerate(completed):
+            if item.get("index") != index or item.get("operation") != plan["actions"][index]["operation"] \
+                    or "result" not in item:
+                raise core.AdapterError("部分执行动作回执不连续或与计划不一致。")
+        if prior.get("inFlightAction") is not None or (
+                len(completed) < len(plan["actions"]) and prior.get("checkpointProtocol") != 1):
+            raise core.AdapterError("存在结果不明的写入；必须先按官方状态核对，禁止自动重放。")
+        if prior.get("result") not in {"partial", "applying"}:
+            raise core.AdapterError("不支持的部分执行回执状态。")
+    verification_only = prior is not None and len(prior["actions"]) == len(plan["actions"])
     expected_guards = preflight.get("guards") or []
-    for index, guard in enumerate(plan["guards"]):
+    for index, guard in enumerate([] if verification_only else plan["guards"]):
         value = execute_read(executable, guard)
         assert_expect(value, guard.get("expect"), f"guard[{index}]")
-        if index >= len(expected_guards) or stable_hash(value) != expected_guards[index].get("sha256"):
+        if index >= len(expected_guards):
+            raise core.AdapterError(f"guard[{index}]缺少预检证据。")
+        saved = expected_guards[index]
+        if saved.get("snapshotMode") == "business-v1":
+            if stable_hash(saved.get("snapshot")) != saved.get("sha256"):
+                raise core.AdapterError("守卫快照指纹不一致。")
+            expected = carry_verified_changes(saved["snapshot"], guard,
+                                              getattr(args, "predecessors", []))
+            matches = guard_snapshot(guard, value) == expected
+        else:
+            # Legacy preflights retain their original strict full-response contract.
+            matches = stable_hash(value) == saved.get("sha256")
+        if not matches:
             raise core.AdapterError(f"guard[{index}]发生漂移，拒绝写入。")
-    lifecycle_checks = enforce_development_lifecycle(executable, plan)
-    action_outputs: list[Any] = []
-    progress: dict[str, Any] = {
+    lifecycle_checks = (prior.get("lifecycleChecks", []) if verification_only
+                        else enforce_development_lifecycle(executable, plan))
+    action_outputs: list[Any] = [item["result"] for item in prior["actions"]] if prior else []
+    progress: dict[str, Any] = prior or {
         "schema": SCHEMA, "stage": "apply", "result": "applying",
         "fingerprint": fingerprint, "idempotencyKey": plan["idempotencyKey"],
         "actions": [], "verifications": [], "lifecycleChecks": lifecycle_checks,
         "currentUser": core.current_user(executable), "startedAt": core.now_utc(),
+        "checkpointProtocol": 1, "inFlightAction": None,
     }
+    progress["verifications"] = []
+    progress["result"] = "applying"
     write_json(ledger, progress)
     try:
         for index, action in enumerate(plan["actions"]):
+            if index < len(action_outputs):
+                continue
             resolved = resolve_args(action["args"], action_outputs)
+            progress["inFlightAction"] = index
+            write_json(ledger, progress)
             output = core.run_devops(executable, [action["operation"], *resolved])
             action_outputs.append(output)
             progress["actions"].append({"index": index, "operation": action["operation"], "result": output})
+            progress["inFlightAction"] = None
             write_json(ledger, progress)
         for index, verification in enumerate(plan["verifications"]):
             value = execute_read(executable, verification, action_outputs)
@@ -398,6 +506,7 @@ def build_parser() -> argparse.ArgumentParser:
     apply = sub.add_parser("apply", help="复核漂移后执行一次写入并定向回读")
     apply.add_argument("--preflight", required=True)
     apply.add_argument("--receipt")
+    apply.add_argument("--resume", action="store_true", help="仅恢复已确认动作之后的回读或未尝试步骤，不重放结果不明的写入")
     apply.set_defaults(func=cmd_apply)
     return parser
 
