@@ -31,6 +31,8 @@ DISCUSSION = (
     "核对", "查看", "看看", "看下", "检查", "查一下", "查状态", "怎么回事", "处理逻辑",
 )
 ACTION_AUTHORITY = ("直接执行", "执行修改", "核对后执行", "检查后执行", "改吧", "修吧", "做吧")
+TEST_PIPELINE_WORDS = ("执行测试流水线", "跑测试流水线", "部署测试", "上测试", "交给测试", "交测")
+MERGE_ONLY_WORDS = ("仅合并", "只合并", "只完成代码合并", "不执行测试", "不跑测试", "不部署测试", "不部署")
 
 
 def _load_context(path: Path | None) -> dict[str, Any]:
@@ -85,6 +87,12 @@ def route(text: str, context: dict[str, Any]) -> dict[str, Any]:
         canonical_command = f"完成开发:任务={work_item_serial}"
     elif action == "implement" and work_item_serial and len(text_serials) <= 1:
         canonical_command = f"开发任务:任务={work_item_serial}"
+    if any(word in normalized for word in MERGE_ONLY_WORDS):
+        test_delivery_mode = "merge_only"
+    elif any(word in normalized for word in TEST_PIPELINE_WORDS):
+        test_delivery_mode = "execute"
+    else:
+        test_delivery_mode = "ask"
     return {
         "schemaVersion": SCHEMA,
         "originalText": text,
@@ -93,6 +101,12 @@ def route(text: str, context: dict[str, Any]) -> dict[str, Any]:
         "workItemId": work_item_id or None,
         "workItemSerial": work_item_serial,
         "canonicalCommand": canonical_command,
+        "testDeliveryMode": test_delivery_mode,
+        "testDeliveryReason": {
+            "execute": "用户明确要求交测或执行测试流水线",
+            "merge_only": "用户明确要求只完成代码合并或不部署",
+            "ask": "用户未明确选择测试部署路径",
+        }[test_delivery_mode],
         "serialCandidates": text_serials,
         "autoCompleteOnSuccess": action == "implement" and bool(work_item_serial or unique_mapping),
         "assessCompletionAfterSubmit": action == "submit",

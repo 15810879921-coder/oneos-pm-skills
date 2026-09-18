@@ -21,10 +21,11 @@ import yunxiao_cli_handoff as handoff_start
 SCHEMA = "oneos.complete-development-plan/v1"
 PREFLIGHT_SCHEMA = "oneos.complete-development-preflight/v1"
 RECEIPT_SCHEMA = "oneos.complete-development-receipt/v1"
-SUITE_VERSION = "10.2.11"
+SUITE_VERSION = "10.2.12"
 TEST_SCOPE_START = "<!-- ONEOS_TEST_SCOPE_START -->"
 TEST_SCOPE_END = "<!-- ONEOS_TEST_SCOPE_END -->"
 ALLOWED_TEST_MODES = {"formal-plan", "mandatory-test-task"}
+TEST_DELIVERY_MODES = {"execute", "merge_only"}
 STAGE_ORDER = (
     "effort", "testHandoff", "developmentComplete",
     "requirementDevelopmentComplete", "requirementHandoff",
@@ -188,6 +189,9 @@ def validate_plan(value: dict[str, Any]) -> dict[str, Any]:
     if not idempotency_key:
         raise core.AdapterError("完成开发计划缺少稳定idempotencyKey。")
 
+    requested_delivery = str(value.get("testDeliveryMode") or "merge_only")
+    if requested_delivery not in TEST_DELIVERY_MODES:
+        raise core.AdapterError("testDeliveryMode必须为execute或merge_only；询问应在生成计划前完成。")
     scope = value.get("scope")
     if not isinstance(scope, dict):
         raise core.AdapterError("scope必须是对象。")
@@ -419,6 +423,7 @@ def validate_plan(value: dict[str, Any]) -> dict[str, Any]:
         "idempotencyKey": idempotency_key,
         "scope": scope,
         "evidence": evidence,
+        "testDeliveryMode": requested_delivery,
         "stages": stages,
         "finalReadbacks": final_calls,
     }
@@ -586,6 +591,7 @@ def command_apply(args: argparse.Namespace) -> int:
         "idempotencyKey": plan["idempotencyKey"],
         "scope": plan["scope"],
         "evidence": plan["evidence"],
+        "testDeliveryMode": plan["testDeliveryMode"],
         "stages": {},
         "startedAt": core.now_utc(),
     }
@@ -663,7 +669,9 @@ def command_apply(args: argparse.Namespace) -> int:
     progress.pop("failedAt", None)
     gateway.write_json(output, progress)
     print(json.dumps({"result": "complete", "receipt": str(output),
-                      "scope": progress["scope"], "verified": True},
+                      "scope": progress["scope"], "testDeliveryMode": progress["testDeliveryMode"],
+                      "nextAction": "execute-test-pipeline" if progress["testDeliveryMode"] == "execute"
+                      else "pending-deployment-test-handoff", "verified": True},
                      ensure_ascii=False, indent=2))
     return 0
 

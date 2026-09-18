@@ -16,9 +16,13 @@ import sys
 import tempfile
 import threading
 import time
-import yunxiao_bug_fix_evidence as fix_evidence
 from pathlib import Path
 from typing import Any
+try:
+    import yunxiao_bug_fix_evidence as fix_evidence
+except ModuleNotFoundError:  # Allow isolated unittest/spec loading of this CLI module.
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import yunxiao_bug_fix_evidence as fix_evidence
 
 
 SCHEMA = "oneos.yunxiao-cli-bug-batch/v1"
@@ -592,7 +596,7 @@ def cmd_build_plan(args: argparse.Namespace) -> int:
     seed = {"snapshotHash": snapshot.get("snapshotHash"), "groups": grouped}
     plan = {
         "schema": "oneos.yunxiao-cli-bug-delivery-plan/v2",
-        "suiteVersion": "10.2.11",
+        "suiteVersion": "10.2.12",
         "bugBatchId": "BUGBATCH-" + hashlib.sha256(
             json.dumps(seed, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
         ).hexdigest()[:20],

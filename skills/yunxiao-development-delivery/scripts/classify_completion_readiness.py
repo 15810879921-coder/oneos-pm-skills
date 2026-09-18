@@ -12,6 +12,7 @@ from typing import Any
 
 SCHEMA = "oneos.development-completion-assessment/v1"
 RECOVERY_STEPS = {"formal_handoff", "code_mapping", "managed_test_scope"}
+TEST_DELIVERY_MODES = {"ask", "execute", "merge_only"}
 
 
 def classify(value: dict[str, Any]) -> dict[str, Any]:
@@ -28,6 +29,9 @@ def classify(value: dict[str, Any]) -> dict[str, Any]:
     for field, choices in allowed.items():
         if value.get(field) not in choices:
             raise ValueError(f"{field}必须是{sorted(choices)}之一")
+    test_delivery = str(value.get("testDeliveryMode") or "ask")
+    if test_delivery not in TEST_DELIVERY_MODES:
+        raise ValueError(f"testDeliveryMode必须是{sorted(TEST_DELIVERY_MODES)}之一")
     remaining_changes = value.get("remainingTaskChanges")
     if remaining_changes is not True and remaining_changes is not False \
             and remaining_changes is not None:
@@ -97,8 +101,15 @@ def classify(value: dict[str, Any]) -> dict[str, Any]:
             reasons = uncertain
         else:
             decision = "confirmed"
-            next_action = "auto_complete"
-            reasons = ["任务、范围、实现、验证、远端版本和剩余改动均已确认"]
+            if test_delivery == "execute":
+                next_action = "auto_complete_and_test"
+                reasons = ["任务、范围、实现、验证和远端版本均已确认；用户明确要求执行测试流水线"]
+            elif test_delivery == "merge_only":
+                next_action = "auto_complete_merge_only"
+                reasons = ["任务、范围、实现、验证和远端版本均已确认；用户明确选择只完成代码合并"]
+            else:
+                next_action = "ask_test_delivery"
+                reasons = ["代码合并完成后，需要选择执行测试流水线或仅完成代码合并"]
 
     result = {
         "schemaVersion": SCHEMA,
@@ -108,12 +119,18 @@ def classify(value: dict[str, Any]) -> dict[str, Any]:
         "remoteVersion": value.get("remoteVersion"),
         "recoveryNeeded": recovery_needed,
         "candidateCodeRefs": candidate_code_refs,
+        "testDeliveryMode": test_delivery,
         "reasons": reasons,
         "prompt": None,
     }
     if decision == "likely":
         task = str(value.get("developmentTask") or "当前开发任务")
-        result["prompt"] = f"代码已提交到远端，检测到{task}可能已经完成。是否继续执行完成开发并交测试？"
+        result["prompt"] = (f"代码已提交到远端，检测到{task}可能已经完成。是否继续完成开发？"
+                             "请选择：执行测试流水线并交测，或仅完成代码合并。")
+    elif decision == "confirmed" and test_delivery == "ask":
+        task = str(value.get("developmentTask") or "当前开发任务")
+        result["prompt"] = (f"{task}的开发验证和MR合并已确认。请选择：执行测试流水线并交测，"
+                             "或仅完成代码合并并记录待部署、待交付测试。")
     elif decision == "recovery_required" and "code_mapping" in recovery_needed:
         task = str(value.get("developmentTask") or "当前开发任务")
         result["prompt"] = (
@@ -127,11 +144,15 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input", type=Path, required=True)
     parser.add_argument("--output", type=Path)
+    parser.add_argument("--test-delivery", choices=sorted(TEST_DELIVERY_MODES),
+                        help="完成开发后的测试路径：execute=执行流水线，merge_only=仅合并，ask=询问")
     args = parser.parse_args()
     try:
         value = json.loads(args.input.read_text(encoding="utf-8"))
         if not isinstance(value, dict):
             raise ValueError("输入必须是JSON对象")
+        if args.test_delivery:
+            value["testDeliveryMode"] = args.test_delivery
         result = classify(value)
         text = json.dumps(result, ensure_ascii=False, indent=2) + "\n"
         if args.output:

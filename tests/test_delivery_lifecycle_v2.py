@@ -107,6 +107,15 @@ class DeliveryLifecycleV2Tests(unittest.TestCase):
         self.assertEqual(value["workItemSerial"], "ONEOS-983")
         self.assertTrue(value["assessCompletionAfterSubmit"])
 
+    def test_completion_language_selects_test_delivery_mode(self):
+        execute = ROUTER.route("完成开发并执行测试流水线 ONEOS-983", {})
+        self.assertEqual(execute["action"], "complete_development")
+        self.assertEqual(execute["testDeliveryMode"], "execute")
+        merge_only = ROUTER.route("完成开发，只完成代码合并，不部署测试 ONEOS-983", {})
+        self.assertEqual(merge_only["testDeliveryMode"], "merge_only")
+        plain = ROUTER.route("完成开发 ONEOS-983", {})
+        self.assertEqual(plain["testDeliveryMode"], "ask")
+
     def test_question_is_read_only_but_clear_action_creates_temporary_mapping(self):
         audit = ROUTER.route("能不能修改这段代码？", {})
         self.assertEqual(audit["action"], "audit")

@@ -44,8 +44,24 @@ class CompletionReadinessClassifierTests(unittest.TestCase):
     def test_confirmed_completion_continues_without_second_command(self):
         value = CLASSIFIER.classify(snapshot())
         self.assertEqual(value["decision"], "confirmed")
-        self.assertEqual(value["nextAction"], "auto_complete")
-        self.assertIsNone(value["prompt"])
+        self.assertEqual(value["nextAction"], "ask_test_delivery")
+        self.assertIn("执行测试流水线", value["prompt"])
+
+    def test_confirmed_completion_can_execute_test_pipeline(self):
+        value = snapshot()
+        value["testDeliveryMode"] = "execute"
+        result = CLASSIFIER.classify(value)
+        self.assertEqual(result["nextAction"], "auto_complete_and_test")
+        self.assertEqual(result["testDeliveryMode"], "execute")
+        self.assertIsNone(result["prompt"])
+
+    def test_confirmed_completion_can_merge_only(self):
+        value = snapshot()
+        value["testDeliveryMode"] = "merge_only"
+        result = CLASSIFIER.classify(value)
+        self.assertEqual(result["nextAction"], "auto_complete_merge_only")
+        self.assertEqual(result["testDeliveryMode"], "merge_only")
+        self.assertIsNone(result["prompt"])
 
     def test_likely_completion_asks_once(self):
         value = snapshot()
@@ -53,7 +69,7 @@ class CompletionReadinessClassifierTests(unittest.TestCase):
         result = CLASSIFIER.classify(value)
         self.assertEqual(result["decision"], "likely")
         self.assertEqual(result["nextAction"], "ask_once")
-        self.assertIn("是否继续执行完成开发", result["prompt"])
+        self.assertIn("执行测试流水线", result["prompt"])
 
     def test_failed_validation_never_prompts_or_completes(self):
         value = snapshot()
