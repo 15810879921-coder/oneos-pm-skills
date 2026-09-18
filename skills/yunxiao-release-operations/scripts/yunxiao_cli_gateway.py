@@ -60,6 +60,7 @@ RELEASE_COMMENT_SCHEMAS = {
     "【发布尝试账本】": "oneos.release-attempt-ledger/v1",
     "【生产发布证据】": "oneos.release-production/v1",
     "【发布事故记录】": "oneos.release-incident/v1",
+    "【紧急发版快车道】": "oneos.emergency-release/v1",
 }
 RELEASE_DESCRIPTION_FORBIDDEN = (
     "YUNXIAO_RELEASE_BATCH_START",
@@ -85,6 +86,7 @@ RELEASE_GATE_OPERATIONS = {
     "app-stack-skip-change-request-stage-pipeline",
     "app-stack-pass-release-stage-pipeline-validate",
 }
+TEST_PIPELINE_OPERATION = "flow-create-pipeline-run"
 
 
 def stable_hash(value: Any) -> str:
@@ -288,6 +290,24 @@ def managed_release_comment(action: dict[str, Any]) -> tuple[str, str] | None:
         value = payload.get(key)
         if value is None or value == "" or value == []:
             raise core.AdapterError(f"{prefix}缺少{key}。")
+    if prefix == "【紧急发版快车道】":
+        required_emergency = [
+            "operator", "reason", "taskId", "version", "buildId",
+            "skippedSteps", "minimumSafetyChecks", "rollbackVersion",
+            "releaseResult", "verificationResult", "executionOrder",
+        ]
+        for key in required_emergency:
+            value = payload.get(key)
+            if value is None or value == "" or value == []:
+                raise core.AdapterError(f"{prefix}缺少{key}。")
+        operator = payload["operator"]
+        if not isinstance(operator, dict) or operator.get("name") != "何斐" or not operator.get("id"):
+            raise core.AdapterError(f"{prefix}operator必须是已校验的何斐身份。")
+        if payload.get("executionOrder") != [
+            "identity-verified", "release-execute", "audit-record",
+            "task-writeback", "post-release-verify",
+        ]:
+            raise core.AdapterError(f"{prefix}executionOrder不符合快车道顺序。")
     return prefix, str(flag_value(action["args"], "--id") or "")
 
 
@@ -319,6 +339,30 @@ def validate_codeup_file_commit(action: dict[str, Any], authority: str) -> None:
     if authority != "execute":
         raise core.AdapterError("干净发布候选代码提交必须使用execute权限。")
     args = action["args"]
+    body_file = flag_value(args, "--body-file") or ""
+    if body_file:
+        if len(args) != 4 or args[0] != "--repository-id" or args[2] != "--body-file":
+            raise core.AdapterError("代码文件body-file模式只允许repository-id和body-file参数。")
+        path = Path(body_file)
+        if not path.is_absolute() or not path.is_file():
+            raise core.AdapterError("代码文件body-file必须是已存在的绝对路径。")
+        raw = path.read_bytes()
+        try:
+            body = json.loads(raw.decode("utf-8-sig"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise core.AdapterError(f"代码文件body-file不是有效UTF-8 JSON：{exc}") from exc
+        if not isinstance(body, dict) or set(body) != {"branch", "commit_message", "actions"}:
+            raise core.AdapterError("代码文件body-file只允许branch、commit_message和actions。")
+        if not isinstance(body.get("actions"), list):
+            raise core.AdapterError("代码文件body-file的actions必须是数组。")
+        virtual_args = ["--repository-id", args[1], "--branch", body.get("branch", ""),
+                        "--commit-message", body.get("commit_message", "")]
+        for group in body["actions"]:
+            virtual_args.extend(["--actions", json.dumps(
+                group, ensure_ascii=False, separators=(",", ":"))])
+        validate_codeup_file_commit({"operation": action["operation"], "args": virtual_args}, authority)
+        action["bodySha256"] = hashlib.sha256(raw).hexdigest()
+        return
     repository_id = flag_value(args, "--repository-id") or ""
     branch = flag_value(args, "--branch") or ""
     commit_message = flag_value(args, "--commit-message") or ""
@@ -825,17 +869,47 @@ def validate_plan(value: dict[str, Any]) -> dict[str, Any]:
         raise core.AdapterError("事务计划必须同时包含guards、actions和verifications。")
     gate_stage = str(value.get("releaseGateStage") or "").strip()
     needs_release_gate = release_gate_required(actions)
-    if needs_release_gate and gate_stage != "release":
+    test_pipeline = gate_stage == "test-pipeline"
+    if test_pipeline:
+        if len(actions) != 1 or actions[0]["operation"] != TEST_PIPELINE_OPERATION:
+            raise core.AdapterError(
+                "test-pipeline事务只能包含一次flow-create-pipeline-run。"
+            )
+        evidence = value.get("testPipelineEvidence")
+        if not isinstance(evidence, dict) or evidence.get("schemaVersion") != "oneos.test-pipeline-candidates/v1":
+            raise core.AdapterError("test-pipeline事务必须绑定候选流水线回执。")
+        if evidence.get("result") != "ready" or evidence.get("candidateCount") != 1:
+            raise core.AdapterError("测试流水线候选回执不是唯一READY结果。")
+        candidates = evidence.get("candidates")
+        if not isinstance(candidates, list) or len(candidates) != 1:
+            raise core.AdapterError("测试流水线候选回执缺唯一候选。")
+        candidate = candidates[0]
+        if not isinstance(candidate, dict):
+            raise core.AdapterError("测试流水线候选回执格式无效。")
+        action_pipeline_id = flag_value(actions[0]["args"], "--pipeline-id")
+        if not action_pipeline_id or str(candidate.get("pipelineId") or "") != action_pipeline_id:
+            raise core.AdapterError("测试流水线动作未绑定候选回执中的pipelineId。")
+        if (candidate.get("baseline") or {}).get("status") != "verified":
+            raise core.AdapterError("测试流水线候选缺少已核验的成功部署基线。")
+        if (candidate.get("pendingChanges") or {}).get("status") != "calculated":
+            raise core.AdapterError("测试流水线候选缺少完整待部署变更计算。")
+        if value.get("releaseHandoffs") not in (None, []):
+            raise core.AdapterError("test-pipeline事务不得携带生产交棒。")
+        release_handoffs = []
+    elif needs_release_gate and gate_stage != "release":
         raise core.AdapterError(
             "发布准备/流水线/合并操作必须显式提供releaseGateStage。"
         )
-    if needs_release_gate:
+    elif needs_release_gate:
         release_handoffs = validate_release_handoffs(value.get("releaseHandoffs"))
     else:
         if gate_stage or value.get("releaseHandoffs") not in (None, []):
             raise core.AdapterError("非发布写事务不得携带releaseGateStage/releaseHandoffs。")
         release_handoffs = []
-    production_actions = any(action["operation"] in RELEASE_GATE_OPERATIONS for action in actions)
+    production_actions = any(
+        action["operation"] in RELEASE_GATE_OPERATIONS
+        for action in actions
+    ) and not test_pipeline
     release_merge_plan = validate_release_merge_plan(
         value.get("releaseMergePlan"), release_handoffs, guards, actions,
     ) if production_actions else None
@@ -874,6 +948,7 @@ def validate_plan(value: dict[str, Any]) -> dict[str, Any]:
         "actions": actions,
         "verifications": verifications,
         "releaseGateStage": gate_stage,
+        "testPipelineEvidence": value.get("testPipelineEvidence") if test_pipeline else None,
         "releaseHandoffs": release_handoffs,
         "releaseMergePlan": release_merge_plan,
         "destructiveConfirmation": bool(value.get("destructiveConfirmation", False)),

@@ -18,6 +18,7 @@ ROUTES: list[tuple[str, tuple[str, ...]]] = [
     ("cleanup", ("清理分支", "删掉分支", "删除分支")),
     ("complete_bug", ("完成修复", "bug修完", "缺陷修完", "可以复测")),
     ("start_bug", ("开始修复", "开始处理bug", "开始处理缺陷")),
+    ("accept_test_bug_repair", ("处理测试修复请求", "接收测试修复", "处理测试提的bug", "测试缺陷修复")),
     ("fix_bug", ("修复bug", "修复缺陷", "把这个问题修掉", "解决这个bug")),
     ("complete_development", ("完成开发", "开发完成", "交给测试", "做完了")),
     ("submit", ("提交代码", "代码提交", "提交到远端", "推送代码", "推到远端", "提mr", "创建mr", "把代码提交")),
@@ -31,6 +32,8 @@ DISCUSSION = (
     "核对", "查看", "看看", "看下", "检查", "查一下", "查状态", "怎么回事", "处理逻辑",
 )
 ACTION_AUTHORITY = ("直接执行", "执行修改", "核对后执行", "检查后执行", "改吧", "修吧", "做吧")
+TEST_PIPELINE_WORDS = ("执行测试流水线", "跑测试流水线", "部署测试", "上测试", "交给测试", "交测")
+MERGE_ONLY_WORDS = ("仅合并", "只合并", "只完成代码合并", "不执行测试", "不跑测试", "不部署测试", "不部署")
 
 
 def _load_context(path: Path | None) -> dict[str, Any]:
@@ -78,13 +81,19 @@ def route(text: str, context: dict[str, Any]) -> dict[str, Any]:
 
     has_temporary_mapping = bool(delivery_unit_id) and context.get("temporaryLedgerVerified") is True
     requires_resolution = action in {
-        "submit", "complete_development", "complete_bug", "test_deploy", "cleanup"
+        "submit", "complete_development", "complete_bug", "accept_test_bug_repair", "test_deploy", "cleanup"
     } and not unique_mapping and not has_temporary_mapping
     canonical_command = None
     if action == "complete_development" and work_item_serial and len(text_serials) <= 1:
         canonical_command = f"完成开发:任务={work_item_serial}"
     elif action == "implement" and work_item_serial and len(text_serials) <= 1:
         canonical_command = f"开发任务:任务={work_item_serial}"
+    if any(word in normalized for word in MERGE_ONLY_WORDS):
+        test_delivery_mode = "merge_only"
+    elif any(word in normalized for word in TEST_PIPELINE_WORDS):
+        test_delivery_mode = "execute"
+    else:
+        test_delivery_mode = "ask"
     return {
         "schemaVersion": SCHEMA,
         "originalText": text,
@@ -93,12 +102,18 @@ def route(text: str, context: dict[str, Any]) -> dict[str, Any]:
         "workItemId": work_item_id or None,
         "workItemSerial": work_item_serial,
         "canonicalCommand": canonical_command,
+        "testDeliveryMode": test_delivery_mode,
+        "testDeliveryReason": {
+            "execute": "用户明确要求交测或执行测试流水线",
+            "merge_only": "用户明确要求只完成代码合并或不部署",
+            "ask": "用户未明确选择测试部署路径",
+        }[test_delivery_mode],
         "serialCandidates": text_serials,
         "autoCompleteOnSuccess": action == "implement" and bool(work_item_serial or unique_mapping),
         "assessCompletionAfterSubmit": action == "submit",
         "deliveryUnitId": delivery_unit_id or None,
         "requiresItemResolution": requires_resolution,
-        "mayCreateTempBranch": action in {"start_development", "implement", "fix_bug"} and not unique_mapping,
+        "mayCreateTempBranch": action in {"start_development", "implement", "fix_bug", "accept_test_bug_repair"} and not unique_mapping,
         "mayWriteProduction": False,
         "reason": "讨论/查询保持只读" if action == "audit" else "仅完成意图归一，正式写入仍走原门禁",
     }

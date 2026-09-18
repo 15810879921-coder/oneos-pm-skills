@@ -128,6 +128,7 @@ function runUpdater(args, stateDir) {
 
 const args = parseArgs(process.argv.slice(2));
 const currentSkill = String(args['current-skill'] || '').trim();
+const force = args.force === true || String(args.force || '').toLowerCase() === 'true';
 const now = args.now ? new Date(args.now) : new Date();
 if (Number.isNaN(now.getTime())) {
   emit('failed', { reason: 'invalid --now value' });
@@ -140,9 +141,11 @@ if (Number.isNaN(now.getTime())) {
   const lockPath = path.join(stateDir, 'daily-update.lock');
   const previous = readJson(statePath);
 
-  if (previous?.status === 'success' && previous.date === date) {
+  if (!force && previous?.status === 'success' && previous.date === date) {
     emit('skipped-today', { date, completedAt: previous.completedAt });
   } else if (
+    !force
+    &&
     previous?.status === 'failed'
     && previous.date === date
     && Date.parse(previous.nextRetryAfter || '') > now.getTime()
@@ -164,10 +167,17 @@ if (Number.isNaN(now.getTime())) {
           currentSkill,
           skills: TARGET_SKILLS,
           exitCode: 0,
+          forced: force,
           message: result.message,
         };
         writeState(statePath, state);
-        emit('updated', { date, currentSkill, skills: TARGET_SKILLS, reloadCurrentSkill: true });
+        emit('updated', {
+          date,
+          currentSkill,
+          skills: TARGET_SKILLS,
+          reloadCurrentSkill: true,
+          forced: force,
+        });
       } else {
         const nextRetryAfter = new Date(now.getTime() + FAILURE_COOLDOWN_MS).toISOString();
         const action = result.status === null ? 'unavailable' : 'failed';
@@ -180,6 +190,7 @@ if (Number.isNaN(now.getTime())) {
           currentSkill,
           skills: TARGET_SKILLS,
           exitCode: result.status,
+          forced: force,
           nextRetryAfter,
           message: result.message,
         };

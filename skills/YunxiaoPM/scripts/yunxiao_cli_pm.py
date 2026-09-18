@@ -119,9 +119,16 @@ def exact_member(executable: str, name_or_id: str) -> dict[str, str]:
     needle = name_or_id.strip()
     if not needle:
         raise core.AdapterError("负责人未明确；须由命令或项目配置提供姓名或userId。")
-    value = rows(core.run_devops(executable, [
-        "base-search-members", "--query", needle, "--page", "1", "--per-page", "100",
-    ]), "成员查询")
+    value: list[dict[str, Any]] = []
+    for page in range(1, 101):
+        batch = rows(core.run_devops(executable, [
+            "base-search-members", "--query", needle, "--page", str(page), "--per-page", "100",
+        ]), "成员查询")
+        value.extend(batch)
+        if len(batch) < 100:
+            break
+    else:
+        raise core.AdapterError("成员查询超过分页上限，不能声明负责人唯一。")
     matches = [row for row in value if (row.get("userId") or row.get("id")) and
                needle in {str(row.get("name") or ""),
                           str(row.get("userId") or row.get("id") or "")}]
@@ -163,9 +170,16 @@ def priority_id(fields: list[dict[str, Any]], name: str) -> str:
 
 
 def exact_label(executable: str, project_id: str, name: str) -> dict[str, str]:
-    values = rows(core.run_devops(executable, [
-        "projex-list-labels", "--id", project_id, "--page", "1", "--per-page", "100",
-    ]), "标签查询")
+    values: list[dict[str, Any]] = []
+    for page in range(1, 101):
+        batch = rows(core.run_devops(executable, [
+            "projex-list-labels", "--id", project_id, "--page", str(page), "--per-page", "100",
+        ]), "标签查询")
+        values.extend(batch)
+        if len(batch) < 100:
+            break
+    else:
+        raise core.AdapterError("标签查询超过分页上限，不能声明标签唯一。")
     matches = [row for row in values if str(row.get("name") or "") == name and row.get("id")]
     if len(matches) != 1:
         raise core.AdapterError(f"标签{name}无法唯一解析。")

@@ -12,7 +12,6 @@ from unittest import mock
 
 from handoff_fixtures import make_bundle
 from test_complete_development_executor import EXECUTOR, valid_plan
-from test_complete_development_executor import suite_state
 from test_yunxiao_cli_pm_snapshot import MODULE as PM
 
 # Each standalone skill owns a runtime with this basename; isolate imports in
@@ -51,25 +50,72 @@ class HandoffAdapterTests(unittest.TestCase):
     def test_live_development_gate_rechecks_materials_and_preserves_human_text(self):
         plan = valid_plan()
         b = plan["evidence"]["handoffEvidence"]
-        docs = {i: {"id": i, "description": EXECUTOR.hg.upsert_manifest("", b["manifest"])}
+        docs = {i: {"id": i, "spaceIdentifier": "PROJECT-1",
+                    "description": EXECUTOR.hg.upsert_manifest("", b["manifest"])}
                 for i in ("REQ-1", "DEL-1")}
         docs["DEV-1"] = {"id": "DEV-1", "description": "开发人员的人工说明",
                          "spaceIdentifier": "PROJECT-1", "parentId": "DEL-1"}
         with mock.patch.object(EXECUTOR.core, "find_aliyun", return_value="aliyun"), \
              mock.patch.object(EXECUTOR.core, "require_auth_env"), \
-             mock.patch.object(EXECUTOR.gateway, "execute_read", side_effect=lambda _, c: docs[c["args"][1]]), \
+             mock.patch.object(EXECUTOR.gateway, "execute_read", side_effect=lambda _, c:
+                 [{"resourceId": "REQ-1"}] if c["operation"].endswith("relation-records") else docs[c["args"][1]]), \
              mock.patch.object(EXECUTOR.hg, "read_document", side_effect=lambda d: d["kind"].encode()):
             EXECUTOR._verify_handoff(plan)
             docs["DEV-1"]["description"] += "\n新的人工修改"
             with self.assertRaisesRegex(EXECUTOR.core.AdapterError, "人工正文"):
                 EXECUTOR._verify_handoff(plan)
 
+    def test_live_handoff_cannot_skip_missing_manifest_changed_material_or_scope(self):
+        for defect in ("missing_manifest", "changed_material", "wrong_project", "wrong_parent", "wrong_requirement"):
+            plan = valid_plan()
+            bundle = plan["evidence"]["handoffEvidence"]
+            docs = {item: {"id": item, "spaceIdentifier": "PROJECT-1",
+                    "description": EXECUTOR.hg.upsert_manifest("", bundle["manifest"])}
+                    for item in ("REQ-1", "DEL-1")}
+            docs["DEV-1"] = {"id": "DEV-1", "spaceIdentifier": "PROJECT-1",
+                "parentId": "DEL-1", "description": "开发人员的人工说明"}
+            if defect == "missing_manifest":
+                docs["REQ-1"]["description"] = "旧版产品文字"
+            if defect == "wrong_project":
+                docs["REQ-1"]["spaceIdentifier"] = "OTHER"
+            if defect == "wrong_parent":
+                docs["DEV-1"]["parentId"] = "OTHER"
+            with self.subTest(defect=defect), \
+                 mock.patch.object(EXECUTOR.core, "find_aliyun", return_value="aliyun"), \
+                 mock.patch.object(EXECUTOR.core, "require_auth_env"), \
+                 mock.patch.object(EXECUTOR.gateway, "execute_read", side_effect=lambda _, c:
+                    [{"resourceId": "OTHER" if defect == "wrong_requirement" else "REQ-1"}]
+                    if c["operation"].endswith("relation-records") else docs[c["args"][1]]), \
+                 mock.patch.object(EXECUTOR.hg, "read_document", side_effect=lambda d:
+                    b"changed" if defect == "changed_material" else d["kind"].encode()), \
+                 self.assertRaises(EXECUTOR.core.AdapterError):
+                EXECUTOR._verify_handoff(plan)
+
+    def test_missing_bundle_blocks_preflight_and_old_ready_receipt_without_writes(self):
+        plan = valid_plan()
+        plan["evidence"].pop("handoffEvidence")
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "plan.json"
+            path.write_text(json.dumps(plan), encoding="utf-8")
+            ready = Path(directory) / "old-ready.json"
+            ready.write_text(json.dumps({"schemaVersion": EXECUTOR.PREFLIGHT_SCHEMA,
+                "result": "ready", "plan": plan,
+                "fingerprint": EXECUTOR.gateway.stable_hash(plan)}), encoding="utf-8")
+            with mock.patch.object(EXECUTOR.gateway, "cmd_preflight") as preflight, \
+                 mock.patch.object(EXECUTOR.gateway, "cmd_apply") as write:
+                with self.assertRaisesRegex(EXECUTOR.core.AdapterError, "交棒"):
+                    EXECUTOR.command_preflight(argparse.Namespace(plan=str(path), output=None))
+                with self.assertRaisesRegex(EXECUTOR.core.AdapterError, "交棒"):
+                    EXECUTOR.command_apply(argparse.Namespace(preflight=str(ready), output=None))
+                preflight.assert_not_called()
+                write.assert_not_called()
+
     def test_changed_live_handoff_blocks_apply_before_any_stage_write(self):
         plan = EXECUTOR.validate_plan(valid_plan())
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "preflight.json"
             path.write_text(json.dumps({"schemaVersion": EXECUTOR.PREFLIGHT_SCHEMA,
-                "result": "ready", "suiteState": suite_state(), "plan": plan,
+                "result": "ready", "plan": plan,
                 "fingerprint": EXECUTOR.gateway.stable_hash(plan)}))
             with mock.patch.object(EXECUTOR, "_verify_handoff", side_effect=EXECUTOR.core.AdapterError("交棒已变化")), \
                  mock.patch.object(EXECUTOR.gateway, "cmd_apply") as write:

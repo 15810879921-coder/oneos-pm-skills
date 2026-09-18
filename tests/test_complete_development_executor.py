@@ -4,6 +4,9 @@ import argparse
 import copy
 import importlib
 import json
+import os
+import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -42,6 +45,10 @@ def transaction(key: str, actions: list[dict], verifications: list[dict]) -> dic
         "actions": actions,
         "verifications": verifications,
     }
+
+
+def update_body(**values) -> str:
+    return json.dumps(values, ensure_ascii=False, separators=(",", ":"))
 
 
 def test_task_readbacks() -> list[dict]:
@@ -109,6 +116,17 @@ def valid_plan() -> dict:
                 "directoryIds": [],
                 "selectedCaseIds": [],
                 "selectedCaseResults": [],
+                "formalTestValidationSkipped": True,
+                "skipReason": "no-associated-test-plan",
+                "planDiscovery": {
+                    "status": "available",
+                    "plugin": "aliyun-cli-devops",
+                    "versionBefore": "0.9.0",
+                    "versionAfter": "0.9.0",
+                    "upgradeAttempted": False,
+                    "retryAttempted": False,
+                    "traceIds": [],
+                },
             },
         },
         "stages": {
@@ -117,8 +135,9 @@ def valid_plan() -> dict:
                 [{
                     "operation": "projex-update-workitem",
                     "args": [
-                        "--id", "TEST-1", "--assigned-to", "QA-1",
-                        "--description", DESCRIPTION,
+                        "--id", "TEST-1", "--biz-body",
+                        update_body(assignedTo="QA-1", description=DESCRIPTION,
+                                    formatType="MARKDOWN"),
                     ],
                 }],
                 test_readbacks,
@@ -127,7 +146,8 @@ def valid_plan() -> dict:
                 "development-complete-DEV-1-v1",
                 [{
                     "operation": "projex-update-workitem",
-                    "args": ["--id", "DEV-1", "--status", "STATUS-COMPLETE"],
+                    "args": ["--id", "DEV-1", "--biz-body",
+                             update_body(status="STATUS-COMPLETE")],
                 }],
                 [{
                     "operation": "projex-get-workitem",
@@ -139,7 +159,8 @@ def valid_plan() -> dict:
                 "requirement-handoff-DEV-1-v1",
                 [{
                     "operation": "projex-update-workitem",
-                    "args": ["--id", "REQ-1", "--status", "STATUS-WAIT-TEST"],
+                    "args": ["--id", "REQ-1", "--biz-body",
+                             update_body(status="STATUS-WAIT-TEST")],
                 }],
                 [{
                     "operation": "projex-get-workitem",
@@ -168,23 +189,50 @@ def valid_plan() -> dict:
     plan["evidence"]["handoffEvidence"] = bundle
     description = EXECUTOR.hg.upsert_bundle("开发人员的人工说明", bundle)
     stage = plan["stages"]["developmentComplete"]
-    stage["actions"][0]["args"].extend(["--description", description])
+    stage["actions"][0]["args"][-1] = update_body(
+        status="STATUS-COMPLETE", description=description, formatType="MARKDOWN"
+    )
     stage["verifications"][0]["expect"]["description"] = description
     plan["finalReadbacks"][0]["expect"]["description"] = description
     return plan
 
 
-def suite_state() -> dict:
-    names = [
-        "YunxiaoPM", "yunxiao-development-delivery", "development-brain",
-        "YunxiaoQA", "yunxiao-release-operations",
-    ]
-    return EXECUTOR.suite.verify([
-        f"{name}={ROOT / 'skills' / name / 'SKILL.md'}" for name in names
-    ])
-
-
 class CompleteDevelopmentExecutorTests(unittest.TestCase):
+    def test_handoff_failure_at_optional_effort_stage_cannot_be_skipped(self):
+        raw = valid_plan()
+        raw["stages"]["effort"] = transaction("effort-gate-regression", [{
+            "operation": "projex-create-effort-record", "args": [],
+        }], [{"operation": "projex-get-workitem", "args": ["--id", "DEV-1"]}])
+        plan = EXECUTOR.validate_plan(raw)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path = root / "preflight.json"
+            output = root / "receipt.json"
+            path.write_text(json.dumps({"schemaVersion": EXECUTOR.PREFLIGHT_SCHEMA,
+                "result": "ready", "plan": plan, "fingerprint": GATEWAY.stable_hash(plan),
+                "stagePreflights": {name: {"status": "ready", "path": str(root / (name + ".json"))}
+                                    for name in plan["stages"]}}), encoding="utf-8")
+            with mock.patch.object(EXECUTOR, "_verify_handoff", side_effect=[
+                None, GATEWAY.core.AdapterError("产品交接资料已变化")]) as gate, \
+                 mock.patch.object(GATEWAY, "cmd_apply") as write:
+                with self.assertRaisesRegex(GATEWAY.core.AdapterError, "产品交接资料已变化"):
+                    EXECUTOR.command_apply(argparse.Namespace(preflight=str(path), output=str(output)))
+                write.assert_not_called()
+                self.assertEqual(gate.call_count, 2)
+            receipt = json.loads(output.read_text(encoding="utf-8"))
+            self.assertEqual(receipt["failedStage"], "effort")
+            self.assertEqual(receipt["stages"]["effort"]["status"], "failed")
+            self.assertNotIn("testHandoff", receipt["stages"])
+
+    def test_update_actions_use_official_cli_biz_body(self):
+        plan = valid_plan()
+        for stage_name in ("testHandoff", "developmentComplete", "requirementHandoff"):
+            action = plan["stages"][stage_name]["actions"][0]
+            self.assertIn("--biz-body", action["args"])
+            self.assertNotIn("--status", action["args"])
+            self.assertNotIn("--description", action["args"])
+            self.assertNotIn("--assigned-to", action["args"])
+
     def test_valid_plan_enforces_test_handoff_before_closure(self):
         plan = EXECUTOR.validate_plan(valid_plan())
         self.assertEqual(plan["scope"]["testMode"], "mandatory-test-task")
@@ -236,6 +284,7 @@ class CompleteDevelopmentExecutorTests(unittest.TestCase):
         plan["evidence"]["testScopeResolution"].update(
             decision="scope-empty", testPlan={"id": "PLAN-1"},
             scopeDirectories=[{"id": "DIR-1"}], directoryIds=["DIR-1"],
+            formalTestValidationSkipped=True, skipReason="scope-empty",
         )
         self.assertEqual(EXECUTOR.validate_plan(plan)["scope"]["testMode"],
                          "mandatory-test-task")
@@ -244,6 +293,89 @@ class CompleteDevelopmentExecutorTests(unittest.TestCase):
         plan = valid_plan()
         plan["scope"]["selectedCaseIds"] = ["CASE-1"]
         with self.assertRaisesRegex(GATEWAY.core.AdapterError, "不得伪造"):
+            EXECUTOR.validate_plan(plan)
+
+    def test_plan_read_skip_requires_plugin_upgrade_diagnostics(self):
+        plan = valid_plan()
+        plan["evidence"]["testScopeResolution"].update(
+            decision="plan-read-skipped",
+            formalTestValidationSkipped=True,
+            skipReason="plan-read-unavailable-after-plugin-upgrade",
+            planDiscovery={
+                "status": "unavailable-after-plugin-upgrade",
+                "plugin": "aliyun-cli-devops",
+                "versionBefore": "0.5.2",
+                "versionAfter": "0.9.0",
+                "upgradeAttempted": True,
+                "retryAttempted": True,
+                "initialError": "StatusCode: 500 Code: <nil> traceId=TRACE-1",
+                "retryError": "StatusCode: 500 Detail: <nil> traceId=TRACE-2",
+                "traceIds": ["TRACE-1", "TRACE-2"],
+            },
+        )
+        validated = EXECUTOR.validate_plan(plan)
+        self.assertEqual(
+            validated["evidence"]["testScopeResolution"]["decision"],
+            "plan-read-skipped",
+        )
+
+    def test_plan_read_skip_without_retry_diagnostics_is_rejected(self):
+        plan = valid_plan()
+        plan["evidence"]["testScopeResolution"].update(
+            decision="plan-read-skipped",
+            planDiscovery={"status": "unavailable-after-plugin-upgrade"},
+        )
+        with self.assertRaisesRegex(GATEWAY.core.AdapterError, "插件升级、重试"):
+            EXECUTOR.validate_plan(plan)
+
+    def test_json_recovery_requires_success_evidence(self):
+        plan = valid_plan()
+        discovery = plan["evidence"]["testScopeResolution"]["planDiscovery"]
+        discovery.update(status="recovered-after-json-api", jsonReadAttempted=True,
+                         jsonReadSucceeded=True, transport="official-openapi-json",
+                         contentType="application/json")
+        EXECUTOR.validate_plan(plan)
+        discovery["jsonReadSucceeded"] = False
+        with self.assertRaisesRegex(GATEWAY.core.AdapterError, "JSON恢复读取"):
+            EXECUTOR.validate_plan(plan)
+
+    def test_default_json_read_requires_success_evidence(self):
+        plan = valid_plan()
+        discovery = plan["evidence"]["testScopeResolution"]["planDiscovery"]
+        discovery.update(status="available-json-api", jsonReadAttempted=True,
+                         jsonReadSucceeded=True, transport="official-openapi-json",
+                         contentType="application/json")
+        EXECUTOR.validate_plan(plan)
+        del discovery["jsonReadSucceeded"]
+        with self.assertRaisesRegex(GATEWAY.core.AdapterError, "JSON恢复读取"):
+            EXECUTOR.validate_plan(plan)
+
+    def test_json_failure_receipt_does_not_require_irrelevant_plugin_upgrade(self):
+        plan = valid_plan()
+        resolution = plan["evidence"]["testScopeResolution"]
+        resolution.update(decision="plan-read-skipped", skipReason="plan-read-unavailable-json-api",
+                          planDiscovery={"status": "unavailable-json-api",
+                              "transport": "official-openapi-json", "contentType": "application/json",
+                              "jsonReadAttempted": True, "jsonReadSucceeded": False,
+                              "jsonReadError": "StatusCode: 500 traceId=JSON-FAIL",
+                              "upgradeAttempted": False, "retryAttempted": False})
+        EXECUTOR.validate_plan(plan)
+        resolution["planDiscovery"]["jsonReadError"] = ""
+        with self.assertRaisesRegex(GATEWAY.core.AdapterError, "真实JSON失败"):
+            EXECUTOR.validate_plan(plan)
+
+    def test_no_plan_without_successful_discovery_is_rejected(self):
+        plan = valid_plan()
+        plan["evidence"]["testScopeResolution"]["planDiscovery"] = {
+            "status": "unavailable-after-plugin-upgrade",
+        }
+        with self.assertRaisesRegex(GATEWAY.core.AdapterError, "成功的测试计划读取回执"):
+            EXECUTOR.validate_plan(plan)
+
+    def test_no_plan_must_explicitly_skip_formal_validation(self):
+        plan = valid_plan()
+        plan["evidence"]["testScopeResolution"]["formalTestValidationSkipped"] = False
+        with self.assertRaisesRegex(GATEWAY.core.AdapterError, "显式记录跳过"):
             EXECUTOR.validate_plan(plan)
 
     def test_new_test_task_must_reference_test_handoff(self):
@@ -302,12 +434,61 @@ class CompleteDevelopmentExecutorTests(unittest.TestCase):
         with self.assertRaisesRegex(GATEWAY.core.AdapterError, "越权写操作"):
             EXECUTOR.validate_plan(plan)
 
-    def test_suite_state_is_rechecked_from_installed_paths(self):
-        state = suite_state()
-        self.assertTrue(EXECUTOR._verify_suite_state(state)["verified"])
-        state["suiteVersion"] = "10.1.0"
-        with self.assertRaisesRegex(GATEWAY.core.AdapterError, "必须全部回读为10.2.0"):
-            EXECUTOR._verify_suite_state(state)
+    @mock.patch.object(EXECUTOR, "_verify_handoff")
+    def test_preflight_without_other_skill_installations_or_suite_state(self, handoff):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            plan_path = root / "plan.json"
+            plan_path.write_text(json.dumps(valid_plan()), encoding="utf-8")
+
+            def preflight_stage(args):
+                GATEWAY.write_json(Path(args.output), {"fingerprint": "checked"})
+
+            # A legacy path may be stale or missing; neither it nor any SKILL.md
+            # should be consulted when validating real completion evidence.
+            for legacy in ([], ["--suite-state", str(root / "missing-suite.json")]):
+                with self.subTest(legacy=legacy):
+                    output = root / "preflight.json"
+                    args = EXECUTOR.build_parser().parse_args([
+                        "preflight", "--plan", str(plan_path), "--output", str(output), *legacy,
+                    ])
+                    with mock.patch.object(GATEWAY, "cmd_preflight", side_effect=preflight_stage):
+                        self.assertEqual(args.func(args), 0)
+                    result = json.loads(output.read_text(encoding="utf-8"))
+                    self.assertEqual(result["result"], "ready")
+                    self.assertNotIn("suiteState", result)
+                    self.assertIn("testHandoff", result["stagePreflights"])
+            self.assertEqual(handoff.call_count, 2)
+
+    def test_development_only_install_still_checks_delivery_evidence(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            scripts = root / "yunxiao-development-delivery" / "scripts"
+            shutil.copytree(SCRIPTS, scripts, ignore=shutil.ignore_patterns(
+                "__pycache__", "*.pyc", "verify_lifecycle_suite.py",
+            ))
+            plan = valid_plan()
+            del plan["evidence"]["trustedDeliveryVersion"]
+            plan_path = root / "plan.json"
+            plan_path.write_text(json.dumps(plan), encoding="utf-8")
+            result = subprocess.run([
+                sys.executable, "-B", str(scripts / "yunxiao_cli_complete_development.py"),
+                "preflight", "--plan", str(plan_path),
+            ], cwd=root, capture_output=True, text=True, encoding="utf-8", timeout=30,
+                env={**os.environ, "PYTHONIOENCODING": "utf-8"})
+            self.assertEqual(result.returncode, 69, result.stderr)
+            self.assertIn("缺少可信交付版本", json.loads(result.stderr)["error"])
+            self.assertNotIn("生命周期Skill", result.stderr)
+
+    @mock.patch.object(EXECUTOR, "_verify_handoff", side_effect=GATEWAY.core.AdapterError("交棒证据失效"))
+    def test_no_suite_gate_does_not_bypass_live_handoff(self, _handoff):
+        with tempfile.TemporaryDirectory() as directory:
+            plan_path = Path(directory) / "plan.json"
+            plan_path.write_text(json.dumps(valid_plan()), encoding="utf-8")
+            with mock.patch.object(GATEWAY, "cmd_preflight") as stage:
+                with self.assertRaisesRegex(GATEWAY.core.AdapterError, "交棒证据失效"):
+                    EXECUTOR.command_preflight(argparse.Namespace(plan=str(plan_path), output=None))
+                stage.assert_not_called()
 
     @mock.patch.object(EXECUTOR, "_verify_handoff")
     def test_critical_failure_stops_later_stages_and_persists_partial_receipt(self, _gate):
@@ -330,7 +511,6 @@ class CompleteDevelopmentExecutorTests(unittest.TestCase):
                     "suiteVersion": EXECUTOR.SUITE_VERSION,
                     "result": "ready",
                     "fingerprint": GATEWAY.stable_hash(plan),
-                    "suiteState": suite_state(),
                     "plan": plan,
                     "stagePreflights": {
                         name: {"status": "ready", "path": str(stage_root / f"{name}.json")}
@@ -358,7 +538,8 @@ class CompleteDevelopmentExecutorTests(unittest.TestCase):
             "requirement-development-complete-DEV-1-v1",
             [{
                 "operation": "projex-update-workitem",
-                "args": ["--id", "REQ-1", "--status", "STATUS-DEVELOPMENT-COMPLETE"],
+                "args": ["--id", "REQ-1", "--biz-body",
+                         update_body(status="STATUS-DEVELOPMENT-COMPLETE")],
             }],
             [{
                 "operation": "projex-get-workitem",
@@ -396,7 +577,8 @@ class CompleteDevelopmentExecutorTests(unittest.TestCase):
                     "suiteVersion": EXECUTOR.SUITE_VERSION,
                     "result": "ready",
                     "fingerprint": GATEWAY.stable_hash(plan),
-                    "suiteState": suite_state(),
+                    # Old installation metadata is informational, even when stale.
+                    "suiteState": {"verified": False, "suiteVersion": "old", "evidencePaths": {}},
                     "plan": plan,
                     "stagePreflights": stage_preflights,
                 }), encoding="utf-8")

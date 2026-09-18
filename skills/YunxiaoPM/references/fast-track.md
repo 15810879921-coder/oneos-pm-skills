@@ -1,5 +1,7 @@
 # 无单快轨到待开发
 
+> 本文的“无单快轨”属于产品/交付推进，不是生产发版快车道。生产紧急发版只允许何斐身份校验通过后按 `$yunxiao-release-operations` 的 [何斐专属紧急发版快车道](../../yunxiao-release-operations/references/emergency-fast-lane.md)执行；不得将本文件的跳过分析规则用于发版、审批或回滚。
+
 ## TEMPDEV补建入口
 
 `补建技术改进`不是另一套流程，而是把已存在的TEMPDEV事实带入本快轨：固定创建`优化`需求和对应端侧【交付】，在需求与交付描述的追溯区写`sourceDeliveryUnitId`和一次生成的`adoptionId`。内容至少含中文标题、问题/目标、影响范围、负责人和验收口径。云效创建与关系回读成功后，交给开发Skill认领原分支；本Skill不重命名分支、不搬运提交、不创建MR，也不直接创建【开发】任务。

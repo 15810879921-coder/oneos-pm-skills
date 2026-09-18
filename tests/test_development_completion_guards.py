@@ -68,10 +68,10 @@ class DevelopmentCompletionGuardTests(unittest.TestCase):
     def test_no_formal_plan_still_requires_test_task_and_writes_receipt(self):
         original_find = TEST_SCOPE.core.find_aliyun
         original_auth = TEST_SCOPE.core.require_auth_env
-        original_list = TEST_SCOPE.list_plans
+        original_list = TEST_SCOPE.list_plans_json
         TEST_SCOPE.core.find_aliyun = lambda: "aliyun"
         TEST_SCOPE.core.require_auth_env = lambda: None
-        TEST_SCOPE.list_plans = lambda *_: []
+        TEST_SCOPE.list_plans_json = lambda *_: []
         try:
             with tempfile.TemporaryDirectory() as directory:
                 output = Path(directory) / "scope.json"
@@ -89,7 +89,7 @@ class DevelopmentCompletionGuardTests(unittest.TestCase):
         finally:
             TEST_SCOPE.core.find_aliyun = original_find
             TEST_SCOPE.core.require_auth_env = original_auth
-            TEST_SCOPE.list_plans = original_list
+            TEST_SCOPE.list_plans_json = original_list
 
     def test_gateway_persists_partial_receipt_after_first_successful_action(self):
         plan = GATEWAY.validate_plan({

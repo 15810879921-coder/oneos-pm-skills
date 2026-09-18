@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import argparse
 import json
 import sys
 import unittest
@@ -24,6 +25,30 @@ SPEC.loader.exec_module(MODULE)
 
 
 class DevelopmentAllocationTests(unittest.TestCase):
+    def test_apply_reads_delivery_metadata_once_before_create(self):
+        frozen = {
+            "input": {}, "scopeFingerprint": "same",
+            "requirementSnapshot": {"sha256": "snapshot"},
+            "technicalPlan": {"sha256": "plan"}, "action": "create",
+            "liveScope": {"delivery": {"id": "DELIVERY-ID"}, "owner": {"id": "OWNER-ID"}},
+        }
+        class StopBeforeWrite(Exception):
+            pass
+        with mock.patch.object(MODULE.core, "find_aliyun", return_value="aliyun"), \
+                mock.patch.object(MODULE.core, "require_auth_env"), \
+                mock.patch.object(MODULE, "load_preflight", return_value=frozen), \
+                mock.patch.object(MODULE, "build_preflight", return_value=frozen) as preflight, \
+                mock.patch.object(MODULE, "get_workitem", return_value={
+                    "workitemType": {"id": "TYPE-ID"}, "sprint": {"id": "SPRINT-ID"},
+                }) as get_item, \
+                mock.patch.object(MODULE, "create_development", side_effect=StopBeforeWrite) as create:
+            with self.assertRaises(StopBeforeWrite):
+                MODULE.cmd_apply(argparse.Namespace(preflight="preflight.json"))
+        preflight.assert_called_once()
+        get_item.assert_called_once_with("aliyun", "DELIVERY-ID")
+        self.assertEqual(create.call_args.args[1]["workitemTypeId"], "TYPE-ID")
+        self.assertEqual(create.call_args.args[1]["sprintId"], "SPRINT-ID")
+
     def test_create_development_omits_missing_source_priority(self):
         captured = {}
 

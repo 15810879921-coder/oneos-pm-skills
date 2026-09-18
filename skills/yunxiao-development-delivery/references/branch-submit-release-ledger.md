@@ -10,7 +10,7 @@
 
 正式台账归属在一个工作项评论中，只追加、不覆盖。TEMPDEV尚无正式工作项时，同格式事件先保存在当前机器的受管交付台账文件；正式事项补齐后追加`DELIVERY_ADOPTED`并把完整事件链写入正式事项。不得伪造历史云效评论时间，原本地时间放`occurredAt`，迁入时间由评论平台回读。
 
-新台账云效写入有套件开关：只有五个生命周期Skill的用户级安装版本都经官方列表/文件回读为`10.2.0`，并生成`oneos.lifecycle-suite-state/v1`且`verified=true`，`yunxiao_cli_delivery_ledger.py append --transaction-plan ... --suite-state ...`才允许产生评论事务。未对齐时继续兼容读取旧评论和维护本地TEMPDEV台账，不向云效混写新格式；这只延迟台账迁入，不阻止编码、本地提交或test验证。
+新台账评论事务由当前开发 Skill 自带适配器生成，不要求安装其他岗位的 Skill 或对齐五个本机版本。使用`yunxiao_cli_delivery_ledger.py append --transaction-plan ... --work-item-id ...`；旧`--suite-state`参数仅保留兼容，不读取其文件。事件结构、受支持的数据版本、哈希链、中文变更说明、目标工作项及后续网关权限/漂移预检和官方回读仍须通过。
 
 每条事件至少包含：
 
@@ -36,6 +36,8 @@ DEVELOPMENT_STARTED
 
 后置认领与补录使用`DELIVERY_ADOPTED`、`DEVELOPMENT_TASK_AGGREGATED`、`EXTERNAL_COMMIT_DISCOVERED`或`DELIVERY_MAPPING_CORRECTED`；撤销提交使用`COMMIT_REVERTED`，不得删除旧事件。评论写入失败时保留Git事实并标记`证据待补`，下一次提交、完成开发或准备发布时从Codeup/Flow恢复后追加`LEDGER_REPAIRED`。
 
+开发任务晚于代码创建、任务没有代码关系，或源分支已删除但合并MR仍可官方读回时，完整执行[历史代码交付恢复](historical-code-recovery.md)。物理分支存在不等于已经绑定任务；源分支已删除也不等于没有交付。门禁判断依据是精确MR/提交到当前任务的可核验映射。
+
 执行器：
 
 ```text
@@ -44,7 +46,7 @@ skill-run yunxiao_cli_delivery_ledger.py append --existing <ledger.json> --event
 skill-run yunxiao_cli_delivery_ledger.py summary --events <ledger.json>
 ```
 
-生成的事务计划必须再交`yunxiao_cli_gateway.py preflight/apply`执行并通过官方评论回读；脚本本身不绕过Plan、权限或漂移门禁。读取器兼容`10.0.0`、`10.1.0`、`10.1.1`、`10.1.2`、`10.1.3`和`10.2.0`记录；只有五个生命周期Skill均回读`suiteVersion=10.2.0`时才允许新格式写入，版本不一致时保持只读。
+生成的事务计划必须再交`yunxiao_cli_gateway.py preflight/apply`执行并通过官方评论回读；脚本本身不绕过Plan、权限或漂移门禁。既有历史读取兼容范围保持不变；新事件使用当前写入器声明的数据版本，并按事件协议验证，不检查其他岗位 Skill 的本机安装版本。
 
 ## 分支实例与基线
 

@@ -64,16 +64,51 @@ $yunxiao-release-operations
 
 ```text
 $yunxiao-release-operations
-执行测试流水线：流水线=流水线名称
+执行测试流水线 [流水线=流水线名称或ID]
 ```
 
 操作与效果：
 
-1. 使用显式名称缩小已有测试流水线候选，再按Codeup仓库、代码源、目标分支、部署目标和逻辑test环境唯一确认并立即启动一次；流水线名称只是提示，不要求必须包含`test/测试`。
-2. 返回执行ID、链接、开始时间和初始状态，跟踪到终态。
-3. 失败时自动抓取首个失败步骤日志并脱敏分析。
-4. 不创建、复制、修改、重命名或删除流水线，也不修改工作项状态。
-5. 同名多条、环境不符、参数缺失或权限不足时不执行并说明原因。
+1. 从当前开发交接或测试交棒范围冻结项目、涉及仓库/组件和目标分支，运行`discover_test_pipelines.py --scope <范围.json>`。该脚本分页读取全部流水线定义、详情和运行记录，只保留活动、项目一致、代码源/分支一致、逻辑test环境和部署目标一致的候选。
+2. 对每条候选读取上次终态成功运行，必须找到实际部署提交SHA；再用官方`codeup-list-commits`读取目标分支完整历史，计算基线之后的待部署提交。无法证明基线或待部署范围时只返回阻塞。
+3. 输出候选表：流水线名称/ID、服务、代码库、代码分支、测试环境、上次成功部署时间、部署版本SHA、待部署提交和证据路径。名称不参与用途判断；`流水线=`只在候选已结构匹配后做精确选择。
+4. 只有候选唯一且回执`result=ready`时才生成`test-pipeline`事务计划。计划绑定候选回执、`flow-get-pipeline`漂移守卫、稳定`idempotencyKey`和唯一`flow-create-pipeline-run`动作；不要求生产发布交棒。
+5. 外层直接执行以下受控入口；`run`会重新读取候选（或读取已生成回执）、预检、执行一次并跟踪到终态：
+
+```powershell
+skill-run execute_test_pipeline.py run --scope <范围.json> --pipeline <可选名称或ID>
+```
+
+需要分步审阅时使用：
+
+```powershell
+skill-run discover_test_pipelines.py --scope <范围.json> --output <候选.json>
+skill-run execute_test_pipeline.py prepare --candidates <候选.json> --output <计划.json>
+skill-run yunxiao_cli_gateway.py preflight --plan <计划.json> --output <预检.json>
+skill-run yunxiao_cli_gateway.py apply --preflight <预检.json> --receipt <执行回执.json>
+skill-run execute_test_pipeline.py monitor --pipeline-id <流水线ID> --pipeline-run-id <执行ID>
+```
+
+6. 失败时自动读取首个失败状态和官方可见日志字段并脱敏说明；读取不到日志时只报告限制和执行ID。不创建、复制、修改、重命名或删除流水线，也不修改工作项状态。
+
+`<范围.json>`至少冻结以下字段，来源是开发完成回执或测试交棒包，不从流水线名称反推：
+
+```json
+{
+  "projectId": "项目内部ID",
+  "environment": "test",
+  "components": [
+    {
+      "componentId": "web",
+      "repositoryId": "代码库ID",
+      "targetBranch": "develop",
+      "deploymentTarget": "web-test"
+    }
+  ]
+}
+```
+
+回执中的`definitionEvidence`、`baseline`、`pendingChanges`分别保存流水线详情、成功部署运行和Codeup提交历史证据；这三个区块缺任一项时，外层执行器不得提交`flow-create-pipeline-run`。
 
 ## 3. 执行生产流水线
 
@@ -126,6 +161,8 @@ $yunxiao-release-operations
 5. 全部候选 MR 成功合入并读回目标分支 SHA 后，从已通过校验的组件矩阵取**全部不同流水线ID**，去重并行运行全部且仅实际变更组件的生产流水线。禁止预设或偏好只执行前端流水线；矩阵含后端、前端或多个后端模块时必须全部执行。小程序始终跳过云效流水线。
 
 Flow 流水线发现必须翻页读取至空页；第一页不是完整流水线清单。不能因为只看见前端流水线就仅发布前端。
+
+同一口令内的独立工作项、仓库、流水线定义/运行读取使用`release_read_batch.py`并发；同批多个冻结代码头使用`validate_release_change_coverage.py collect-batch`去重并发采集。同一有效mergePlan中的完整SHA历史可用`reuse-history`复用。候选分支只做文件树覆盖证明，禁止把候选当成新来源重扫完整历史。所有写动作、依赖读取、同一列表分页和状态推进仍按因果顺序执行。
 
 `执行发布`只负责首次发布尝试和同一次尝试的接续。首次通过全部门禁、准备提交生产前，写入`attemptNo=1`、`attemptType=initial`和唯一`releaseAttemptId`；中断、监控失败或会话重启后再次输入本命令，只能关联同一尝试、同一生产执行或同一自动回滚，不得创建第二次生产执行。只有尝试进入明确成功或失败终态，才算该次尝试结束。
 

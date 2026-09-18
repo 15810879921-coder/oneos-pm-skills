@@ -25,7 +25,7 @@ class LifecycleSuiteContractV2Tests(unittest.TestCase):
         for relative in paths:
             with self.subTest(relative=relative):
                 text = (ROOT / relative).read_text(encoding="utf-8")
-                self.assertIn("10.2.0", text)
+                self.assertIn("10.2.15", text)
 
     def test_new_writer_is_compatible_with_legacy_reader_boundary(self):
         development = (ROOT / "skills/yunxiao-development-delivery/references/branch-submit-release-ledger.md").read_text(encoding="utf-8")
@@ -34,7 +34,7 @@ class LifecycleSuiteContractV2Tests(unittest.TestCase):
         self.assertIn("oneos.delivery-ledger/v1", development)
         self.assertIn("oneos.delivery-ledger/v1", release)
 
-    def test_feature_gate_uses_explicit_install_paths(self):
+    def test_optional_suite_diagnostic_uses_explicit_install_paths(self):
         names = [
             "YunxiaoPM", "yunxiao-development-delivery", "development-brain",
             "YunxiaoQA", "yunxiao-release-operations",

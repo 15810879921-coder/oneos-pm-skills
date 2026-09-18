@@ -437,7 +437,9 @@ def cmd_preflight(args: argparse.Namespace) -> int:
             "mrTitle": str(spec.get("mrTitle") or ""),
             "mrDescription": str(spec.get("mrDescription") or ""),
         })
-    pipeline = validate_pipeline(executable, plan.get("testPipeline") or {}, checked)
+    # Deployment belongs to a later explicit test-pipeline command. A missing,
+    # disabled or unavailable Flow must not block code repair and merging.
+    pipeline = None
     receipt = {
         "schema": PREFLIGHT_SCHEMA, "createdAt": core.now_utc(), "user": user,
         "planPath": str(Path(args.plan)), "planHash": stable_hash(plan),
@@ -487,7 +489,7 @@ def cmd_ensure_branches(args: argparse.Namespace) -> int:
                 raise core.AdapterError("源分支创建/复用后回读失败。")
             results.append({**group, "result": result, "sourceCommit": branch_commit(source)})
         except core.AdapterError as exc:
-            results.append({"groupId": group.get("groupId"), "result": "blocked", "error": str(exc)})
+            results.append({**group, "result": "blocked", "error": str(exc)})
     receipt = {"schema": BRANCH_SCHEMA, "createdAt": core.now_utc(), "user": user,
                "preflightPath": str(Path(args.preflight)), "preflightHash": preflight.get("hash"),
                "snapshotPath": preflight.get("snapshotPath"),
@@ -605,7 +607,7 @@ def cmd_ensure_mrs(args: argparse.Namespace) -> int:
                             "localId": local_id, "state": mr_state(detail),
                             "detailUrl": detail.get("detailUrl"), "hasConflict": detail.get("hasConflict")})
         except (core.AdapterError, KeyError, ValueError) as exc:
-            results.append({"groupId": group.get("groupId"), "result": "blocked", "error": str(exc)})
+            results.append({**group, "result": "blocked", "error": str(exc)})
     receipt = {"schema": MR_SCHEMA, "createdAt": core.now_utc(), "user": user,
                "branchesPath": str(Path(args.branches)), "branchesHash": branches.get("hash"),
                "snapshotPath": branches.get("snapshotPath"),
@@ -622,6 +624,11 @@ def cmd_merge_mrs(args: argparse.Namespace) -> int:
     executable = core.find_aliyun()
     mrs = load_receipt(args.mrs, MR_SCHEMA)
     user = ensure_current_user(executable, mrs.get("user"))
+    suffix = str(mrs.get("snapshotHash"))[:12]
+    path = Path(args.output) if args.output else default_path("bug-delivery-merges", suffix)
+    previous = load_receipt(str(path), MERGE_SCHEMA) if path.is_file() else None
+    if previous and previous.get("mrsHash") != mrs.get("hash"):
+        raise core.AdapterError("已有合并回执属于其他批次，禁止覆盖")
     results: list[dict[str, Any]] = []
     for group in mrs["results"]:
         try:
@@ -633,9 +640,19 @@ def cmd_merge_mrs(args: argparse.Namespace) -> int:
             validate_mr(detail, group)
             state = mr_state(detail)
             result = "idempotent"
+            source_verified = any(row.get("groupId") == group.get("groupId") and
+                row.get("repositoryId") == group.get("repositoryId") and row.get("localId") == local_id and
+                row.get("expectedSourceCommit") == group.get("expectedSourceCommit") and
+                row.get("mergedRevision") == detail.get("mergedRevision") and row.get("sourceVerifiedAtMerge") is True
+                for row in (previous or {}).get("results", []))
             if state != "MERGED":
                 if not mr_can_merge(state):
                     raise core.AdapterError(f"合并请求状态不允许合并：{state}")
+                expected = str(group.get("expectedSourceCommit") or "")
+                source = exact_branch(executable, repo_id, str(group["sourceBranch"]))
+                if not COMMIT_RE.fullmatch(expected) or branch_commit(source) != expected:
+                    raise core.AdapterError("MR源分支已变化，需对最新提交重新验证并预检后合并")
+                source_verified = True
                 core.run_devops(executable, [
                     "codeup-merge-change-request", "--repository-id", repo_id,
                     "--local-id", str(local_id), "--merge-type", args.merge_type,
@@ -647,10 +664,11 @@ def cmd_merge_mrs(args: argparse.Namespace) -> int:
             if mr_state(detail) != "MERGED" or not detail.get("mergedRevision"):
                 raise core.AdapterError("合并请求合并后状态或mergedRevision回读失败。")
             results.append({**group, "result": result, "state": "MERGED",
+                            "sourceVerifiedAtMerge": source_verified,
                             "mergedRevision": str(detail["mergedRevision"]),
                             "detailUrl": detail.get("detailUrl")})
         except (core.AdapterError, KeyError, ValueError) as exc:
-            results.append({"groupId": group.get("groupId"), "result": "blocked", "error": str(exc)})
+            results.append({**group, "result": "blocked", "error": str(exc)})
     receipt = {"schema": MERGE_SCHEMA, "createdAt": core.now_utc(), "user": user,
                "mrsPath": str(Path(args.mrs)), "mrsHash": mrs.get("hash"),
                "snapshotPath": mrs.get("snapshotPath"), "snapshotHash": mrs.get("snapshotHash"),
@@ -674,6 +692,10 @@ def extract_run_id(payload: Any) -> str:
 
 
 def cmd_start_test(args: argparse.Namespace) -> int:
+    raise core.AdapterError("修复完成不再自动部署；请使用独立的执行测试流水线命令。")
+
+
+def _legacy_start_test(args: argparse.Namespace) -> int:
     executable = core.find_aliyun()
     merges = load_receipt(args.merges, MERGE_SCHEMA)
     user = ensure_current_user(executable, merges.get("user"))
@@ -848,7 +870,7 @@ def cmd_check_test(args: argparse.Namespace) -> int:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Official Codeup/Flow CLI adapter for batch Bug delivery")
     sub = parser.add_subparsers(dest="command", required=True)
-    preflight = sub.add_parser("preflight", help="只读校验提交组和唯一test流水线")
+    preflight = sub.add_parser("preflight", help="只读校验Codeup提交组、分支和基线，不要求测试流水线")
     preflight.add_argument("--plan", required=True)
     preflight.add_argument("--output")
     preflight.set_defaults(func=cmd_preflight)
@@ -867,7 +889,7 @@ def build_parser() -> argparse.ArgumentParser:
                        default="no-fast-forward")
     merge.add_argument("--output")
     merge.set_defaults(func=cmd_merge_mrs)
-    start = sub.add_parser("start-test-pipeline", help="通过CLI且仅一次启动预检test流水线")
+    start = sub.add_parser("start-test-pipeline", help="已停用；交测请使用独立的执行测试流水线命令")
     start.add_argument("--merges", required=True)
     start.add_argument("--output")
     start.set_defaults(func=cmd_start_test)

@@ -11,9 +11,11 @@ from pathlib import Path
 from typing import Any
 
 import yunxiao_cli_runtime as core
+from yunxiao_testhub_read_api import list_plans_json
 
 
 SCOPE_PATTERN = re.compile(r"^\[(Web|小程序|跨端)\]\s*")
+TRACE_ID_PATTERN = re.compile(r'"?traceId"?\s*[:=]\s*"?([A-Za-z0-9_-]+)', re.IGNORECASE)
 
 
 def write_receipt(path: Path, value: dict[str, Any]) -> None:
@@ -85,17 +87,54 @@ def list_directory_cases(executable: str, plan_id: str,
     return selected
 
 
-def list_plans(executable: str, project_id: str) -> list[dict[str, Any]]:
-    result: list[dict[str, Any]] = []
-    for page in range(1, 101):
-        batch = items(core.run_devops(executable, [
-            "test-hub-list-test-plan", "--project-identifier", project_id,
-            "--page", str(page), "--per-page", "100",
-        ]))
-        result.extend(batch)
-        if len(batch) < 100:
-            break
+def retryable_plan_read_error(error: Exception) -> bool:
+    text = core.scrub(str(error)).lower()
+    denied = (
+        "statuscode: 400", "statuscode: 401", "statuscode: 403", "statuscode: 404",
+        "unauthorized", "forbidden", "permission", "无权限", "鉴权", "令牌",
+    )
+    if any(marker in text for marker in denied):
+        return False
+    retryable = (
+        "statuscode: 5", "content type", "timeout", "timed out", "connection",
+        "request execution failed", "not a valid api", "unknown command", "eof",
+    )
+    return any(marker in text for marker in retryable)
+
+
+def trace_ids(*errors: str) -> list[str]:
+    result: list[str] = []
+    for error in errors:
+        for value in TRACE_ID_PATTERN.findall(error or ""):
+            if value not in result:
+                result.append(value)
     return result
+
+
+def discover_plans(project_id: str) -> tuple[list[dict[str, Any]] | None, dict[str, Any]]:
+    # The CLI form Content-Type defect is confirmed: never probe it or upgrade
+    # the plugin as a prerequisite for this independently supported public API.
+    discovery: dict[str, Any] = {
+        "status": "available-json-api",
+        "transport": "official-openapi-json",
+        "contentType": "application/json",
+        "upgradeAttempted": False,
+        "retryAttempted": False,
+        "jsonReadAttempted": True,
+        "jsonReadSucceeded": False,
+        "traceIds": [],
+    }
+    try:
+        plans = list_plans_json(project_id)
+    except core.AdapterError as error:
+        if not retryable_plan_read_error(error):
+            raise
+        diagnostic = core.scrub(str(error))
+        discovery.update(status="unavailable-json-api", jsonReadError=diagnostic,
+                         traceIds=trace_ids(diagnostic))
+        return None, discovery
+    discovery["jsonReadSucceeded"] = True
+    return plans, discovery
 
 
 def flatten_directories(value: Any) -> list[dict[str, Any]]:
@@ -139,7 +178,31 @@ def command_resolve(args: argparse.Namespace) -> int:
     end = "Web" if args.delivery_end == "PC" else args.delivery_end
     target = Path(args.output) if args.output else core.output_dir() / \
         f"test-scope-{args.requirement_sn.lower()}-{end.lower()}-{args.development_task_sn.lower()}.json"
-    plans = list_plans(executable, args.project_id)
+    plans, discovery = discover_plans(args.project_id)
+    if plans is None:
+        payload = {
+            "schemaVersion": "oneos.test-scope-resolution/v2",
+            "decision": "plan-read-skipped",
+            "requirement": args.requirement_sn,
+            "projectId": args.project_id,
+            "developmentTask": args.development_task_sn,
+            "deliveryEnd": end,
+            "testTaskRequired": True,
+            "testMode": "mandatory-test-task",
+            "testPlan": None,
+            "scopeDirectories": [],
+            "directoryIds": [],
+            "selectedCaseIds": [],
+            "selectedCaseResults": [],
+            "formalTestValidationSkipped": True,
+            "skipReason": "plan-read-unavailable-json-api",
+            "planDiscovery": discovery,
+            "note": "官方JSON测试计划读取失败；本次跳过正式TestHub计划/用例验证，仍须创建独立【测试】任务。最终回报必须披露真实读取错误和traceId；不得宣称无计划或测试通过，不执行无关插件升级。",
+        }
+        write_receipt(target, payload)
+        payload["receipt"] = str(target)
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+        return 0
     exact = [plan for plan in plans if exact_requirement_match(
         str(plan.get("name") or ""), args.requirement_sn)]
     selected: dict[str, Any] | None = None
@@ -174,7 +237,10 @@ def command_resolve(args: argparse.Namespace) -> int:
                    "testTaskRequired": True, "testMode": "mandatory-test-task",
                    "testPlan": None, "scopeDirectories": [], "directoryIds": [],
                    "selectedCaseIds": [], "selectedCaseResults": [],
-                   "note": "未发现正式测试计划；仍须为当前开发任务创建独立【测试】任务并由QA完成。"}
+                   "formalTestValidationSkipped": True,
+                   "skipReason": "no-associated-test-plan",
+                   "planDiscovery": discovery,
+                   "note": "已成功读取测试计划，但当前需求未关联正式计划；跳过正式TestHub计划/用例验证，仍须为当前开发任务创建独立【测试】任务并由QA完成。"}
         write_receipt(target, payload)
         payload["receipt"] = str(target)
         print(json.dumps(payload, ensure_ascii=False, indent=2))
@@ -219,6 +285,9 @@ def command_resolve(args: argparse.Namespace) -> int:
         "selectedCaseIds": [item["testcaseId"] for item in selected_cases],
         "selectedCaseResults": selected_cases,
         "untaggedDirectoryCount": len(untagged),
+        "formalTestValidationSkipped": test_mode == "mandatory-test-task",
+        "skipReason": decision if test_mode == "mandatory-test-task" else None,
+        "planDiscovery": discovery,
     }
     if decision == "scope-empty":
         payload["note"] = "已配置当前端目录但其中没有正式用例；仍创建独立【测试】任务，由QA补齐或执行人工测试。"

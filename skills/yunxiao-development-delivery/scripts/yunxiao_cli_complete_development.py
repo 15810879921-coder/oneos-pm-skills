@@ -14,7 +14,6 @@ from typing import Any
 
 import yunxiao_cli_gateway as gateway
 import yunxiao_cli_runtime as core
-import verify_lifecycle_suite as suite
 import handoff_gate as hg
 import yunxiao_cli_handoff as handoff_start
 from task_scope_metadata import build_task_scope
@@ -23,10 +22,11 @@ from task_scope_metadata import build_task_scope
 SCHEMA = "oneos.complete-development-plan/v1"
 PREFLIGHT_SCHEMA = "oneos.complete-development-preflight/v1"
 RECEIPT_SCHEMA = "oneos.complete-development-receipt/v1"
-SUITE_VERSION = "10.2.0"
+SUITE_VERSION = "10.2.15"
 TEST_SCOPE_START = "<!-- ONEOS_TEST_SCOPE_START -->"
 TEST_SCOPE_END = "<!-- ONEOS_TEST_SCOPE_END -->"
 ALLOWED_TEST_MODES = {"formal-plan", "mandatory-test-task"}
+TEST_DELIVERY_MODES = {"execute", "merge_only"}
 STAGE_ORDER = (
     "effort", "testHandoff", "developmentComplete",
     "requirementDevelopmentComplete", "requirementHandoff",
@@ -180,23 +180,6 @@ def _require_stage_operations(name: str, stage: dict[str, Any]) -> None:
         raise core.AdapterError(f"{name}阶段必须且只能包含一个状态写动作。")
 
 
-def _verify_suite_state(value: dict[str, Any]) -> dict[str, Any]:
-    if value.get("schemaVersion") != suite.SCHEMA:
-        raise core.AdapterError(f"suite-state必须为{suite.SCHEMA}。")
-    if value.get("suiteVersion") != SUITE_VERSION or value.get("verified") is not True:
-        raise core.AdapterError(f"五个生命周期Skill必须全部回读为{SUITE_VERSION}。")
-    evidence = value.get("evidencePaths")
-    if not isinstance(evidence, dict) or set(evidence) != suite.REQUIRED:
-        raise core.AdapterError("suite-state缺少五个生命周期Skill的精确安装路径。")
-    try:
-        actual = suite.verify([f"{name}={evidence[name]}" for name in sorted(suite.REQUIRED)])
-    except (OSError, ValueError) as error:
-        raise core.AdapterError(f"无法实时回读生命周期Skill：{error}") from error
-    if actual.get("verified") is not True or actual.get("suiteVersion") != SUITE_VERSION:
-        raise core.AdapterError(f"生命周期Skill实时版本未全部对齐{SUITE_VERSION}。")
-    return actual
-
-
 def validate_plan(value: dict[str, Any]) -> dict[str, Any]:
     gateway.assert_no_secrets(value)
     if value.get("schemaVersion") != SCHEMA:
@@ -207,6 +190,9 @@ def validate_plan(value: dict[str, Any]) -> dict[str, Any]:
     if not idempotency_key:
         raise core.AdapterError("完成开发计划缺少稳定idempotencyKey。")
 
+    requested_delivery = str(value.get("testDeliveryMode") or "merge_only")
+    if requested_delivery not in TEST_DELIVERY_MODES:
+        raise core.AdapterError("testDeliveryMode必须为execute或merge_only；询问应在生成计划前完成。")
     scope = value.get("scope")
     if not isinstance(scope, dict):
         raise core.AdapterError("scope必须是对象。")
@@ -290,10 +276,68 @@ def validate_plan(value: dict[str, Any]) -> dict[str, Any]:
                 or scope["directoryIds"] != directory_ids \
                 or scope["selectedCaseIds"] != case_ids:
             raise core.AdapterError("formal-plan的测试计划、目录或具体用例与解析回执不一致。")
-    elif resolution.get("decision") not in {"test-task-required", "scope-unconfigured", "scope-empty"}:
-        raise core.AdapterError("mandatory-test-task必须来自无计划、端侧未配置或正式范围为空回执。")
+        if resolution.get("formalTestValidationSkipped") is not False \
+                or resolution.get("skipReason") is not None:
+            raise core.AdapterError("formal-plan不得标记为跳过正式测试计划验证。")
+    elif resolution.get("decision") not in {
+        "test-task-required", "scope-unconfigured", "scope-empty", "plan-read-skipped",
+    }:
+        raise core.AdapterError(
+            "mandatory-test-task必须来自无计划、端侧未配置、正式范围为空或真实读取失败的回执。"
+        )
     elif scope["testPlanId"] is not None or scope["directoryIds"] or scope["selectedCaseIds"]:
         raise core.AdapterError("mandatory-test-task不得伪造正式计划、目录或具体用例。")
+    elif resolution.get("decision") == "plan-read-skipped":
+        discovery = resolution.get("planDiscovery")
+        if isinstance(discovery, dict) and discovery.get("status") == "unavailable-json-api":
+            if discovery.get("transport") != "official-openapi-json" \
+                    or discovery.get("contentType") != "application/json" \
+                    or discovery.get("jsonReadAttempted") is not True \
+                    or discovery.get("jsonReadSucceeded") is not False \
+                    or not isinstance(discovery.get("jsonReadError"), str) \
+                    or not discovery["jsonReadError"].strip():
+                raise core.AdapterError("跳过测试计划读取必须携带真实JSON失败诊断回执。")
+            if resolution.get("formalTestValidationSkipped") is not True \
+                    or resolution.get("skipReason") != "plan-read-unavailable-json-api":
+                raise core.AdapterError("JSON读取失败必须显式标记跳过正式测试计划验证。")
+        else:
+            # Read historical receipts without requiring new calls to the broken CLI.
+            if not isinstance(discovery, dict) \
+                    or discovery.get("status") != "unavailable-after-plugin-upgrade" \
+                    or discovery.get("plugin") != "aliyun-cli-devops" \
+                    or discovery.get("upgradeAttempted") is not True \
+                    or discovery.get("retryAttempted") is not True \
+                    or not valid_ref(discovery.get("versionBefore")) \
+                    or not valid_ref(discovery.get("versionAfter")) \
+                    or not isinstance(discovery.get("initialError"), str) \
+                    or not discovery["initialError"].strip() \
+                    or not isinstance(discovery.get("retryError"), str) \
+                    or not discovery["retryError"].strip():
+                raise core.AdapterError("跳过测试计划读取必须携带插件升级、重试和失败诊断回执。")
+            if resolution.get("formalTestValidationSkipped") is not True \
+                    or resolution.get("skipReason") != "plan-read-unavailable-after-plugin-upgrade":
+                raise core.AdapterError("插件升级重试失败后必须显式标记跳过正式测试计划验证。")
+    else:
+        discovery = resolution.get("planDiscovery")
+        if not isinstance(discovery, dict) or discovery.get("status") not in {
+            "available", "recovered-after-plugin-upgrade", "recovered-after-json-api", "available-json-api",
+        }:
+            raise core.AdapterError("无正式计划或用例的结论必须来自成功的测试计划读取回执。")
+        if discovery.get("status") in {"recovered-after-json-api", "available-json-api"} and (
+            discovery.get("jsonReadAttempted") is not True
+            or discovery.get("jsonReadSucceeded") is not True
+            or discovery.get("transport") != "official-openapi-json"
+            or discovery.get("contentType") != "application/json"
+        ):
+            raise core.AdapterError("JSON恢复读取必须携带成功的官方API读取回执。")
+        expected_skip_reason = {
+            "test-task-required": "no-associated-test-plan",
+            "scope-unconfigured": "scope-unconfigured",
+            "scope-empty": "scope-empty",
+        }[resolution["decision"]]
+        if resolution.get("formalTestValidationSkipped") is not True \
+                or resolution.get("skipReason") != expected_skip_reason:
+            raise core.AdapterError("mandatory-test-task必须显式记录跳过正式测试计划验证的原因。")
 
     stages_raw = value.get("stages")
     if not isinstance(stages_raw, dict):
@@ -380,13 +424,14 @@ def validate_plan(value: dict[str, Any]) -> dict[str, Any]:
         "idempotencyKey": idempotency_key,
         "scope": scope,
         "evidence": evidence,
+        "testDeliveryMode": requested_delivery,
         "stages": stages,
         "finalReadbacks": final_calls,
     }
 
 
 def _require_receipt_write(stage: dict, bundle: dict) -> None:
-    description = _arg_value(stage["actions"][0]["args"], "--description")
+    description = gateway._description_value(stage["actions"][0])
     try:
         if hg.bundle_from_description(description or "") != bundle:
             raise ValueError("开发回执与计划不一致")
@@ -404,11 +449,33 @@ def _verify_handoff(plan: dict) -> None:
     """Fresh authoritative reads before preflight and every lifecycle write."""
     executable = core.find_aliyun()
     core.require_auth_env()
+    # Cache only within this fresh gate call; never reuse an earlier stage's reads.
+    items: dict[str, dict] = {}
     def read(item_id):
-        return core.unwrap(gateway.execute_read(executable, {
-            "operation": "projex-get-workitem", "args": ["--id", item_id]}))
+        if item_id not in items:
+            items[item_id] = core.unwrap(gateway.execute_read(executable, {
+                "operation": "projex-get-workitem", "args": ["--id", item_id]}))
+        return items[item_id]
     bundle = plan["evidence"]["handoffEvidence"]
     try:
+        scope = plan["scope"]
+        for field in ("developmentTaskId", "deliveryId", "requirementId"):
+            item_id = str(scope[field])
+            item = read(item_id)
+            if not isinstance(item, dict) or str(item.get("id")) != item_id:
+                raise ValueError("完成开发工作项身份无法唯一回读")
+            space = item.get("space") or {}
+            project_id = str((space.get("id") if isinstance(space, dict) else "") or
+                             item.get("spaceIdentifier") or item.get("spaceId") or item.get("projectId") or "")
+            if project_id != str(scope["projectId"]):
+                raise ValueError("完成开发工作项项目归属不一致或无法回读")
+        relations = core.unwrap(gateway.execute_read(executable, {
+            "operation": "projex-list-workitem-relation-records",
+            "args": ["--id", str(scope["deliveryId"]), "--relation-type", "ASSOCIATED"]}))
+        if not isinstance(relations, list) or str(scope["requirementId"]) not in {
+            str(row.get("resourceId") or "") for row in relations if isinstance(row, dict)
+        }:
+            raise ValueError("交付任务与需求的真实关联无法回读或不一致")
         hg.verify_live_bundle(bundle, "development", read, plan["scope"],
                               plan["evidence"]["trustedDeliveryVersion"])
         hg.verify_documents(bundle["manifest"])
@@ -416,7 +483,9 @@ def _verify_handoff(plan: dict) -> None:
         if not isinstance(item, dict) or str(item.get("id")) != plan["scope"]["developmentTaskId"]:
             raise ValueError("官方开发任务身份无法唯一回读")
         handoff_start.verify_task_binding(executable, item, bundle["manifest"]["scope"])
-        planned = _arg_value(plan["stages"]["developmentComplete"]["actions"][0]["args"], "--description")
+        planned = gateway._description_value(
+            plan["stages"]["developmentComplete"]["actions"][0]
+        )
         if planned != hg.upsert_bundle(str(item.get("description") or ""), bundle):
             raise ValueError("开发描述已变化或计划覆盖了人工正文，须刷新计划")
     except (ValueError, OSError) as error:
@@ -433,7 +502,6 @@ def _call_gateway(func: Any, args: argparse.Namespace) -> None:
 
 
 def command_preflight(args: argparse.Namespace) -> int:
-    suite_state = _verify_suite_state(load_object(args.suite_state))
     plan = validate_plan(load_object(args.plan))
     _verify_handoff(plan)
     output = Path(args.output) if args.output else core.output_dir() / \
@@ -464,7 +532,6 @@ def command_preflight(args: argparse.Namespace) -> int:
         "suiteVersion": SUITE_VERSION,
         "result": "ready",
         "fingerprint": gateway.stable_hash(plan),
-        "suiteState": suite_state,
         "plan": plan,
         "stagePreflights": stage_receipts,
         "createdAt": core.now_utc(),
@@ -517,7 +584,6 @@ def command_apply(args: argparse.Namespace) -> int:
     preflight = load_object(args.preflight)
     if preflight.get("schemaVersion") != PREFLIGHT_SCHEMA or preflight.get("result") != "ready":
         raise core.AdapterError("无效的完成开发预检回执。")
-    _verify_suite_state(preflight.get("suiteState") or {})
     plan = validate_plan(preflight.get("plan") or {})
     fingerprint = gateway.stable_hash(plan)
     if fingerprint != preflight.get("fingerprint"):
@@ -540,6 +606,7 @@ def command_apply(args: argparse.Namespace) -> int:
         "idempotencyKey": plan["idempotencyKey"],
         "scope": plan["scope"],
         "evidence": plan["evidence"],
+        "testDeliveryMode": plan["testDeliveryMode"],
         "stages": {},
         "startedAt": core.now_utc(),
         "task_scope": task_scope_result,
@@ -573,12 +640,19 @@ def command_apply(args: argparse.Namespace) -> int:
                 continue
             raise core.AdapterError(f"关键阶段{name}缺少ready预检。")
         stage_receipt_path = _stage_dir(Path(args.preflight)) / f"{name}-apply.json"
+        handoff_checked = False
         try:
             _verify_handoff(plan)
+            handoff_checked = True
             _call_gateway(
                 gateway.cmd_apply,
                 argparse.Namespace(preflight=stage_preflight["path"],
-                                   receipt=str(stage_receipt_path)),
+                                   receipt=str(stage_receipt_path), resume=True,
+                                   predecessors=[
+                                       {"plan": plan["stages"][previous], "receipt": outcome["receipt"]}
+                                       for previous, outcome in progress["stages"].items()
+                                       if outcome.get("status") == "applied"
+                                   ]),
             )
             stage_receipt = gateway.load_object(str(stage_receipt_path))
             progress["stages"][name] = {"status": "applied", "receipt": stage_receipt}
@@ -590,7 +664,7 @@ def command_apply(args: argparse.Namespace) -> int:
             progress["failedStage"] = name
             progress["failedAt"] = core.now_utc()
             gateway.write_json(output, progress)
-            if name == "effort":
+            if name == "effort" and handoff_checked:
                 progress["stages"][name]["status"] = "skipped"
                 progress["result"] = "applying"
                 progress.pop("failedStage", None)
@@ -614,7 +688,9 @@ def command_apply(args: argparse.Namespace) -> int:
     progress.pop("failedAt", None)
     gateway.write_json(output, progress)
     print(json.dumps({"result": "complete", "receipt": str(output),
-                      "scope": progress["scope"], "verified": True},
+                      "scope": progress["scope"], "testDeliveryMode": progress["testDeliveryMode"],
+                      "nextAction": "execute-test-pipeline" if progress["testDeliveryMode"] == "execute"
+                      else "pending-deployment-test-handoff", "verified": True},
                      ensure_ascii=False, indent=2))
     return 0
 
@@ -624,7 +700,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
     preflight = sub.add_parser("preflight")
     preflight.add_argument("--plan", required=True)
-    preflight.add_argument("--suite-state", required=True)
+    preflight.add_argument("--suite-state", help="已弃用；兼容旧命令但不读取或校验其他Skill安装")
     preflight.add_argument("--output")
     preflight.set_defaults(func=command_preflight)
     apply = sub.add_parser("apply")

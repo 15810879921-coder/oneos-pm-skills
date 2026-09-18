@@ -38,7 +38,7 @@ node <本 Skill 目录>/scripts/ensure-daily-skill-update.mjs --current-skill Yu
 
 与 **YunxiaoPM（需求任务）**、开发交付 Skill 分工：本 Skill **只做测试侧**读写。
 
-云效生命周期套件版本：`10.2.0`。
+云效生命周期套件版本：`10.2.15`。
 
 ## Plan 模式门禁（强制 · 凡写云效）
 
@@ -89,14 +89,14 @@ node <本 Skill 目录>/scripts/ensure-daily-skill-update.mjs --current-skill Yu
 | 实写 API | [references/live-api.md](references/live-api.md)（01_ONEOS 已验证） |
 | 测试执行闭环 | [references/test-execution.md](references/test-execution.md) · `scripts/yunxiao_cli_test_lifecycle.py` · `scripts/yunxiao_cli_bug_retest.py` |
 | TestHub计划/用例执行 | [references/yunxiao-cli-testhub.md](references/yunxiao-cli-testhub.md) · `scripts/yunxiao_cli_testhub.py` |
-| 列表/建缺/流转脚本 | [scripts/README.md](scripts/README.md) · `check_auth.py` / `list_bug_anchors.py` / `list_test_tasks.py` / `list_bugs.py` / `create_bug.py` / `transit_bug.py` / `close_test_task.py` |
+| 列表/建缺/流转脚本 | [scripts/README.md](scripts/README.md) · 当前闭环优先使用 `yunxiao_cli_test_lifecycle.py` / `yunxiao_cli_bug_retest.py` / `yunxiao_cli_testhub.py`；`list_*`、`create_bug.py`、`transit_bug.py`、`close_test_task.py` 仅保留为历史诊断，若脚本进入 `_auth.py` Cookie 路径必须停止并转回官方 CLI |
 | 跨平台脚本启动 | [references/runtime-launcher.md](references/runtime-launcher.md) · `skill-run <script.py> [参数...]` |
 
 日常测试**优先本 Skill**；不必再挂载英文 `yunxiao-bug-triage`（诊断要点已收入本 Skill）。
 
 ## 跨 Skill 逻辑交接（强制）
 
-- 只接收/输出正式 Skill 名、需求/交付/开发/测试/发版任务编号、当前状态、正式 `ASSOCIATED`/`TASK_SUB` 关系，以及测试计划、用例、缺陷、流水线、报告和幂等证据标识。正式开测及完成测试还必须接收并回读 `oneos.handoff-evidence/v1`，不得只相信交接文字。
+- 只接收/输出正式 Skill 名、需求/交付/开发/测试/发版任务编号、当前状态、正式 `ASSOCIATED`/`TASK_SUB` 关系，以及测试计划、用例、缺陷、流水线、报告和幂等证据标识。开始测试只接收已唯一定位且正式关系、测试范围一致的任务，不强制产品交接包、迭代或部署区块；实际执行前须核对待测版本。完成测试仍须回读正式验收及版本证据，当前普通完成执行器的 `oneos.handoff-evidence/v1` 要求见测试执行说明。
 - 禁止定位、读取、复制或要求用户提供其他 Skill 的安装目录。本 Skill 只读取自身包内资源；缺少人员、项目或状态信息时按交接编号实时查询云效。
 - 上游开发正式名为 `yunxiao-development-delivery`，下游发布正式名为 `yunxiao-release-operations`，产品回退正式名为 `YunxiaoPM`；选择器必须使用 `$<正式名称>`。
 
@@ -120,6 +120,7 @@ node <本 Skill 目录>/scripts/ensure-daily-skill-update.mjs --current-skill Yu
 | 开始测试 / 证据 / 完成测试 / 发布交接 | [references/test-execution.md](references/test-execution.md) · [references/test-scope-aggregation.md](references/test-scope-aggregation.md) |
 | 条线 1/2 · 状态机 · 再次打开 | [references/defect-flow.md](references/defect-flow.md) |
 | 诊断 · 查重 · 分层初判 | [references/diagnosis.md](references/diagnosis.md) |
+| 测试缺陷特殊修复通道 | [references/bug-repair-channel.md](references/bug-repair-channel.md) · `scripts/yunxiao_cli_bug_repair_request.py` |
 | 缺陷描述模板 | [references/bug-template.md](references/bug-template.md) |
 | Plan 确认清单 | [references/plan-gate.md](references/plan-gate.md) |
 | 挂载点选 | [references/anchor-selection.md](references/anchor-selection.md) |
@@ -135,6 +136,7 @@ node <本 Skill 目录>/scripts/ensure-daily-skill-update.mjs --current-skill Yu
 发起缺陷：标题=…；描述=…；测试任务=ONEOS-xx；[需求=ONEOS-yy]；[开发任务=ONEOS-zz]；[交付单元=ID]；[负责人=…]；[证据=…]
 从测试用例发起缺陷：测试用例=CASE-xx；标题=…；描述=…；测试任务=ONEOS-xx；[需求=ONEOS-yy]；[开发任务=ONEOS-zz]；[交付单元=ID]；[负责人=…]；[证据=…]
 发起缺陷(非本期)：标题=…；描述=…；负责人=…；[测试任务=…]；[项目=…]
+提交缺陷修复请求：缺陷=ONEOS-xx；测试任务=ONEOS-yy；证据清单=<JSON文件>；描述=…
 # 无测试任务的非本期须显式声明，默认仍要求挂测试子项+需求
 拉取待验缺陷：状态=已修复|暂不修复；[测试任务=…]；[负责人=…]
 批量关闭已修复：缺陷=ONEOS-a；复测用例=CASE-ID；复测执行=RUN-ID；test版本=VERSION；证据=ID或URL；验证人=当前用户
@@ -170,11 +172,17 @@ node <本 Skill 目录>/scripts/ensure-daily-skill-update.mjs --current-skill Yu
    - **开发归属提示**：若已存在唯一【开发】任务，可把其编号和 `deliveryUnitId` 写入描述追溯段，供开发侧选分支；这不是正式关系，不存在时不阻止建 Bug。开发任务后置时由开发/产品侧补正式关系，再以交付台账回填 `DEVELOPMENT_TASK_AGGREGATED`。
 7. Plan 回显 → 确认 → apply（`create_bug.py`）→ 回读当前用户=验证者及【测试】关联 → 回报；任一校验失败须停
 
+## 测试缺陷特殊修复通道
+
+测试确认失败后，可使用`提交缺陷修复请求`把复现步骤、实际/期望、测试任务、用例/执行记录和证据引用写入Bug评论。该动作只追加`【测试缺陷修复请求】`，不改Bug状态、不改代码；`yunxiao_cli_bug_repair_request.py`会校验Bug与【测试】的正式关系、当前状态、证据哈希和当前测试用户，并官方回读评论。
+
+开发侧收到请求后，自动进入`处理测试修复请求：缺陷=ONEOS-xx`特殊入口。入口重新读取并验证最新请求、负责人和状态，追加`【开发接收测试修复】`评论，然后直接复用现有`修复bug:ONEOS-xx`链路，不要求测试人员再次描述问题。代码合并和开发验证通过后标`已修复`；确实不处理时必须提交原因、批准人、批准证据和后续动作，由开发侧标`暂不修复`。两种状态都必须官方回读，测试侧不能代改。
+
 ## 测试完成硬门禁
 
 执行`完成测试`前必须同时满足：
 
-1. 【测试】=`处理中`且正式`TASK_SUB→【交付】`、`ASSOCIATED→需求`。正式开测时已从云效需求/交付及开发任务回读当前 `oneos.handoff-evidence/v1`，通过 `qa-start` 门禁并写入测试任务；完成前再按 `qa-complete` 重新回读验证。
+1. 【测试】=`处理中`且正式`TASK_SUB→【交付】`、`ASSOCIATED→需求`。接收任务时校验正式关系和 `oneos.test-scope/v1`，保留人工描述；完成前按当前 `qa-complete` 协议回读正式验收证据。开始测试不代表测试通过，也不证明环境已就绪。
 2. 需求=`测试中`。
 3. 开发交接中的`oneos.test-deployment/v1`区块按`deliveryEnd`分流：**Web**表明版本已成功部署到test，且项目、迭代、需求、测试任务、执行ID和部署版本均一致；**小程序**为`testPipeline=skipped`、`status=skipped`且含`reason`，项目、迭代、需求、测试任务一致，不要求test流水线与自动化测试证据。
 4. `oneos.qa-evidence/v1`证据清单已从真实测试资产读取并校验，包含计划ID/URL、用例执行ID/URL、报告ID/URL、test部署执行和SHA-256；禁止用聊天参数、自填“0失败”或占位链接代替。
@@ -213,3 +221,7 @@ node <本 Skill 目录>/scripts/ensure-daily-skill-update.mjs --current-skill Yu
 - [ ] 发布交接：项目/迭代/需求/交付/测试证据/幂等键完整
 - [ ] 每次写操作回报含一行：`serialNumber | subject | from→to`（与口令编号一致）
 - [ ] 本轮无浏览器改状态；无建【开发】、无创建迭代、无代开发改状态
+
+### Bug 已修复与可复测的区别
+
+开发侧`已修复`只证明代码通过开发验证并已合并，可能仍为`待部署、待交付测试`。QA开始实际复测、写复测结论或关闭Bug之前，必须核验真实测试部署及被测版本包含修复；不得用已修复状态或`oneos.bug-fix-evidence/v1`替代部署证据。现有复测执行器的部署证据校验保持不变。

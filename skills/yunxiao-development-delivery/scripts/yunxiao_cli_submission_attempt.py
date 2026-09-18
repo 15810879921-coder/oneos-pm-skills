@@ -14,8 +14,10 @@ from zoneinfo import ZoneInfo
 
 
 SCHEMA = "oneos.delivery-submission-attempt/v1"
-SUITE_VERSION = "10.2.0"
-SUPPORTED_SUITE_VERSIONS = {"10.0.0", "10.1.0", SUITE_VERSION}
+SUITE_VERSION = "10.2.15"
+SUPPORTED_SUITE_VERSIONS = {
+    "10.0.0", "10.1.0", "10.2.0", "10.2.1", "10.2.2", "10.2.3", SUITE_VERSION,
+}
 REPO_STATES = {"PENDING", "RUNNING", "SUCCEEDED", "FAILED", "BLOCKED"}
 TERMINAL = {"SUCCEEDED", "FAILED", "BLOCKED"}
 

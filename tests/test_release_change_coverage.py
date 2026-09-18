@@ -149,6 +149,37 @@ class CoverageTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "分页重复"):
             C.collect("R", self.c, self.base, lambda call: [{"id": self.a, "parentIds": [self.base]}])
 
+    def test_batch_collector_reuses_identical_target_and_source_reads(self):
+        calls = []
+
+        def reader(call):
+            calls.append(tuple(call["args"]))
+            return self.reader(call)
+
+        value = {"schemaVersion": C.HISTORY_BATCH_SCHEMA, "requests": [
+            {"id": "first", "repositoryId": "R", "sourceHead": self.c,
+             "targetBaseCommit": self.base},
+            {"id": "second", "repositoryId": "R", "sourceHead": self.c,
+             "targetBaseCommit": self.base},
+        ]}
+        result = C.collect_batch(value, reader=reader, workers=2)
+        self.assertEqual(result["requestedSnapshots"], 2)
+        self.assertEqual(result["uniqueHistoryReads"], 2)
+        self.assertEqual(len(calls), 4)  # non-empty page plus terminal page for two unique heads
+        self.assertEqual(result["results"][0]["historySnapshot"],
+                         result["results"][1]["historySnapshot"])
+
+    def test_reuse_history_requires_valid_plan_and_exact_frozen_shas(self):
+        plan = P.build(self.data())
+        snapshot = C.reuse_history(plan, "R", self.c, self.base)
+        self.assertEqual(snapshot["sourceHead"], self.c)
+        with self.assertRaisesRegex(ValueError, "重新官方采集"):
+            C.reuse_history(plan, "R", self.b, self.base)
+        tampered = copy.deepcopy(plan)
+        tampered["items"][0]["targetBaseCommit"] = self.a
+        with self.assertRaisesRegex(ValueError, "哈希"):
+            C.reuse_history(tampered, "R", self.c, self.a)
+
     def test_topology_is_parent_first_even_when_sha_order_is_opposite(self):
         self.assertEqual(C.topological({"a": ["m"], "m": ["z"], "z": []}), ["z", "m", "a"])
         plan = P.build(self.data())

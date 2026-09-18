@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import hashlib
 import json
 import sys
 import tempfile
@@ -167,6 +168,25 @@ VISIBLE_DESCRIPTION = "OneOS V1.0更新日志：\n\n【新功能】\n1「任务�
 
 
 class ReleaseDescriptionGatewayTests(unittest.TestCase):
+    def test_codeup_body_file_is_validated_and_hash_bound(self):
+        with tempfile.TemporaryDirectory() as directory:
+            body_path = Path(directory) / "body.json"
+            body = {"branch": "release/ONEOS-995-candidate",
+                    "commit_message": "ONEOS-995 精确候选",
+                    "actions": [{"action": "update", "content": "source",
+                                 "file_path": "src/example.txt", "previous_path": ""}]}
+            raw = json.dumps(body, ensure_ascii=False).encode("utf-8")
+            body_path.write_bytes(raw)
+            action = {"operation": "codeup-commit-multiple-files",
+                      "args": ["--repository-id", "123", "--body-file", str(body_path)]}
+            MODULE.validate_codeup_file_commit(action, "execute")
+            self.assertEqual(action["bodySha256"], hashlib.sha256(raw).hexdigest())
+            body["actions"][0]["action"] = "delete"
+            body_path.write_text(json.dumps(body, ensure_ascii=False), encoding="utf-8")
+            with self.assertRaisesRegex(MODULE.core.AdapterError, "create/update"):
+                MODULE.validate_codeup_file_commit({"operation": action["operation"],
+                                                    "args": action["args"]}, "execute")
+
     def test_multiline_business_description_and_managed_comment_pass(self):
         plan = MODULE.validate_plan(create_plan(VISIBLE_DESCRIPTION))
         self.assertEqual(plan["actions"][0]["args"][-1], VISIBLE_DESCRIPTION)
@@ -233,7 +253,7 @@ class ReleaseDescriptionGatewayTests(unittest.TestCase):
             "flow-create-pipeline-run", ["--pipeline-id", "PROD-PIPE"],
         )
         plan["releaseGateStage"] = "test-pipeline"
-        with self.assertRaisesRegex(MODULE.core.AdapterError, "releaseGateStage"):
+        with self.assertRaisesRegex(MODULE.core.AdapterError, "候选流水线回执"):
             MODULE.validate_plan(plan)
 
     def test_refuse_and_incident_record_remain_available_for_risk_reduction(self):

@@ -17,7 +17,7 @@ const updater = path.join(
 );
 const stateDir = mkdtempSync(path.join(os.tmpdir(), 'oneos-daily-skill-update-'));
 
-function invoke(now, mockResult = 'success') {
+function invoke(now, mockResult = 'success', extraArgs = []) {
   const result = spawnSync(
     process.execPath,
     [
@@ -26,6 +26,7 @@ function invoke(now, mockResult = 'success') {
       '--state-dir', stateDir,
       '--now', now,
       '--mock-result', mockResult,
+      ...extraArgs,
     ],
     { encoding: 'utf8', windowsHide: true },
   );
@@ -36,6 +37,9 @@ function invoke(now, mockResult = 'success') {
 try {
   assert.equal(invoke('2026-08-31T09:00:00', 'success').action, 'updated');
   assert.equal(invoke('2026-08-31T10:00:00', 'failure').action, 'skipped-today');
+  const forced = invoke('2026-08-31T10:01:00', 'success', ['--force']);
+  assert.equal(forced.action, 'updated');
+  assert.equal(forced.forced, true);
 
   assert.equal(invoke('2026-09-01T09:00:00', 'failure').action, 'failed');
   assert.equal(invoke('2026-09-01T09:10:00', 'success').action, 'cooldown');

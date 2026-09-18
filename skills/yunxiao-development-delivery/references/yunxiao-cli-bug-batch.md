@@ -11,9 +11,9 @@
 5. 每次状态写入后回读编号、状态、负责人和验证者。
 6. 查询Codeup代码库、分支和MR；
 7. 创建或复用精确分支，创建或复用MR，合并并回读`mergedRevision`；
-8. 从既有Flow中按精确代码源、目标分支、部署目标和逻辑test环境发现唯一流水线，校验触发方式；名称仅作缩小候选的提示；
-9. 通过CLI启动一次手动流水线，或附着到合并后唯一自动运行实例；
-10. 查询流水线终态并证明运行实例包含全部合并版本，再生成部署证据。
+8. 回读实际MR合并版本，并核验每个Bug的开发验证报告和提交版本；
+9. 写入已修复及待部署、待交付测试记录；
+10. 回读Bug状态、描述、负责人和验证者；不读取、触发或等待Flow。
 
 代码编辑、编译测试、`git commit`和`git push`是本机Git动作，不属于云效OpenAPI；仍在隔离工作区执行。分支/MR/合并和Flow查询执行属于云效动作，禁止再通过浏览器、DOM或Cookie执行。本文件只定义批量Bug命令；`分配任务`另按`yunxiao-cli-allocation.md`执行。
 
@@ -105,14 +105,9 @@ skill-run yunxiao_cli_bug_delivery.py preflight --plan <计划JSON>
 - v2计划必须记录`deliveryUnitId/branchInstanceId/baseBranch/baseCommit/baseEvidence`。测试发现Bug优先使用真实被测提交作为基线；无法核验时不得伪造证据，转入临时修复并要求重新部署复测；
 - Codeup数字仓库ID、读写权限、目标分支和提交基线可回读；
 - 已有源分支仅在`reuseExisting=true`且提交一致时复用；
-- 未提供流水线ID时，从组织现有流水线中按代码源和目标分支唯一发现；提供ID时只用于缩小范围，仍必须回读验证；
-- 流水线的代码源、目标分支、部署目标和逻辑环境均指向本次test交付；名称不作为环境真相源；
-- 流水线代码源精确覆盖每个仓库和目标分支；
-- 禁止在本节点创建、复制、更新、重命名或删除流水线及服务连接；零匹配或多匹配直接返回配置缺口；
-- `executionMode=manual-cli`时目标分支不得已配置自动触发；
-- `executionMode=auto-after-merge`时只能有一个相关自动触发事件。未指定模式时由现有触发配置自动判断；若同时存在`push`和`merge_request/merged`，因可能重复发布而阻塞。
+- 本节点不要求、创建、修改或运行流水线。旧计划中的`testPipeline`仅兼容读取，不构成门禁；
 
-预检记录最近一次运行ID作为自动触发基线，输出带哈希的回执。
+预检输出Codeup分支与基线的带哈希回执，不访问Flow。
 
 ## 6. 创建或复用Codeup分支
 
@@ -149,42 +144,43 @@ skill-run yunxiao_cli_bug_delivery.py merge-mrs --mrs <MR回执>
 
 `ensure-mrs`先回读Codeup源分支，要求远端40位提交ID与本地映射一致；随后按精确仓库、源分支和目标分支复用唯一打开MR，或通过CLI创建MR并用快照内部工作项ID关联Bug。创建后回读`localId`、仓库、源/目标分支、冲突和WIP状态。
 
-`merge-mrs`不读取或等待评审、CI和讨论状态；只在MR精确、非WIP、无冲突且平台接受时合并。合并后必须回读`state=MERGED`和`mergedRevision`。任何组失败都禁止test发布。
+`merge-mrs`只在MR精确、非WIP、无冲突且平台允许时合并，不绕过平台保护。合并前再核对源分支40位提交与验证过的提交映射一致，合并后回读`state=MERGED`和`mergedRevision`。失败结果保留Bug归属，不能遗漏失败仓库后收口。
 
-## 9. 唯一test流水线
+## 9. 测试部署另行执行
 
-```text
-skill-run yunxiao_cli_bug_delivery.py start-test-pipeline --merges <合并回执>
-skill-run yunxiao_cli_bug_delivery.py check-test-pipeline --run <运行回执>
-```
+修复完成不启动或等待测试流水线。旧`start-test-pipeline`入口立即拒绝且不写Flow，避免老会话继续自动部署；`check-test-pipeline`只保留历史运行查询。具体交测由独立的`执行测试流水线`命令承担，本版不修改该命令。QA复测/关闭仍须核验实际被测版本包含修复，不能把`已修复`或本地验证当作已部署。
 
-- `manual-cli`：适配器使用`flow-create-pipeline-run`启动一次，并用确定性回执防止同批重复启动。
-- `auto-after-merge`：适配器不再手动启动；只查询预检基线之后的运行实例，并要求恰好一个实例包含全部`mergedRevision`。零个时等待，多于一个时按重复发布阻塞。
-- 查询终态使用`flow-get-pipeline-run`。只有`SUCCESS`且运行代码源中包含全部合并版本时生成`oneos.test-deployment/v1`证据；仅“流水线成功”但版本不一致不能标记Bug已修复。
+## 10. 合并与开发验证通过后标已修复
 
-## 10. test发布后标已修复
-
-`check-test-pipeline`生成的部署证据至少包含：
+保存真实运行的开发验证报告，再计算文件SHA256。每个Bug及其每个仓库分组都必须有唯一验证结果，不能把计划执行或静态扫描冒充业务验证通过：
 
 ```json
 {
-  "environment": "test",
-  "status": "成功",
-  "executionId": "RUN-123",
-  "executionUrl": "https://...",
-  "deployedVersion": "commit-or-artifact",
-  "includedBugSerials": ["ONEOS-123", "ONEOS-124"],
-  "commitOrMrAnchors": ["commit-or-mr"]
+  "schemaVersion": "oneos.bug-development-validation/v1",
+  "snapshotHash": "<冻结快照哈希>",
+  "results": [{
+    "bugSerialNumber": "ONEOS-123",
+    "groupId": "frontend-develop",
+    "status": "passed",
+    "revision": "<实际验证的40位提交SHA>",
+    "repairSummary": "<修复内容与验证范围>",
+    "reportPath": "validation.log",
+    "reportSha256": "<报告文件SHA256>"
+  }]
 }
 ```
 
-调用：
+相对报告路径以清单文件所在目录为基准。验证版本必须是`mergedRevision`，或带`sourceVerifiedAtMerge=true`的合并执行器回执中的`expectedSourceCommit`。历史已合并MR没有源提交核验标记时，验证实际合并版本，不能补造已验证标记。报告原文和本地路径不上传Bug。
 
 ```text
-skill-run yunxiao_cli_bug_batch.py set-status --snapshot <快照文件> --target 已修复 --deployment-evidence <证据JSON> --serial ONEOS-123 --serial ONEOS-124
+skill-run yunxiao_cli_bug_batch.py set-status --snapshot <快照文件> --target 已修复 --merge-evidence <CLI合并回执JSON> --validation-evidence <开发验证清单JSON> --serial ONEOS-123
 ```
 
-证据不是test成功、缺执行ID、缺版本/制品、缺代码锚点或未覆盖全部指定Bug时，零状态写入。写入阶段逐Bug失败隔离；一个Bug失败不重复提交、MR或test发布。
+适配器验证回执哈希、快照/用户、Bug及所有分组、报告哈希和版本，并实时回读MR。写入前逐Bug再次核验MR、负责人和验证者；用同一次工作项更新写状态和描述中的`oneos.bug-fix-evidence/v1`受管记录，回读核对。人可读记录含修复内容、验证结果、仓库、目标分支、MR、合并版本，以及`待部署、待交付测试`。原描述保留，不写复测通过、不关闭Bug。`--deployment-evidence`不再被修复完成入口接受。
+
+测试特殊修复请求由`处理测试修复请求：缺陷=<ID>`先消费`oneos.test-bug-repair-request/v1`评论，再进入同一修复链路。若选择不修复，使用`set-status --target 暂不修复 --defer-evidence <证据清单>`；清单必须包含原因、批准人、批准证据和后续动作，适配器追加`oneos.bug-deferred-fix/v1`并回读。QA不得代开发写任一收口状态。
+
+缺少实际合并或有效开发验证时零状态写入；没有流水线运行证据不阻塞。某Bug写入失败只阻塞该Bug，不重复提交或合并。单Bug命令也必须遵循相同证据与记录要求，但不改变单Bug原有“可修复指定负责人Bug”的权限边界；批量适配器仍只操作当前账号快照。
 
 ## 11. 输出与续跑
 
@@ -196,8 +192,8 @@ skill-run yunxiao_cli_bug_batch.py set-status --snapshot <快照文件> --target
 - 负责人和验证者一致性；
 - CLI更新及回读结果；
 - Codeup分支、远端提交、MR和`mergedRevision`回读；
-- Flow执行模式、自动触发基线、唯一运行ID和运行版本校验；
-- 部署证据摘要；
+- 每个Bug的开发验证版本、报告哈希及修复说明；
+- 待部署、待交付测试及`qaReady=false`；
 - 耗时与错误。
 
-同一目标状态重复执行时，已经达到目标且负责人、验证者一致的Bug按幂等成功返回。分支、MR和合并按精确标识幂等复用；手动流水线回执存在时不得再次启动。快照或回执被修改、Bug不在快照、负责人变化、编号回读不一致、验证者变化、提交漂移或出现多个匹配流水线运行时停止对应阶段。
+同一合并/验证证据重复执行且状态和描述记录一致时幂等返回，不追加记录或重复合并。已修复单上的不同记录不能覆盖历史交测记录；重新打开后的新修复保留历史区块并追加本轮记录。快照/回执哈希、Bug范围、负责人、验证者、MR身份、分支或版本不一致时停止对应阶段。回读失败先核实现状，不能盲目重试Git或写入。
