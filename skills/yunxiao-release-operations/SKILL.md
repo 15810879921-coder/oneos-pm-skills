@@ -46,6 +46,7 @@ Read each selected file completely before acting:
 - Official CLI environment, guarded transactions, pipeline monitoring, idempotency, and performance: [references/yunxiao-cli-runtime.md](references/yunxiao-cli-runtime.md).
 - Cross-platform bundled-script launcher: [references/runtime-launcher.md](references/runtime-launcher.md).
 - Callback, evidence, authorization, live-change safety, and cross-skill handoff: [references/safety-handoff.md](references/safety-handoff.md).
+- 何斐专属紧急发版快车道（身份校验、先执行后回写、最低安全门禁、历史任务兼容）：[references/emergency-fast-lane.md](references/emergency-fast-lane.md)。
 
 ## Own only the operations boundary
 
@@ -88,6 +89,10 @@ Do not execute test cases, edit application code, or close a requirement after r
 Every command that runs or monitors a pipeline must automatically collect and output the first failed stage, job, task, step, redacted log evidence, diagnosis confidence, impact, and next action when it ends unsuccessfully. Do not require or generate a separate failure-analysis command.
 
 `执行发布：发版任务=ID` partitions each source delivery by its exact end tag (`Web` / `小程序`; `PC` aliases to `Web`). A batch containing both channels is valid when every source delivery is uniquely tagged: **Web** follows the complete component matrix, while **小程序** records a `miniprogram_skip_pipeline` component receipt and never queries or runs a cloud pipeline. Only an ambiguous or unsupported individual source-delivery tag blocks. Create or reuse one persisted `releaseAttemptId` with `attemptNo=1` and `attemptType=initial`; start or resume every distinct Web component pipeline concurrently and bind every small-program component to its skip receipt. When the user explicitly states `流水线发布已人工操作`, do not submit any pipeline: re-read every frozen component's existing execution, source commit, logical prod environment and terminal status, bind only matching unique successes to the same attempt, then perform the normal evidence/state-transition tail. A repeated `执行发布` may continue only the same nonterminal attempt and its missing/running/reconciled component executions, never create a second execution for any component. Once every component reaches verified success or one component reaches terminal failure, the attempt is terminal. Any new production execution after a failed release requires `重新发布`. It does not authorize changing pipeline definitions, bypassing an approval stage, guessing a rollback target, deleting tags or evidence, or closing product acceptance.
+
+### 何斐专属紧急发版快车道
+
+仅当官方 CLI 当前用户回读的唯一身份为 `何斐` 时可用。身份通过后按 `identity-verified → release-execute → audit-record → task-writeback → post-release-verify` 先执行已授权的既有发布动作，再向同一发版任务追加 `【紧急发版快车道】` 审计评论；普通用户、普通发版和历史任务继续走原流程。最低安全检查必须覆盖操作者身份、发版任务范围、版本/构建号和回滚版本。原因、操作者、任务号、版本/构建号、跳过步骤、最低检查、回滚版本、发布/验证结果、`auditId`、`idempotencyKey` 均为必填。不得绕过原生审批、改变流水线或以快车道重试失败发布。脚本与 schema 见 [references/emergency-fast-lane.md](references/emergency-fast-lane.md)。
 
 `执行回滚：发版任务=ID 原因=<问题> 证据=<ID或URL>` is an explicit active-rollback authorization for a uniquely resolved release that technically deployed or reached `发布完成` but has not been closed by product acceptance. Re-read and verify the supplied incident evidence, current production version, affected scope, stored stable target, rollback mechanism, artifact, permission, and idempotency before running exactly one rollback. Do not accept it as authority to reopen an `已完成/已关闭` lifecycle, invent an incident, change the rollback plan, or modify unrelated scope.
 

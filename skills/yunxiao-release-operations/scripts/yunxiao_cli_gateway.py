@@ -60,6 +60,7 @@ RELEASE_COMMENT_SCHEMAS = {
     "【发布尝试账本】": "oneos.release-attempt-ledger/v1",
     "【生产发布证据】": "oneos.release-production/v1",
     "【发布事故记录】": "oneos.release-incident/v1",
+    "【紧急发版快车道】": "oneos.emergency-release/v1",
 }
 RELEASE_DESCRIPTION_FORBIDDEN = (
     "YUNXIAO_RELEASE_BATCH_START",
@@ -289,6 +290,24 @@ def managed_release_comment(action: dict[str, Any]) -> tuple[str, str] | None:
         value = payload.get(key)
         if value is None or value == "" or value == []:
             raise core.AdapterError(f"{prefix}缺少{key}。")
+    if prefix == "【紧急发版快车道】":
+        required_emergency = [
+            "operator", "reason", "taskId", "version", "buildId",
+            "skippedSteps", "minimumSafetyChecks", "rollbackVersion",
+            "releaseResult", "verificationResult", "executionOrder",
+        ]
+        for key in required_emergency:
+            value = payload.get(key)
+            if value is None or value == "" or value == []:
+                raise core.AdapterError(f"{prefix}缺少{key}。")
+        operator = payload["operator"]
+        if not isinstance(operator, dict) or operator.get("name") != "何斐" or not operator.get("id"):
+            raise core.AdapterError(f"{prefix}operator必须是已校验的何斐身份。")
+        if payload.get("executionOrder") != [
+            "identity-verified", "release-execute", "audit-record",
+            "task-writeback", "post-release-verify",
+        ]:
+            raise core.AdapterError(f"{prefix}executionOrder不符合快车道顺序。")
     return prefix, str(flag_value(action["args"], "--id") or "")
 
 
