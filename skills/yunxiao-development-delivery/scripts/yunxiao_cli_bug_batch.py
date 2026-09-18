@@ -623,7 +623,7 @@ def build_parser() -> argparse.ArgumentParser:
     status.add_argument("--snapshot", required=True)
     status.add_argument("--target", required=True, choices=("处理中", "已修复"))
     status.add_argument("--serial", action="append", required=True)
-    status.add_argument("--deployment-evidence")
+    status.add_argument("--deployment-evidence", help="已停用；修复完成改用合并回执和开发验证清单")
     status.add_argument("--merge-evidence", help="官方Codeup合并回执；必需的修复完成证据")
     status.add_argument("--validation-evidence", help="与合并版本绑定的开发验证清单")
     status.add_argument("--workers", type=int, default=4)

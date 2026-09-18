@@ -870,7 +870,7 @@ def cmd_check_test(args: argparse.Namespace) -> int:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Official Codeup/Flow CLI adapter for batch Bug delivery")
     sub = parser.add_subparsers(dest="command", required=True)
-    preflight = sub.add_parser("preflight", help="只读校验提交组和唯一test流水线")
+    preflight = sub.add_parser("preflight", help="只读校验Codeup提交组、分支和基线，不要求测试流水线")
     preflight.add_argument("--plan", required=True)
     preflight.add_argument("--output")
     preflight.set_defaults(func=cmd_preflight)
@@ -889,7 +889,7 @@ def build_parser() -> argparse.ArgumentParser:
                        default="no-fast-forward")
     merge.add_argument("--output")
     merge.set_defaults(func=cmd_merge_mrs)
-    start = sub.add_parser("start-test-pipeline", help="通过CLI且仅一次启动预检test流水线")
+    start = sub.add_parser("start-test-pipeline", help="已停用；交测请使用独立的执行测试流水线命令")
     start.add_argument("--merges", required=True)
     start.add_argument("--output")
     start.set_defaults(func=cmd_start_test)
