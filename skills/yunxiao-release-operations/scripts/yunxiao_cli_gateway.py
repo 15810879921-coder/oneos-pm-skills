@@ -85,6 +85,7 @@ RELEASE_GATE_OPERATIONS = {
     "app-stack-skip-change-request-stage-pipeline",
     "app-stack-pass-release-stage-pipeline-validate",
 }
+TEST_PIPELINE_OPERATION = "flow-create-pipeline-run"
 
 
 def stable_hash(value: Any) -> str:
@@ -849,17 +850,47 @@ def validate_plan(value: dict[str, Any]) -> dict[str, Any]:
         raise core.AdapterError("事务计划必须同时包含guards、actions和verifications。")
     gate_stage = str(value.get("releaseGateStage") or "").strip()
     needs_release_gate = release_gate_required(actions)
-    if needs_release_gate and gate_stage != "release":
+    test_pipeline = gate_stage == "test-pipeline"
+    if test_pipeline:
+        if len(actions) != 1 or actions[0]["operation"] != TEST_PIPELINE_OPERATION:
+            raise core.AdapterError(
+                "test-pipeline事务只能包含一次flow-create-pipeline-run。"
+            )
+        evidence = value.get("testPipelineEvidence")
+        if not isinstance(evidence, dict) or evidence.get("schemaVersion") != "oneos.test-pipeline-candidates/v1":
+            raise core.AdapterError("test-pipeline事务必须绑定候选流水线回执。")
+        if evidence.get("result") != "ready" or evidence.get("candidateCount") != 1:
+            raise core.AdapterError("测试流水线候选回执不是唯一READY结果。")
+        candidates = evidence.get("candidates")
+        if not isinstance(candidates, list) or len(candidates) != 1:
+            raise core.AdapterError("测试流水线候选回执缺唯一候选。")
+        candidate = candidates[0]
+        if not isinstance(candidate, dict):
+            raise core.AdapterError("测试流水线候选回执格式无效。")
+        action_pipeline_id = flag_value(actions[0]["args"], "--pipeline-id")
+        if not action_pipeline_id or str(candidate.get("pipelineId") or "") != action_pipeline_id:
+            raise core.AdapterError("测试流水线动作未绑定候选回执中的pipelineId。")
+        if (candidate.get("baseline") or {}).get("status") != "verified":
+            raise core.AdapterError("测试流水线候选缺少已核验的成功部署基线。")
+        if (candidate.get("pendingChanges") or {}).get("status") != "calculated":
+            raise core.AdapterError("测试流水线候选缺少完整待部署变更计算。")
+        if value.get("releaseHandoffs") not in (None, []):
+            raise core.AdapterError("test-pipeline事务不得携带生产交棒。")
+        release_handoffs = []
+    elif needs_release_gate and gate_stage != "release":
         raise core.AdapterError(
             "发布准备/流水线/合并操作必须显式提供releaseGateStage。"
         )
-    if needs_release_gate:
+    elif needs_release_gate:
         release_handoffs = validate_release_handoffs(value.get("releaseHandoffs"))
     else:
         if gate_stage or value.get("releaseHandoffs") not in (None, []):
             raise core.AdapterError("非发布写事务不得携带releaseGateStage/releaseHandoffs。")
         release_handoffs = []
-    production_actions = any(action["operation"] in RELEASE_GATE_OPERATIONS for action in actions)
+    production_actions = any(
+        action["operation"] in RELEASE_GATE_OPERATIONS
+        for action in actions
+    ) and not test_pipeline
     release_merge_plan = validate_release_merge_plan(
         value.get("releaseMergePlan"), release_handoffs, guards, actions,
     ) if production_actions else None
@@ -898,6 +929,7 @@ def validate_plan(value: dict[str, Any]) -> dict[str, Any]:
         "actions": actions,
         "verifications": verifications,
         "releaseGateStage": gate_stage,
+        "testPipelineEvidence": value.get("testPipelineEvidence") if test_pipeline else None,
         "releaseHandoffs": release_handoffs,
         "releaseMergePlan": release_merge_plan,
         "destructiveConfirmation": bool(value.get("destructiveConfirmation", False)),

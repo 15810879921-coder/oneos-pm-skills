@@ -72,8 +72,24 @@ $yunxiao-release-operations
 1. 从当前开发交接或测试交棒范围冻结项目、涉及仓库/组件和目标分支，运行`discover_test_pipelines.py --scope <范围.json>`。该脚本分页读取全部流水线定义、详情和运行记录，只保留活动、项目一致、代码源/分支一致、逻辑test环境和部署目标一致的候选。
 2. 对每条候选读取上次终态成功运行，必须找到实际部署提交SHA；再用官方`codeup-list-commits`读取目标分支完整历史，计算基线之后的待部署提交。无法证明基线或待部署范围时只返回阻塞。
 3. 输出候选表：流水线名称/ID、服务、代码库、代码分支、测试环境、上次成功部署时间、部署版本SHA、待部署提交和证据路径。名称不参与用途判断；`流水线=`只在候选已结构匹配后做精确选择。
-4. 只有候选唯一且回执`result=ready`时才按同一候选启动一次，返回执行ID、链接、开始时间和初始状态，跟踪到终态。
-5. 失败时自动抓取首个失败步骤日志并脱敏分析；不创建、复制、修改、重命名或删除流水线，也不修改工作项状态。
+4. 只有候选唯一且回执`result=ready`时才生成`test-pipeline`事务计划。计划绑定候选回执、`flow-get-pipeline`漂移守卫、稳定`idempotencyKey`和唯一`flow-create-pipeline-run`动作；不要求生产发布交棒。
+5. 外层直接执行以下受控入口；`run`会重新读取候选（或读取已生成回执）、预检、执行一次并跟踪到终态：
+
+```powershell
+skill-run execute_test_pipeline.py run --scope <范围.json> --pipeline <可选名称或ID>
+```
+
+需要分步审阅时使用：
+
+```powershell
+skill-run discover_test_pipelines.py --scope <范围.json> --output <候选.json>
+skill-run execute_test_pipeline.py prepare --candidates <候选.json> --output <计划.json>
+skill-run yunxiao_cli_gateway.py preflight --plan <计划.json> --output <预检.json>
+skill-run yunxiao_cli_gateway.py apply --preflight <预检.json> --receipt <执行回执.json>
+skill-run execute_test_pipeline.py monitor --pipeline-id <流水线ID> --pipeline-run-id <执行ID>
+```
+
+6. 失败时自动读取首个失败状态和官方可见日志字段并脱敏说明；读取不到日志时只报告限制和执行ID。不创建、复制、修改、重命名或删除流水线，也不修改工作项状态。
 
 `<范围.json>`至少冻结以下字段，来源是开发完成回执或测试交棒包，不从流水线名称反推：
 
