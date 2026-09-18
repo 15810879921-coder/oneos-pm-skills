@@ -81,6 +81,12 @@ class DiscoveryTests(unittest.TestCase):
         self.assertEqual(result["match"], "rejected")
         self.assertTrue(any("不是test" in reason for reason in result["reasons"]))
 
+    def test_nested_deployment_target_is_verified(self):
+        pipeline = self.pipeline()
+        pipeline["deploymentTarget"] = {"id": "web-test", "name": "Web测试"}
+        result = D.match_pipeline(pipeline, PROJECT, scope()["components"])
+        self.assertEqual(result["match"], "exact")
+
     def test_no_sha_baseline_blocks(self):
         calls = []
         reader = self.reader(calls)

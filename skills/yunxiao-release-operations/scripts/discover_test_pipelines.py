@@ -99,12 +99,26 @@ def walk(value: Any, path: str = ""):
             yield from walk(child, child_path)
 
 
+def scalar_leaves(value: Any) -> list[str]:
+    if isinstance(value, dict):
+        result: list[str] = []
+        for child in value.values():
+            result.extend(scalar_leaves(child))
+        return result
+    if isinstance(value, list):
+        result: list[str] = []
+        for child in value:
+            result.extend(scalar_leaves(child))
+        return result
+    candidate = text(value)
+    return [candidate] if candidate else []
+
+
 def values_for_keys(value: Any, keys: set[str]) -> list[tuple[str, str]]:
     result: list[tuple[str, str]] = []
     for path, key, child in walk(value):
         if key.lower() in {item.lower() for item in keys}:
-            candidate = text(child)
-            if candidate:
+            for candidate in scalar_leaves(child):
                 result.append((path, candidate))
     return result
 
