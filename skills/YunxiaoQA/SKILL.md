@@ -38,7 +38,7 @@ node <本 Skill 目录>/scripts/ensure-daily-skill-update.mjs --current-skill Yu
 
 与 **YunxiaoPM（需求任务）**、开发交付 Skill 分工：本 Skill **只做测试侧**读写。
 
-云效生命周期套件版本：`10.2.10`。
+云效生命周期套件版本：`10.2.11`。
 
 ## Plan 模式门禁（强制 · 凡写云效）
 
@@ -213,3 +213,7 @@ node <本 Skill 目录>/scripts/ensure-daily-skill-update.mjs --current-skill Yu
 - [ ] 发布交接：项目/迭代/需求/交付/测试证据/幂等键完整
 - [ ] 每次写操作回报含一行：`serialNumber | subject | from→to`（与口令编号一致）
 - [ ] 本轮无浏览器改状态；无建【开发】、无创建迭代、无代开发改状态
+
+### Bug 已修复与可复测的区别
+
+开发侧`已修复`只证明代码通过开发验证并已合并，可能仍为`待部署、待交付测试`。QA开始实际复测、写复测结论或关闭Bug之前，必须核验真实测试部署及被测版本包含修复；不得用已修复状态或`oneos.bug-fix-evidence/v1`替代部署证据。现有复测执行器的部署证据校验保持不变。

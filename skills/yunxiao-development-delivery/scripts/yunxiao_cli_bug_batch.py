@@ -16,6 +16,7 @@ import sys
 import tempfile
 import threading
 import time
+import yunxiao_bug_fix_evidence as fix_evidence
 from pathlib import Path
 from typing import Any
 
@@ -353,31 +354,6 @@ def load_snapshot(path: str) -> dict[str, Any]:
     return snapshot
 
 
-def validate_deployment(path: str, requested: set[str]) -> dict[str, Any]:
-    data = json.loads(Path(path).read_text(encoding="utf-8"))
-    if not isinstance(data, dict):
-        raise AdapterError("test部署证据必须是JSON对象。")
-    environment = str(data.get("environment") or data.get("env") or "").lower()
-    status = str(data.get("status") or data.get("pipelineStatus") or "").lower()
-    execution_id = data.get("executionId") or data.get("pipelineRunId")
-    version = data.get("deployedVersion") or data.get("version") or data.get("artifact")
-    anchors = data.get("commitOrMrAnchors") or data.get("includedCommits") or data.get("includedMrs")
-    included = data.get("includedBugSerials") or data.get("bugs") or []
-    if environment != "test" or status not in {"成功", "success", "succeeded", "passed"}:
-        raise AdapterError("只有test环境终态成功证据才能标记已修复。")
-    if not execution_id or not version or not anchors:
-        raise AdapterError("test部署证据缺少执行ID、部署版本/制品或提交/MR锚点。")
-    included_set = {str(value) for value in included}
-    missing = sorted(requested - included_set)
-    if missing:
-        raise AdapterError(f"test部署证据未覆盖Bug：{','.join(missing)}")
-    return {
-        "environment": environment, "status": status, "executionId": execution_id,
-        "executionUrl": data.get("executionUrl"), "version": version,
-        "commitOrMrAnchors": anchors, "includedBugSerials": sorted(included_set),
-    }
-
-
 def resolve_target_status(executable: str, live: dict[str, Any], target: str,
                           cache: dict[tuple[str, str], str]) -> str:
     space = live.get("space") if isinstance(live.get("space"), dict) else {}
@@ -403,7 +379,7 @@ def resolve_target_status(executable: str, live: dict[str, Any], target: str,
 
 
 def update_one(executable: str, bug: dict[str, Any], user_id: str, target: str,
-               workflow_cache: dict[tuple[str, str], str]) -> dict[str, Any]:
+               workflow_cache: dict[tuple[str, str], str], fix_record: dict | None = None) -> dict[str, Any]:
     workitem_id = str(bug.get("id") or "")
     expected_serial = str(bug.get("serialNumber") or "")
     before_owner = person_id(bug, "assignedTo")
@@ -417,15 +393,28 @@ def update_one(executable: str, bug: dict[str, Any], user_id: str, target: str,
         if person_id(live, "verifier") != before_verifier:
             raise AdapterError("验证者与冻结快照不一致。")
         before_status = status_name(live)
-        if before_status == target:
+        description = str(live.get("description") or "")
+        new_description = description
+        if target == "已修复":
+            if not fix_record:
+                raise AdapterError("已修复必须有开发验证和真实MR合并证据")
+            for group in fix_record["groups"]:
+                fix_evidence.verify_mr(group, lambda repo, local: unwrap(run_devops(executable, [
+                    "codeup-get-change-request", "--repository-id", repo, "--local-id", local])))
+            new_description = fix_evidence.append_record(description, fix_record,
+                str(live.get("formatType") or "MARKDOWN"), allow_new_cycle=before_status != target)
+        if before_status == target and new_description == description:
             return {"serialNumber": expected_serial, "result": "idempotent",
                     "before": before_status, "after": before_status,
                     "ownerUnchanged": True, "verifierUnchanged": True}
         allowed = set(DEFAULT_ACTIONABLE)
-        if before_status not in allowed:
+        if before_status not in allowed and before_status != target:
             raise AdapterError(f"当前状态{before_status}不属于开发可处理状态。")
         target_id = resolve_target_status(executable, live, target, workflow_cache)
-        body = json.dumps({"status": target_id}, ensure_ascii=False, separators=(",", ":"))
+        fields = {"status": target_id}
+        if new_description != description:
+            fields.update(description=new_description, formatType=str(live.get("formatType") or "MARKDOWN"))
+        body = json.dumps(fields, ensure_ascii=False, separators=(",", ":"))
         run_devops(executable, ["projex-update-workitem", "--id", workitem_id,
                                 "--biz-body", body])
         after = unwrap(run_devops(executable, ["projex-get-workitem", "--id", workitem_id]))
@@ -435,10 +424,13 @@ def update_one(executable: str, bug: dict[str, Any], user_id: str, target: str,
             raise AdapterError("状态写入后负责人发生变化。")
         if person_id(after, "verifier") != before_verifier:
             raise AdapterError("状态写入后验证者发生变化。")
+        if fix_record is not None and (str(after.get("description") or "") != new_description or
+                fix_evidence.existing_record(new_description) != fix_record):
+            raise AdapterError("修复记录或待部署/待交测标记写入后回读失败")
         return {"serialNumber": expected_serial, "result": "updated",
                 "before": before_status, "after": status_name(after),
                 "ownerUnchanged": True, "verifierUnchanged": True}
-    except AdapterError as exc:
+    except (AdapterError, ValueError) as exc:
         return {"serialNumber": expected_serial, "result": "blocked", "error": str(exc)}
 
 
@@ -463,22 +455,30 @@ def cmd_set_status(args: argparse.Namespace) -> int:
     missing = [value for value in requested if value not in by_serial]
     if missing:
         raise AdapterError(f"请求包含快照外Bug：{','.join(missing)}")
-    deployment = None
+    fixes = {}
     if args.target == "已修复":
-        if not args.deployment_evidence:
-            raise AdapterError("标记已修复必须提供--deployment-evidence。")
-        deployment = validate_deployment(args.deployment_evidence, set(requested))
-    elif args.deployment_evidence:
-        raise AdapterError("只有目标为已修复时才接受部署证据。")
+        if not getattr(args, "merge_evidence", None) or not getattr(args, "validation_evidence", None):
+            raise AdapterError("标记已修复必须提供--merge-evidence和--validation-evidence；部署成功不能替代合并及开发验证。")
+        try:
+            fixes = fix_evidence.validate(args.merge_evidence, args.validation_evidence, snapshot,
+                set(requested), lambda repo, local: unwrap(run_devops(executable, [
+                    "codeup-get-change-request", "--repository-id", repo, "--local-id", local])))
+        except (ValueError, OSError) as exc:
+            raise AdapterError(str(exc)) from exc
+    elif getattr(args, "merge_evidence", None) or getattr(args, "validation_evidence", None):
+        raise AdapterError("只有目标为已修复时才接受修复证据。")
+    if getattr(args, "deployment_evidence", None):
+        raise AdapterError("--deployment-evidence已退出修复完成入口；交测部署由独立命令处理。")
     workflow_cache: dict[tuple[str, str], str] = {}
     with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, args.workers)) as pool:
         futures = [pool.submit(update_one, executable, by_serial[value], str(user["id"]),
-                               args.target, workflow_cache) for value in requested]
+                               args.target, workflow_cache, fixes.get(value)) for value in requested]
         results = [future.result() for future in futures]
     receipt = {
         "schema": SCHEMA, "command": "set-status", "createdAt": now_utc(),
         "snapshotPath": str(Path(args.snapshot)), "snapshotHash": snapshot.get("snapshotHash"),
-        "currentUser": user, "target": args.target, "deploymentEvidence": deployment,
+        "currentUser": user, "target": args.target, "fixEvidence": fixes,
+        "testHandoffStatus": "pending" if fixes else None, "qaReady": False,
         "results": results, "durationMs": round((time.perf_counter() - started) * 1000),
     }
     stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -541,8 +541,7 @@ def cmd_build_plan(args: argparse.Namespace) -> int:
             ).hexdigest()[:16],
         }
         groups.setdefault((repository_id, source_branch, target_branch), []).append(item)
-    if not isinstance(test_pipeline, dict):
-        raise AdapterError("resolutions必须提供待预检的testPipeline对象。")
+    # Repair delivery stops at merged code. Keep legacy input as informational only.
     grouped: list[dict[str, Any]] = []
     for key, raw_group_items in sorted(groups.items()):
         items = sorted(raw_group_items, key=lambda item: item["bugSerialNumber"])
@@ -593,7 +592,7 @@ def cmd_build_plan(args: argparse.Namespace) -> int:
     seed = {"snapshotHash": snapshot.get("snapshotHash"), "groups": grouped}
     plan = {
         "schema": "oneos.yunxiao-cli-bug-delivery-plan/v2",
-        "suiteVersion": "10.2.10",
+        "suiteVersion": "10.2.11",
         "bugBatchId": "BUGBATCH-" + hashlib.sha256(
             json.dumps(seed, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
         ).hexdigest()[:20],
@@ -625,6 +624,8 @@ def build_parser() -> argparse.ArgumentParser:
     status.add_argument("--target", required=True, choices=("处理中", "已修复"))
     status.add_argument("--serial", action="append", required=True)
     status.add_argument("--deployment-evidence")
+    status.add_argument("--merge-evidence", help="官方Codeup合并回执；必需的修复完成证据")
+    status.add_argument("--validation-evidence", help="与合并版本绑定的开发验证清单")
     status.add_argument("--workers", type=int, default=4)
     status.add_argument("--receipt")
     status.set_defaults(func=cmd_set_status)
