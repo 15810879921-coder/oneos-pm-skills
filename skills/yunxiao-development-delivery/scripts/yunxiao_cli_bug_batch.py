@@ -383,7 +383,8 @@ def resolve_target_status(executable: str, live: dict[str, Any], target: str,
 
 
 def update_one(executable: str, bug: dict[str, Any], user_id: str, target: str,
-               workflow_cache: dict[tuple[str, str], str], fix_record: dict | None = None) -> dict[str, Any]:
+               workflow_cache: dict[tuple[str, str], str], fix_record: dict | None = None,
+               defer_record: dict | None = None) -> dict[str, Any]:
     workitem_id = str(bug.get("id") or "")
     expected_serial = str(bug.get("serialNumber") or "")
     before_owner = person_id(bug, "assignedTo")
@@ -407,6 +408,13 @@ def update_one(executable: str, bug: dict[str, Any], user_id: str, target: str,
                     "codeup-get-change-request", "--repository-id", repo, "--local-id", local])))
             new_description = fix_evidence.append_record(description, fix_record,
                 str(live.get("formatType") or "MARKDOWN"), allow_new_cycle=before_status != target)
+        elif target == "暂不修复":
+            if not defer_record:
+                raise AdapterError("暂不修复必须有批准人、批准证据、原因和后续动作")
+            new_description = fix_evidence.append_defer_record(
+                description, defer_record, str(live.get("formatType") or "MARKDOWN"),
+                allow_new_cycle=before_status != target,
+            )
         if before_status == target and new_description == description:
             return {"serialNumber": expected_serial, "result": "idempotent",
                     "before": before_status, "after": before_status,
@@ -431,6 +439,9 @@ def update_one(executable: str, bug: dict[str, Any], user_id: str, target: str,
         if fix_record is not None and (str(after.get("description") or "") != new_description or
                 fix_evidence.existing_record(new_description) != fix_record):
             raise AdapterError("修复记录或待部署/待交测标记写入后回读失败")
+        if defer_record is not None and (str(after.get("description") or "") != new_description or
+                fix_evidence.existing_defer_record(new_description) != defer_record):
+            raise AdapterError("暂不修复记录写入后回读失败")
         return {"serialNumber": expected_serial, "result": "updated",
                 "before": before_status, "after": status_name(after),
                 "ownerUnchanged": True, "verifierUnchanged": True}
@@ -460,6 +471,7 @@ def cmd_set_status(args: argparse.Namespace) -> int:
     if missing:
         raise AdapterError(f"请求包含快照外Bug：{','.join(missing)}")
     fixes = {}
+    defer_fixes = {}
     if args.target == "已修复":
         if not getattr(args, "merge_evidence", None) or not getattr(args, "validation_evidence", None):
             raise AdapterError("标记已修复必须提供--merge-evidence和--validation-evidence；部署成功不能替代合并及开发验证。")
@@ -469,20 +481,33 @@ def cmd_set_status(args: argparse.Namespace) -> int:
                     "codeup-get-change-request", "--repository-id", repo, "--local-id", local])))
         except (ValueError, OSError) as exc:
             raise AdapterError(str(exc)) from exc
-    elif getattr(args, "merge_evidence", None) or getattr(args, "validation_evidence", None):
-        raise AdapterError("只有目标为已修复时才接受修复证据。")
+    elif args.target == "暂不修复":
+        if getattr(args, "merge_evidence", None) or getattr(args, "validation_evidence", None):
+            raise AdapterError("暂不修复不得携带已修复的合并/验证证据。")
+        if not getattr(args, "defer_evidence", None):
+            raise AdapterError("标记暂不修复必须提供--defer-evidence。")
+        try:
+            defer_fixes = fix_evidence.validate_defer(args.defer_evidence, snapshot, set(requested))
+        except (ValueError, OSError) as exc:
+            raise AdapterError(str(exc)) from exc
+    elif getattr(args, "merge_evidence", None) or getattr(args, "validation_evidence", None) or \
+            getattr(args, "defer_evidence", None):
+        raise AdapterError("修复证据必须与目标状态匹配。")
+    else:
+        defer_fixes = {}
     if getattr(args, "deployment_evidence", None):
         raise AdapterError("--deployment-evidence已退出修复完成入口；交测部署由独立命令处理。")
     workflow_cache: dict[tuple[str, str], str] = {}
     with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, args.workers)) as pool:
         futures = [pool.submit(update_one, executable, by_serial[value], str(user["id"]),
-                               args.target, workflow_cache, fixes.get(value)) for value in requested]
+                               args.target, workflow_cache, fixes.get(value), defer_fixes.get(value)) for value in requested]
         results = [future.result() for future in futures]
     receipt = {
         "schema": SCHEMA, "command": "set-status", "createdAt": now_utc(),
         "snapshotPath": str(Path(args.snapshot)), "snapshotHash": snapshot.get("snapshotHash"),
         "currentUser": user, "target": args.target, "fixEvidence": fixes,
-        "testHandoffStatus": "pending" if fixes else None, "qaReady": False,
+        "deferEvidence": defer_fixes,
+        "testHandoffStatus": "pending" if (fixes or defer_fixes) else None, "qaReady": False,
         "results": results, "durationMs": round((time.perf_counter() - started) * 1000),
     }
     stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -596,7 +621,7 @@ def cmd_build_plan(args: argparse.Namespace) -> int:
     seed = {"snapshotHash": snapshot.get("snapshotHash"), "groups": grouped}
     plan = {
         "schema": "oneos.yunxiao-cli-bug-delivery-plan/v2",
-        "suiteVersion": "10.2.14",
+        "suiteVersion": "10.2.15",
         "bugBatchId": "BUGBATCH-" + hashlib.sha256(
             json.dumps(seed, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
         ).hexdigest()[:20],
@@ -625,11 +650,12 @@ def build_parser() -> argparse.ArgumentParser:
     snapshot.set_defaults(func=cmd_snapshot)
     status = sub.add_parser("set-status", help="对冻结快照内显式Bug写状态并回读")
     status.add_argument("--snapshot", required=True)
-    status.add_argument("--target", required=True, choices=("处理中", "已修复"))
+    status.add_argument("--target", required=True, choices=("处理中", "已修复", "暂不修复"))
     status.add_argument("--serial", action="append", required=True)
     status.add_argument("--deployment-evidence", help="已停用；修复完成改用合并回执和开发验证清单")
     status.add_argument("--merge-evidence", help="官方Codeup合并回执；必需的修复完成证据")
     status.add_argument("--validation-evidence", help="与合并版本绑定的开发验证清单")
+    status.add_argument("--defer-evidence", help="暂不修复批准与后续动作证据清单")
     status.add_argument("--workers", type=int, default=4)
     status.add_argument("--receipt")
     status.set_defaults(func=cmd_set_status)

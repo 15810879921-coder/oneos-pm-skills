@@ -1,6 +1,6 @@
 {
   "schemaVersion": "oneos.yunxiao-lifecycle-skill-index/v1",
-  "suiteVersion": "10.2.14",
+  "suiteVersion": "10.2.15",
   "scope": "OneOS 云效需求、开发、测试与发布生命周期",
   "skills": [
     {
@@ -43,6 +43,7 @@
         "skills/yunxiao-development-delivery/references/handoff-gate.md"
       ],
       "keyScripts": [
+        "skills/yunxiao-development-delivery/scripts/yunxiao_cli_bug_repair_channel.py",
         "skills/yunxiao-development-delivery/scripts/route_lifecycle_intent.py",
         "skills/yunxiao-development-delivery/scripts/yunxiao_cli_complete_development.py",
         "skills/yunxiao-development-delivery/scripts/yunxiao_cli_gateway.py"
@@ -90,6 +91,7 @@
         "skills/YunxiaoQA/references/handoff-gate.md"
       ],
       "keyScripts": [
+        "skills/YunxiaoQA/scripts/yunxiao_cli_bug_repair_request.py",
         "skills/YunxiaoQA/scripts/yunxiao_cli_test_lifecycle.py",
         "skills/YunxiaoQA/scripts/yunxiao_cli_testhub.py"
       ],

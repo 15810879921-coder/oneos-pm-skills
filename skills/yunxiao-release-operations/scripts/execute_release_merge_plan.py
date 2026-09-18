@@ -19,7 +19,7 @@ import validate_release_change_coverage as coverage
 
 PLAN_SCHEMA = "oneos.release-merge-plan/v1"
 ATTEMPT_SCHEMA = "oneos.release-merge-attempt/v1"
-SUITE_VERSION = "10.2.14"
+SUITE_VERSION = "10.2.15"
 SUPPORTED_SUITE_VERSIONS = {
     "10.0.0", "10.1.0", "10.1.1", "10.1.2", "10.1.3", "10.2.0", "10.2.1", "10.2.2", "10.2.3",
     SUITE_VERSION,

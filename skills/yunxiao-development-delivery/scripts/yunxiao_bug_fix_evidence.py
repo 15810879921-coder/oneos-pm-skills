@@ -11,8 +11,11 @@ from typing import Callable
 SCHEMA = "oneos.bug-fix-evidence/v1"
 VALIDATION_SCHEMA = "oneos.bug-development-validation/v1"
 MERGE_SCHEMA = "oneos.yunxiao-cli-bug-delivery-merges/v1"
+DEFER_SCHEMA = "oneos.bug-deferred-fix/v1"
 START = "<!-- ONEOS_BUG_FIX_START -->"
 END = "<!-- ONEOS_BUG_FIX_END -->"
+DEFER_START = "<!-- ONEOS_BUG_DEFERRED_FIX_START -->"
+DEFER_END = "<!-- ONEOS_BUG_DEFERRED_FIX_END -->"
 SHA = re.compile(r"^[0-9a-fA-F]{40}$")
 
 
@@ -142,3 +145,70 @@ def append_record(description: str, record: dict, format_type: str, *, allow_new
     else:
         label += '\n' + '\n'.join('- ' + v.replace('\n', ' ') for v in details)
     return description + f"\n{START}\n{label}\n<!-- {data} -->\n{END}"
+
+
+def validate_defer(path: str, snapshot: dict, requested: set[str]) -> dict[str, dict]:
+    value = object_file(path)
+    if value.get("schemaVersion") != DEFER_SCHEMA or value.get("snapshotHash") != snapshot.get("snapshotHash"):
+        raise ValueError("暂不修复证据schema或快照不一致")
+    rows = value.get("results")
+    if not isinstance(rows, list) or not rows:
+        raise ValueError("暂不修复证据必须包含results")
+    result: dict[str, dict] = {}
+    for row in rows:
+        if not isinstance(row, dict):
+            raise ValueError("暂不修复证据项格式无效")
+        bug = str(row.get("bugSerialNumber") or "")
+        if bug not in requested:
+            continue
+        required = ("reason", "approvedBy", "approvalEvidence", "nextAction")
+        if any(not str(row.get(key) or "").strip() for key in required):
+            raise ValueError(f"{bug}缺暂不修复原因、批准人、批准证据或后续动作")
+        result[bug] = {
+            "schemaVersion": DEFER_SCHEMA,
+            "bugSerialNumber": bug,
+            "snapshotHash": snapshot.get("snapshotHash"),
+            "reason": str(row["reason"]).strip(),
+            "approvedBy": str(row["approvedBy"]).strip(),
+            "approvalEvidence": str(row["approvalEvidence"]).strip(),
+            "nextAction": str(row["nextAction"]).strip(),
+            "recordedAt": str(row.get("recordedAt") or "").strip(),
+        }
+    missing = sorted(requested - set(result))
+    if missing:
+        raise ValueError(f"暂不修复证据缺少Bug：{','.join(missing)}")
+    return result
+
+
+def existing_defer_record(description: str) -> dict | None:
+    if DEFER_START not in description and DEFER_END not in description:
+        return None
+    if description.count(DEFER_START) != 1 or description.count(DEFER_END) != 1:
+        raise ValueError("暂不修复记录受管区块损坏或重复")
+    content = description.split(DEFER_START, 1)[1].split(DEFER_END, 1)[0]
+    found = re.search(r'<!--\s*(\{.*\})\s*-->', content, re.S)
+    if not found:
+        raise ValueError("暂不修复记录缺少可回读数据")
+    result = json.loads(found.group(1))
+    if not isinstance(result, dict) or result.get("schemaVersion") != DEFER_SCHEMA:
+        raise ValueError("暂不修复记录schema无效")
+    return result
+
+
+def append_defer_record(description: str, record: dict, format_type: str,
+                        *, allow_new_cycle: bool = False) -> str:
+    old = existing_defer_record(description)
+    if old is not None:
+        if old != record and not allow_new_cycle:
+            raise ValueError("已有暂不修复记录与本次不同，不能覆盖历史决定")
+        if old == record:
+            return description
+        old_id = hashlib.sha256(json.dumps(old, sort_keys=True).encode()).hexdigest()[:16]
+        description = description.replace(DEFER_START, f"<!-- ONEOS_BUG_DEFERRED_FIX_HISTORY:{old_id}:START -->", 1)
+        description = description.replace(DEFER_END, f"<!-- ONEOS_BUG_DEFERRED_FIX_HISTORY:{old_id}:END -->", 1)
+    data = json.dumps(record, ensure_ascii=False, sort_keys=True).replace('<', '\\u003c').replace('>', '\\u003e')
+    label = (f"【研发暂不修复】原因：{record['reason']}；批准人：{record['approvedBy']}；"
+             f"批准证据：{record['approvalEvidence']}；后续动作：{record['nextAction']}")
+    if format_type.upper() == "HTML":
+        label = "<p>" + html.escape(label) + "</p>"
+    return description + f"\n{DEFER_START}\n{label}\n<!-- {data} -->\n{DEFER_END}"

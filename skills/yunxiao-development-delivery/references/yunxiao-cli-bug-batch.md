@@ -178,6 +178,8 @@ skill-run yunxiao_cli_bug_batch.py set-status --snapshot <快照文件> --target
 
 适配器验证回执哈希、快照/用户、Bug及所有分组、报告哈希和版本，并实时回读MR。写入前逐Bug再次核验MR、负责人和验证者；用同一次工作项更新写状态和描述中的`oneos.bug-fix-evidence/v1`受管记录，回读核对。人可读记录含修复内容、验证结果、仓库、目标分支、MR、合并版本，以及`待部署、待交付测试`。原描述保留，不写复测通过、不关闭Bug。`--deployment-evidence`不再被修复完成入口接受。
 
+测试特殊修复请求由`处理测试修复请求：缺陷=<ID>`先消费`oneos.test-bug-repair-request/v1`评论，再进入同一修复链路。若选择不修复，使用`set-status --target 暂不修复 --defer-evidence <证据清单>`；清单必须包含原因、批准人、批准证据和后续动作，适配器追加`oneos.bug-deferred-fix/v1`并回读。QA不得代开发写任一收口状态。
+
 缺少实际合并或有效开发验证时零状态写入；没有流水线运行证据不阻塞。某Bug写入失败只阻塞该Bug，不重复提交或合并。单Bug命令也必须遵循相同证据与记录要求，但不改变单Bug原有“可修复指定负责人Bug”的权限边界；批量适配器仍只操作当前账号快照。
 
 ## 11. 输出与续跑

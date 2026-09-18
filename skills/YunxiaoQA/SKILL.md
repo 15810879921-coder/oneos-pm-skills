@@ -38,7 +38,7 @@ node <本 Skill 目录>/scripts/ensure-daily-skill-update.mjs --current-skill Yu
 
 与 **YunxiaoPM（需求任务）**、开发交付 Skill 分工：本 Skill **只做测试侧**读写。
 
-云效生命周期套件版本：`10.2.14`。
+云效生命周期套件版本：`10.2.15`。
 
 ## Plan 模式门禁（强制 · 凡写云效）
 
@@ -120,6 +120,7 @@ node <本 Skill 目录>/scripts/ensure-daily-skill-update.mjs --current-skill Yu
 | 开始测试 / 证据 / 完成测试 / 发布交接 | [references/test-execution.md](references/test-execution.md) · [references/test-scope-aggregation.md](references/test-scope-aggregation.md) |
 | 条线 1/2 · 状态机 · 再次打开 | [references/defect-flow.md](references/defect-flow.md) |
 | 诊断 · 查重 · 分层初判 | [references/diagnosis.md](references/diagnosis.md) |
+| 测试缺陷特殊修复通道 | [references/bug-repair-channel.md](references/bug-repair-channel.md) · `scripts/yunxiao_cli_bug_repair_request.py` |
 | 缺陷描述模板 | [references/bug-template.md](references/bug-template.md) |
 | Plan 确认清单 | [references/plan-gate.md](references/plan-gate.md) |
 | 挂载点选 | [references/anchor-selection.md](references/anchor-selection.md) |
@@ -135,6 +136,7 @@ node <本 Skill 目录>/scripts/ensure-daily-skill-update.mjs --current-skill Yu
 发起缺陷：标题=…；描述=…；测试任务=ONEOS-xx；[需求=ONEOS-yy]；[开发任务=ONEOS-zz]；[交付单元=ID]；[负责人=…]；[证据=…]
 从测试用例发起缺陷：测试用例=CASE-xx；标题=…；描述=…；测试任务=ONEOS-xx；[需求=ONEOS-yy]；[开发任务=ONEOS-zz]；[交付单元=ID]；[负责人=…]；[证据=…]
 发起缺陷(非本期)：标题=…；描述=…；负责人=…；[测试任务=…]；[项目=…]
+提交缺陷修复请求：缺陷=ONEOS-xx；测试任务=ONEOS-yy；证据清单=<JSON文件>；描述=…
 # 无测试任务的非本期须显式声明，默认仍要求挂测试子项+需求
 拉取待验缺陷：状态=已修复|暂不修复；[测试任务=…]；[负责人=…]
 批量关闭已修复：缺陷=ONEOS-a；复测用例=CASE-ID；复测执行=RUN-ID；test版本=VERSION；证据=ID或URL；验证人=当前用户
@@ -169,6 +171,12 @@ node <本 Skill 目录>/scripts/ensure-daily-skill-update.mjs --current-skill Yu
    - **需求**：点选/追溯后写入描述「追溯需求」段；**不做** Cookie 事后 `ASSOCIATED→需求`（不告警、不伪造成功）。口令 `需求=` / `--req` 可覆盖。
    - **开发归属提示**：若已存在唯一【开发】任务，可把其编号和 `deliveryUnitId` 写入描述追溯段，供开发侧选分支；这不是正式关系，不存在时不阻止建 Bug。开发任务后置时由开发/产品侧补正式关系，再以交付台账回填 `DEVELOPMENT_TASK_AGGREGATED`。
 7. Plan 回显 → 确认 → apply（`create_bug.py`）→ 回读当前用户=验证者及【测试】关联 → 回报；任一校验失败须停
+
+## 测试缺陷特殊修复通道
+
+测试确认失败后，可使用`提交缺陷修复请求`把复现步骤、实际/期望、测试任务、用例/执行记录和证据引用写入Bug评论。该动作只追加`【测试缺陷修复请求】`，不改Bug状态、不改代码；`yunxiao_cli_bug_repair_request.py`会校验Bug与【测试】的正式关系、当前状态、证据哈希和当前测试用户，并官方回读评论。
+
+开发侧收到请求后，自动进入`处理测试修复请求：缺陷=ONEOS-xx`特殊入口。入口重新读取并验证最新请求、负责人和状态，追加`【开发接收测试修复】`评论，然后直接复用现有`修复bug:ONEOS-xx`链路，不要求测试人员再次描述问题。代码合并和开发验证通过后标`已修复`；确实不处理时必须提交原因、批准人、批准证据和后续动作，由开发侧标`暂不修复`。两种状态都必须官方回读，测试侧不能代改。
 
 ## 测试完成硬门禁
 
