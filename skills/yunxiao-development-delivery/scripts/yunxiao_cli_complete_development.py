@@ -16,6 +16,7 @@ import yunxiao_cli_gateway as gateway
 import yunxiao_cli_runtime as core
 import handoff_gate as hg
 import yunxiao_cli_handoff as handoff_start
+from task_scope_metadata import build_task_scope
 
 
 SCHEMA = "oneos.complete-development-plan/v1"
@@ -534,6 +535,13 @@ def command_preflight(args: argparse.Namespace) -> int:
         "plan": plan,
         "stagePreflights": stage_receipts,
         "createdAt": core.now_utc(),
+        "task_scope": build_task_scope(
+            task_type="development", task_id=plan["scope"].get("developmentTaskId"),
+            created_at=plan["scope"].get("developmentCreatedAt"),
+            gate_effective_at=plan["scope"].get("gateEffectiveAt"),
+            parent_task_id=plan["scope"].get("deliveryTaskId") or plan["scope"].get("deliveryId"),
+            parent_task_type="delivery", parent_created_at=plan["scope"].get("deliveryCreatedAt"),
+        ),
     }
     gateway.write_json(output, receipt)
     print(json.dumps({"result": "ready", "preflight": str(output),
@@ -581,6 +589,13 @@ def command_apply(args: argparse.Namespace) -> int:
     if fingerprint != preflight.get("fingerprint"):
         raise core.AdapterError("完成开发预检指纹不一致。")
     _verify_handoff(plan)
+    task_scope_result = build_task_scope(
+        task_type="development", task_id=plan["scope"].get("developmentTaskId"),
+        created_at=plan["scope"].get("developmentCreatedAt"),
+        gate_effective_at=plan["scope"].get("gateEffectiveAt"),
+        parent_task_id=plan["scope"].get("deliveryTaskId") or plan["scope"].get("deliveryId"),
+        parent_task_type="delivery", parent_created_at=plan["scope"].get("deliveryCreatedAt"),
+    )
     output = Path(args.output) if args.output else core.output_dir() / \
         f"complete-development-{gateway.stable_hash(plan['idempotencyKey'])[:16]}.json"
     progress = load_object(output) if output.is_file() else {
@@ -594,7 +609,11 @@ def command_apply(args: argparse.Namespace) -> int:
         "testDeliveryMode": plan["testDeliveryMode"],
         "stages": {},
         "startedAt": core.now_utc(),
+        "task_scope": task_scope_result,
+        "taskScope": task_scope_result,
     }
+    progress.setdefault("task_scope", task_scope_result)
+    progress.setdefault("taskScope", task_scope_result)
     if progress.get("fingerprint") != fingerprint:
         raise core.AdapterError("完成开发回执与当前计划不一致。")
     if not isinstance(progress.get("stages"), dict):

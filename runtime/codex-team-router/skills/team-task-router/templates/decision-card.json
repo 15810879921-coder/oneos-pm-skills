@@ -1,0 +1,31 @@
+{
+  "task_id": "synthetic-task-001",
+  "phase_id": "implementation",
+  "input_revision": "input-v1",
+  "rules_revision": "rules-v1",
+  "scope": "synthetic-local-demo",
+  "pattern": "frozen-local-change",
+  "domain": "development",
+  "kind": "implementation",
+  "clarity": "clear",
+  "judgment": "low",
+  "impact": "local",
+  "risk": "low",
+  "verifiability": "testable",
+  "execution_size": "normal",
+  "constraints_ready": true,
+  "authorized": true,
+  "independent": true,
+  "parent_has_work": true,
+  "current": {"model": "gpt-5.6-sol", "effort": "medium"},
+  "available": [
+    {"model": "gpt-5.6-luna", "efforts": ["low", "medium", "high", "xhigh", "max"]},
+    {"model": "gpt-5.6-terra", "efforts": ["low", "medium", "high", "xhigh", "max", "ultra"]},
+    {"model": "gpt-5.6-sol", "efforts": ["low", "medium", "high", "xhigh", "max", "ultra"]}
+  ],
+  "estimates": {"direct_credits": null, "delegated_credits": null},
+  "approved_fallbacks": [
+    {"model": "gpt-5.6-terra", "effort": "medium", "estimated_credits": 0.5}
+  ],
+  "budget_credits": 1.0
+}

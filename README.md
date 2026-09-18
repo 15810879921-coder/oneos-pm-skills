@@ -24,6 +24,8 @@ npx skills add 15810879921-coder/oneos-pm-skills --skill yunxiao-release-operati
 
 维护者在无 PowerShell 的环境可用 `python3 scripts/build-codex-packages.py` 打包，`--check` 校验五包文件清单、逐文件字节与 SHA。发布前另运行全部测试、`scripts/test-daily-skill-update.mjs` 和 `scripts/sync-handoff-gate.py --check`。
 
+运行时门禁源码与聚焦测试已随本仓库留存于 [`runtime/codex-team-router`](runtime/codex-team-router/)，用于追踪执行门禁、模型路由和元数据缺口行为；云效开发回执使用 [`task_scope_metadata.py`](skills/yunxiao-development-delivery/scripts/task_scope_metadata.py) 生成明确的任务范围元数据。
+
 > **安装范围约定：** 本仓库公开的新装和更新口令默认使用 `-g`，统一安装到当前操作系统用户的全局 Skill 目录，对该用户的所有项目生效，不再提供项目级安装口令。
 
 > **临时客户端维护口径（2026-09-07 起）：** 后续 Skill 只维护 Codex 版本，暂停更新 Cursor 包、manifest 和安装说明；仓库中既有 Cursor 内容仅作为历史产物保留，直到何斐明确恢复。下文既有 Cursor 命令在此期间不作为当前维护或验收要求。
