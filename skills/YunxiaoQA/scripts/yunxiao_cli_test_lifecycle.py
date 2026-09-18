@@ -17,6 +17,10 @@ import yunxiao_cli_runtime as core
 import handoff_gate as hg
 from yunxiao_cli_testhub import normalize_status, read_plan_case
 
+DEV_SCRIPTS = Path(__file__).resolve().parents[2] / "yunxiao-development-delivery" / "scripts"
+sys.path.insert(0, str(DEV_SCRIPTS))
+from task_scope_metadata import build_task_scope  # noqa: E402
+
 
 SCHEMA = "oneos.yunxiao-qa-lifecycle-cli/v1"
 QA_SCHEMA = "oneos.qa-evidence/v1"
@@ -139,6 +143,17 @@ def current_test_scope(test: dict[str, Any], req: dict[str, Any],
         if not valid_ref(scope.get(field)):
             raise core.AdapterError(f"测试任务范围缺{field}。")
     return scope
+
+
+def task_scope_metadata(test: dict[str, Any], delivery_id: str,
+                        scope: dict[str, Any]) -> dict[str, Any]:
+    return build_task_scope(
+        task_type="test", task_id=test.get("id"),
+        created_at=test.get("gmtCreate") or test.get("createdAt"),
+        gate_effective_at=scope.get("gateEffectiveAt"),
+        parent_task_id=delivery_id, parent_task_type="delivery",
+        parent_created_at=scope.get("deliveryCreatedAt"),
+    )
 
 
 def validate_handoff_bundle(executable: str, bundle: dict[str, Any], stage: str,
@@ -782,6 +797,8 @@ def run(args: argparse.Namespace) -> int:
             "handoff": {"stage": handoff_stage, "scope": handoff["scope"],
                         "handoffSha256": handoff["bundle"]["manifest"]["sha256"],
                         "documentHashes": handoff["documentHashes"]},
+            "task_scope": task_scope_metadata(test, parents[0], test_scope),
+            "taskScope": task_scope_metadata(test, parents[0], test_scope),
             "plannedActions": actions, "verified": False,
         }
         if args.apply:
@@ -952,6 +969,8 @@ def run(args: argparse.Namespace) -> int:
                     "handoffSha256": handoff["bundle"]["manifest"]["sha256"],
                     "documentHashes": handoff["documentHashes"]},
         "bugs": bugs, "aggregate": aggregate, "manifestSha256": evidence["manifestSha256"],
+        "task_scope": task_scope_metadata(test, parents[0], test_scope),
+        "taskScope": task_scope_metadata(test, parents[0], test_scope),
         "plannedActions": actions, "verified": False,
     }
     if args.apply:

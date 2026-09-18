@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 import yunxiao_cli_bug_batch as core
+from task_scope_metadata import build_task_scope
 
 
 SCHEMA = "oneos.yunxiao-cli-allocation/v2"
@@ -463,6 +464,7 @@ def build_preflight(executable: str, args: argparse.Namespace) -> dict[str, Any]
             "developmentTask": args.development_task, "spaceId": args.space_id,
             "requirementSnapshotFile": requirement_snapshot["path"],
             "technicalPlanFile": technical_plan["path"],
+            "gateEffectiveAt": getattr(args, "gate_effective_at", None),
         },
         "requirementSnapshot": requirement_snapshot,
         "technicalPlan": technical_plan,
@@ -498,6 +500,7 @@ def args_from_preflight(value: dict[str, Any]) -> argparse.Namespace:
         development_task=source.get("developmentTask"), space_id=source.get("spaceId"),
         requirement_snapshot_file=source.get("requirementSnapshotFile"),
         technical_plan_file=source.get("technicalPlanFile"),
+        gate_effective_at=source.get("gateEffectiveAt"),
     )
 
 
@@ -702,12 +705,11 @@ def cmd_apply(args: argparse.Namespace) -> int:
         raise core.AdapterError("开发需求快照在预检后发生变化，请重新预检。")
     if not isinstance(technical_plan, dict) or technical_plan.get("sha256") != current.get("technicalPlan", {}).get("sha256"):
         raise core.AdapterError("技术方案在预检后发生变化，请重新预检。")
+    delivery_detail = get_workitem(executable, live["delivery"]["id"])
     scope = {
         **live, "input": source,
-        "workitemTypeId": str((get_workitem(executable, live["delivery"]["id"])
-                                .get("workitemType") or {}).get("id") or ""),
-        "sprintId": str((get_workitem(executable, live["delivery"]["id"])
-                         .get("sprint") or {}).get("id") or "") or None,
+        "workitemTypeId": str((delivery_detail.get("workitemType") or {}).get("id") or ""),
+        "sprintId": str((delivery_detail.get("sprint") or {}).get("id") or "") or None,
     }
     operations: list[dict[str, Any]] = []
     owner = live.get("owner")
@@ -821,6 +823,13 @@ def cmd_apply(args: argparse.Namespace) -> int:
     if item_status(after_requirement) != "待开发":
         raise core.AdapterError("需求状态不再是待开发。")
 
+    task_scope_result = build_task_scope(
+        task_type="development", task_id=after_development.get("id"),
+        created_at=after_development.get("gmtCreate") or after_development.get("createdAt"),
+        gate_effective_at=source.get("gateEffectiveAt"),
+        parent_task_id=after_delivery.get("id"), parent_task_type="delivery",
+        parent_created_at=after_delivery.get("gmtCreate") or after_delivery.get("createdAt"),
+    )
     receipt = {
         "schema": SCHEMA, "command": "apply", "createdAt": core.now_utc(),
         "preflightPath": str(Path(args.preflight)),
@@ -828,6 +837,7 @@ def cmd_apply(args: argparse.Namespace) -> int:
         "delivery": snapshot_item(after_delivery),
         "requirement": snapshot_item(after_requirement),
         "development": snapshot_item(after_development), "fields": actual,
+        "task_scope": task_scope_result, "taskScope": task_scope_result,
         "productSnapshot": live["productSnapshot"],
         "scheduleCapacity": live["scheduleCapacity"],
         "requirementSnapshotSha256": requirement_snapshot["sha256"],
@@ -861,6 +871,7 @@ def build_parser() -> argparse.ArgumentParser:
     preflight.add_argument("--space-id")
     preflight.add_argument("--requirement-snapshot-file", required=True)
     preflight.add_argument("--technical-plan-file", required=True)
+    preflight.add_argument("--gate-effective-at", help="execution gate effective timestamp; required for task_scope")
     preflight.add_argument("--output")
     preflight.set_defaults(func=cmd_preflight)
     apply = sub.add_parser("apply", help="仅按未漂移预检回执执行并回读")
