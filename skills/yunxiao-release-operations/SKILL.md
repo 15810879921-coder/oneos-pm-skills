@@ -27,7 +27,7 @@ node <本 Skill 目录>/scripts/ensure-daily-skill-update.mjs --current-skill yu
 - `failed` / `unavailable` / `cooldown`：只给一条简短提示，继续当前任务；更新失败不得阻断云效工作。
 - 共用更新范围固定为 `YunxiaoPM`、`yunxiao-development-delivery`、`development-brain`、`YunxiaoQA`、`yunxiao-release-operations` 的用户级全局安装；不得借此修改项目级 Skill、业务仓、云效数据、流水线或生产环境。不得手工伪造或提前写入每日成功状态。
 
-Operate deployment and release evidence while keeping test, production verification, rollback, and product acceptance separate. Suite version: `10.2.13`.
+Operate deployment and release evidence while keeping test, production verification, rollback, and product acceptance separate. Suite version: `10.2.14`.
 
 ## Load the required references
 
@@ -38,6 +38,7 @@ Read each selected file completely before acting:
 - Release-batch creation and A/B/C/D scope rules: [references/release-batch.md](references/release-batch.md).
 - Existing delivery-comment validation, official Codeup backfill, and frozen `【发布代码清单】`: [references/release-code-ledger.md](references/release-code-ledger.md).
 - Build dependency groups with `scripts/resolve_release_dependency_groups.py`, freeze exact repository actions with `scripts/build_release_merge_plan.py`, and persist partial target-merge/deployment continuation with `scripts/execute_release_merge_plan.py`.
+- Test execution uses `scripts/discover_test_pipelines.py` for read-only candidate discovery and `scripts/execute_test_pipeline.py` for the guarded prepare/run/monitor path; all Flow writes still go through `scripts/yunxiao_cli_gateway.py`.
 - For both preparation and execution, follow [references/change-coverage.md](references/change-coverage.md): collect pinned official histories with `validate_release_change_coverage.py collect`, distinguish branch owners from delivery scope, and verify candidate and resulting target trees with `verify-tree`. Boolean declarations and MR endpoint SHAs alone are not completeness evidence.
 - For repeated immutable evidence and independent official reads, use `validate_release_change_coverage.py collect-batch|reuse-history` and `scripts/release_read_batch.py`; never recreate one-off orchestration scripts when the bundled runtime covers the call set.
 - Business-readable release-task descriptions and append-only managed comment ledgers: [references/release-description.md](references/release-description.md).

@@ -1,6 +1,6 @@
 {
   "schemaVersion": "oneos.yunxiao-lifecycle-skill-index/v1",
-  "suiteVersion": "10.2.13",
+  "suiteVersion": "10.2.14",
   "scope": "OneOS 云效需求、开发、测试与发布生命周期",
   "skills": [
     {
@@ -116,6 +116,7 @@
         "skills/yunxiao-release-operations/references/handoff-gate.md"
       ],
       "keyScripts": [
+        "skills/yunxiao-release-operations/scripts/execute_test_pipeline.py",
         "skills/yunxiao-release-operations/scripts/build_release_merge_plan.py",
         "skills/yunxiao-release-operations/scripts/execute_release_merge_plan.py",
         "skills/yunxiao-release-operations/scripts/discover_test_pipelines.py",

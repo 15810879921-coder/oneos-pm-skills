@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check the 10.2.13 installation UI without changing the user's clipboard."""
+"""Check the 10.2.14 installation UI without changing the user's clipboard."""
 import argparse
 from playwright.sync_api import sync_playwright
 
@@ -22,7 +22,7 @@ def main():
         assert section.is_visible()
         section.get_by_role("button", name="复制给 Codex 更新").click()
         copied = page.evaluate("window.__testCopiedText")
-        assert "10.2.13" in copied and "-a cursor" not in copied
+        assert "10.2.14" in copied and "-a cursor" not in copied
         commands = [line for line in copied.splitlines() if line.startswith("npx skills add ")]
         assert len(commands) == 5
         for name, command in zip(names, commands):

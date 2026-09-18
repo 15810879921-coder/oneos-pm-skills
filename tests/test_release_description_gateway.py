@@ -253,7 +253,7 @@ class ReleaseDescriptionGatewayTests(unittest.TestCase):
             "flow-create-pipeline-run", ["--pipeline-id", "PROD-PIPE"],
         )
         plan["releaseGateStage"] = "test-pipeline"
-        with self.assertRaisesRegex(MODULE.core.AdapterError, "releaseGateStage"):
+        with self.assertRaisesRegex(MODULE.core.AdapterError, "候选流水线回执"):
             MODULE.validate_plan(plan)
 
     def test_refuse_and_incident_record_remain_available_for_risk_reduction(self):
