@@ -38,7 +38,7 @@ node <本 Skill 目录>/scripts/ensure-daily-skill-update.mjs --current-skill Yu
 
 与 **YunxiaoPM（需求任务）**、开发交付 Skill 分工：本 Skill **只做测试侧**读写。
 
-云效生命周期套件版本：`10.2.12`。
+云效生命周期套件版本：`10.2.13`。
 
 ## Plan 模式门禁（强制 · 凡写云效）
 
@@ -89,7 +89,7 @@ node <本 Skill 目录>/scripts/ensure-daily-skill-update.mjs --current-skill Yu
 | 实写 API | [references/live-api.md](references/live-api.md)（01_ONEOS 已验证） |
 | 测试执行闭环 | [references/test-execution.md](references/test-execution.md) · `scripts/yunxiao_cli_test_lifecycle.py` · `scripts/yunxiao_cli_bug_retest.py` |
 | TestHub计划/用例执行 | [references/yunxiao-cli-testhub.md](references/yunxiao-cli-testhub.md) · `scripts/yunxiao_cli_testhub.py` |
-| 列表/建缺/流转脚本 | [scripts/README.md](scripts/README.md) · `check_auth.py` / `list_bug_anchors.py` / `list_test_tasks.py` / `list_bugs.py` / `create_bug.py` / `transit_bug.py` / `close_test_task.py` |
+| 列表/建缺/流转脚本 | [scripts/README.md](scripts/README.md) · 当前闭环优先使用 `yunxiao_cli_test_lifecycle.py` / `yunxiao_cli_bug_retest.py` / `yunxiao_cli_testhub.py`；`list_*`、`create_bug.py`、`transit_bug.py`、`close_test_task.py` 仅保留为历史诊断，若脚本进入 `_auth.py` Cookie 路径必须停止并转回官方 CLI |
 | 跨平台脚本启动 | [references/runtime-launcher.md](references/runtime-launcher.md) · `skill-run <script.py> [参数...]` |
 
 日常测试**优先本 Skill**；不必再挂载英文 `yunxiao-bug-triage`（诊断要点已收入本 Skill）。

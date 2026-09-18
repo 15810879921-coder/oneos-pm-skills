@@ -1,5 +1,7 @@
 # scripts/
 
+> 当前云效读写必须走官方 `aliyun devops` CLI/PAT。下方 `list_*`、`create_bug.py`、`transit_bug.py`、`close_test_task.py` 依赖旧 `_auth.py` Cookie 会话，只能用于历史诊断，禁止用于新建、改状态、建缺陷或关闭测试任务；新执行统一转到 `yunxiao_cli_test_lifecycle.py`、`yunxiao_cli_bug_retest.py` 和 `yunxiao_cli_testhub.py`。
+
 | 脚本 | 用途 |
 |---|---|
 | `_auth.py` | 共享 Cookie / 会话 / list / transit / create / 关联校验 / AuthError |
@@ -15,7 +17,9 @@
 | `close_test_task.py` | 已停用的旧入口：固定拒绝写入并指向完整闭环命令 |
 | `discover_bug_constants.py` | 早期探测（常量已写入 runtime-ids） |
 
-## 鉴权
+## 历史脚本鉴权（仅诊断）
+
+以下仅适用于历史诊断脚本，不能作为新业务执行路径。正式读写必须由 `aliyun devops` 使用 PAT/组织ID 完成。
 
 1. 优先读当前系统临时目录中的 `yunxiao_cookies.json`（含 `XSRF-TOKEN`、`AONE_SESSION`）
 2. 否则读 Chrome `browser_cookie3`
@@ -30,6 +34,8 @@ skill-run check_auth.py
 不要把 Cookie 写入 Skill 仓库或缺陷描述。
 
 ## 示例
+
+下面旧 Cookie 示例只用于历史诊断；新任务不要执行这些命令。
 
 ```powershell
 # 在当前 Skill 工作目录执行

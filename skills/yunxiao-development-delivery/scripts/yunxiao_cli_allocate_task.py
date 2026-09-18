@@ -154,10 +154,17 @@ def relation_ids(executable: str, workitem_id: str, relation_type: str) -> list[
 
 
 def resolve_owner(executable: str, name: str) -> dict[str, Any] | None:
-    value = core.unwrap(core.run_devops(executable, [
-        "base-search-members", "--query", name, "--page", "1", "--per-page", "100",
-    ]))
-    rows = value if isinstance(value, list) else []
+    rows: list[dict[str, Any]] = []
+    for page in range(1, 101):
+        value = core.unwrap(core.run_devops(executable, [
+            "base-search-members", "--query", name, "--page", str(page), "--per-page", "100",
+        ]))
+        batch = value if isinstance(value, list) else []
+        rows.extend(row for row in batch if isinstance(row, dict))
+        if len(batch) < 100:
+            break
+    else:
+        raise core.AdapterError("负责人查询超过分页上限，不能声明负责人唯一。")
     matches = [row for row in rows if isinstance(row, dict)
                and str(row.get("name") or "") == name
                and str(row.get("status") or "ENABLED") in {"ENABLED", "NORMAL_USING", "UNVISITED"}

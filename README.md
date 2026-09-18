@@ -4,11 +4,11 @@ OneOS 产品团队自用的 AI Agent Skills 合集，支持 `npx skills` 一键�
 
 **同事安装页（一键复制安装/更新）：** https://15810879921-coder.github.io/oneos-pm-skills/
 
-## 云效生命周期 10.2.12 · Codex 更新
+## 云效生命周期 10.2.13 · Codex 更新
 
-本次发布 10.2.12：完成开发支持测试交付路径选择。明确交测时，代码验证与 MR 合并回读后确认测试流水线、部署基线和范围，执行并回读实际部署版本；明确只合并时保留合并证据并记录“待部署、待交付测试”；未选择时在 MR 合并回读后只询问一次。产品交接硬门禁、测试任务红线和 QA 复测版本核验保持不变。
+本次发布 10.2.13：新增测试流水线候选发现。执行测试前分页读取全部定义和运行记录，按项目、代码库、目标分支、逻辑测试环境和部署目标匹配，读取上次成功部署的实际提交 SHA，并计算 Codeup 基线之后的待部署变更；名称或 ID 只能在结构化候选中做选择。候选不唯一、基线不可核验或范围不可计算时只阻塞，不启动流水线。产品交接硬门禁、测试任务红线和 QA 复测版本核验保持不变。
 
-团队请打开 [10.2.12 更新入口](https://15810879921-coder.github.io/oneos-pm-skills/#lifecycle-10-2-12)，按岗位选择需要更新的 Skill，完成后新开会话并回读所用 Skill 的实际版本。开发台账及完成开发已取消“五个 Skill 必须全部安装且同版”的门禁，不要求开发人员安装产品、测试和发布 Skill；开发大脑预检及真实交付/验证/交棒证据要求保持不变。当天自动更新已经运行过也需要本次主动更新，不能把“今日已更新”当作新版本已安装。
+团队请打开 [10.2.13 更新入口](https://15810879921-coder.github.io/oneos-pm-skills/#lifecycle-10-2-13)，按岗位选择需要更新的 Skill，完成后新开会话并回读所用 Skill 的实际版本。开发台账及完成开发已取消“五个 Skill 必须全部安装且同版”的门禁，不要求开发人员安装产品、测试和发布 Skill；开发大脑预检及真实交付/验证/交棒证据要求保持不变。当天自动更新已经运行过也需要本次主动更新，不能把“今日已更新”当作新版本已安装。
 
 ```text
 npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoPM -a codex -g -y
@@ -18,7 +18,7 @@ npx skills add 15810879921-coder/oneos-pm-skills --skill YunxiaoQA -a codex -g -
 npx skills add 15810879921-coder/oneos-pm-skills --skill yunxiao-release-operations -a codex -g -y
 ```
 
-协议与接入边界见 [版本化交棒说明](skills/YunxiaoPM/references/handoff-gate.md)；本次变化和验证见 [10.2.12 发布记录](docs/releases/10.2.12.md)，TestHub读取恢复见 [10.2.2 发布记录](docs/releases/10.2.2.md)。旧任务可以调查与补录，但不能用缺失资料、旧版回执或人工状态完成绕过正式 QA/发布。只维护 Codex；Cursor 历史包保留不动。仓库发布不等于同事已更新，也不等于服务端 CI/云效组织门禁已部署。
+协议与接入边界见 [版本化交棒说明](skills/YunxiaoPM/references/handoff-gate.md)；本次变化和验证见 [10.2.13 发布记录](docs/releases/10.2.13.md)，TestHub读取恢复见 [10.2.2 发布记录](docs/releases/10.2.2.md)。旧任务可以调查与补录，但不能用缺失资料、旧版回执或人工状态完成绕过正式 QA/发布。只维护 Codex；Cursor 历史包保留不动。仓库发布不等于同事已更新，也不等于服务端 CI/云效组织门禁已部署。
 
 五个云效生命周期 Skill 的职责、自然语言路由、交接关系和关键文件统一见 [云效生命周期 Skill 索引](docs/yunxiao-lifecycle-skill-index.md)；其结构化真相源为 [`docs/yunxiao-lifecycle-skill-index.json`](docs/yunxiao-lifecycle-skill-index.json)，可用 `python scripts/build-yunxiao-skill-index.py --check` 检查版本和路径漂移。
 

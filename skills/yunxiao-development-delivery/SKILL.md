@@ -25,7 +25,7 @@ node <本 Skill 目录>/scripts/ensure-daily-skill-update.mjs --current-skill yu
 - `failed` / `unavailable` / `cooldown`：只给一条简短提示，继续当前任务；更新失败不得阻断开发工作。
 - 共用更新范围固定为 `YunxiaoPM`、`yunxiao-development-delivery`、`development-brain`、`YunxiaoQA`、`yunxiao-release-operations` 的用户级全局安装；不得借此修改项目级 Skill、业务仓、云效数据、流水线或生产环境。不得手工伪造或提前写入每日成功状态。
 
-Operate development tasks and Codeup assets without using code activity as a substitute for real work state. Suite version: `10.2.12`.
+Operate development tasks and Codeup assets without using code activity as a substitute for real work state. Suite version: `10.2.13`.
 
 ## Load the required references
 
